@@ -1,9 +1,7 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models.novel import Novel, Chapter
-from app.models.interaction import UserCollection, UserHistory, Comment
-from app import db
-from sqlalchemy import desc
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from app.services.novel_service import NovelService
+from app.utils.security import author_required, admin_required
 
 novel_bp = Blueprint('novel', __name__)
 
@@ -12,187 +10,232 @@ def get_novel_list():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     category = request.args.get('category')
+    sort_by = request.args.get('sort_by', 'updated_at')
     
-    query = Novel.query
+    # Use service to get novel list
+    result = NovelService.get_novel_list(category, page, per_page, sort_by)
     
-    if category:
-        query = query.filter_by(category=category)
-    
-    novels = query.order_by(desc(Novel.updated_at)).paginate(page=page, per_page=per_page)
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
     
     return jsonify({
-        'total': novels.total,
-        'pages': novels.pages,
-        'current_page': page,
-        'novels': [novel.to_dict() for novel in novels.items]
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'novels': result['novels']
     }), 200
 
 @novel_bp.route('/detail/<int:novel_id>', methods=['GET'])
 def get_novel_detail(novel_id):
-    novel = Novel.query.get(novel_id)
+    # Use service to get novel detail
+    result = NovelService.get_novel_detail(novel_id)
     
-    if not novel:
-        return jsonify({'error': 'Novel not found'}), 404
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
     
-    # Increment view count
-    novel.view_count += 1
-    db.session.commit()
-    
-    novel_dict = novel.to_dict()
-    
-    # Get first 20 chapters
-    chapters = Chapter.query.filter_by(novel_id=novel_id).order_by(Chapter.chapter_number).limit(20).all()
-    novel_dict['chapters'] = [chapter.to_dict() for chapter in chapters]
-    
-    return jsonify(novel_dict), 200
+    return jsonify({
+        'novel': result['novel'],
+        'chapters': result.get('chapters', [])
+    }), 200
 
 @novel_bp.route('/chapter/<int:chapter_id>', methods=['GET'])
 def get_chapter(chapter_id):
-    chapter = Chapter.query.get(chapter_id)
+    # Get user ID if logged in
+    user_id = None
+    if request.headers.get('Authorization'):
+        try:
+            user_id = get_jwt_identity()
+        except:
+            pass
     
-    if not chapter:
-        return jsonify({'error': 'Chapter not found'}), 404
+    # Use service to get chapter
+    result = NovelService.get_chapter(chapter_id, True, user_id)
     
-    # Get previous and next chapter
-    prev_chapter = Chapter.query.filter_by(
-        novel_id=chapter.novel_id
-    ).filter(Chapter.chapter_number < chapter.chapter_number).order_by(
-        desc(Chapter.chapter_number)
-    ).first()
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
     
-    next_chapter = Chapter.query.filter_by(
-        novel_id=chapter.novel_id
-    ).filter(Chapter.chapter_number > chapter.chapter_number).order_by(
-        Chapter.chapter_number
-    ).first()
-    
-    result = chapter.to_dict(include_content=True)
-    result['prev_chapter'] = prev_chapter.to_dict() if prev_chapter else None
-    result['next_chapter'] = next_chapter.to_dict() if next_chapter else None
-    
-    # Update reading history if user is logged in
-    user_id = get_jwt_identity() if request.headers.get('Authorization') else None
-    if user_id:
-        history = UserHistory.query.filter_by(
-            user_id=user_id,
-            novel_id=chapter.novel_id
-        ).first()
-        
-        if history:
-            history.chapter_id = chapter.id
-        else:
-            history = UserHistory(
-                user_id=user_id,
-                novel_id=chapter.novel_id,
-                chapter_id=chapter.id
-            )
-            db.session.add(history)
-        
-        db.session.commit()
-    
-    return jsonify(result), 200
+    return jsonify({
+        'chapter': result['chapter'],
+        'prev_chapter': result['prev_chapter'],
+        'next_chapter': result['next_chapter']
+    }), 200
 
-@novel_bp.route('/collection', methods=['POST'])
+@novel_bp.route('/search', methods=['GET'])
+def search_novels():
+    keyword = request.args.get('keyword')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    if not keyword:
+        return jsonify({'error': 'Search keyword is required'}), 400
+    
+    # Use service to search novels
+    result = NovelService.search_novels(keyword, page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'novels': result['novels']
+    }), 200
+
+@novel_bp.route('/categories', methods=['GET'])
+def get_categories():
+    # Use service to get categories
+    result = NovelService.get_categories()
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({'categories': result['categories']}), 200
+
+@novel_bp.route('/popular', methods=['GET'])
+def get_popular_novels():
+    limit = request.args.get('limit', 10, type=int)
+    
+    # Use service to get popular novels
+    result = NovelService.get_popular_novels(limit)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({'novels': result['novels']}), 200
+
+@novel_bp.route('/latest', methods=['GET'])
+def get_latest_novels():
+    limit = request.args.get('limit', 10, type=int)
+    
+    # Use service to get latest novels
+    result = NovelService.get_latest_novels(limit)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({'novels': result['novels']}), 200
+
+@novel_bp.route('/add', methods=['POST'])
 @jwt_required()
-def toggle_collection():
-    user_id = get_jwt_identity()
+@author_required()
+def add_novel():
+    author_id = get_jwt_identity()
     data = request.get_json()
     
-    if 'novel_id' not in data:
-        return jsonify({'error': 'Novel ID is required'}), 400
+    # Extract novel data
+    title = data.get('title')
+    author = data.get('author')
+    category = data.get('category')
+    intro = data.get('intro')
+    cover = data.get('cover', 'default_cover.jpg')
     
-    novel_id = data['novel_id']
+    # Use service to add novel
+    result = NovelService.add_novel(author_id, title, author, category, intro, cover)
     
-    # Check if novel exists
-    novel = Novel.query.get(novel_id)
-    if not novel:
-        return jsonify({'error': 'Novel not found'}), 404
-    
-    collection = UserCollection.query.filter_by(
-        user_id=user_id,
-        novel_id=novel_id
-    ).first()
-    
-    if collection:
-        # Remove from collection
-        db.session.delete(collection)
-        novel.collection_count = max(0, novel.collection_count - 1)
-        message = 'Removed from collection'
-        is_collected = False
-    else:
-        # Add to collection
-        collection = UserCollection(user_id=user_id, novel_id=novel_id)
-        db.session.add(collection)
-        novel.collection_count += 1
-        message = 'Added to collection'
-        is_collected = True
-    
-    db.session.commit()
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
     
     return jsonify({
-        'message': message,
-        'is_collected': is_collected
+        'message': result['message'],
+        'novel': result['novel']
+    }), 201
+
+@novel_bp.route('/<int:novel_id>/chapter/add', methods=['POST'])
+@jwt_required()
+@author_required()
+def add_chapter(novel_id):
+    author_id = get_jwt_identity()
+    data = request.get_json()
+    
+    # Extract chapter data
+    title = data.get('title')
+    content = data.get('content')
+    chapter_number = data.get('chapter_number')
+    
+    # Use service to add chapter
+    result = NovelService.add_chapter(author_id, novel_id, title, content, chapter_number)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({
+        'message': result['message'],
+        'chapter': result['chapter']
+    }), 201
+
+@novel_bp.route('/<int:novel_id>/update', methods=['PUT'])
+@jwt_required()
+@author_required()
+def update_novel(novel_id):
+    author_id = get_jwt_identity()
+    data = request.get_json()
+    
+    # Use service to update novel
+    result = NovelService.update_novel(author_id, novel_id, data)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({
+        'message': result['message'],
+        'novel': result['novel']
     }), 200
 
-@novel_bp.route('/collection', methods=['GET'])
+@novel_bp.route('/chapter/<int:chapter_id>/update', methods=['PUT'])
 @jwt_required()
-def get_collections():
-    user_id = get_jwt_identity()
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
+@author_required()
+def update_chapter(chapter_id):
+    author_id = get_jwt_identity()
+    data = request.get_json()
     
-    collections = UserCollection.query.filter_by(
-        user_id=user_id
-    ).order_by(
-        desc(UserCollection.created_at)
-    ).paginate(page=page, per_page=per_page)
+    # Use service to update chapter
+    result = NovelService.update_chapter(author_id, chapter_id, data)
     
-    # Get novel details for each collection
-    result = []
-    for collection in collections.items:
-        novel = Novel.query.get(collection.novel_id)
-        if novel:
-            novel_dict = novel.to_dict()
-            novel_dict['collection_time'] = collection.created_at.isoformat()
-            result.append(novel_dict)
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
     
     return jsonify({
-        'total': collections.total,
-        'pages': collections.pages,
-        'current_page': page,
-        'collections': result
+        'message': result['message'],
+        'chapter': result['chapter']
     }), 200
 
-@novel_bp.route('/history', methods=['GET'])
+@novel_bp.route('/<int:novel_id>/delete', methods=['DELETE'])
 @jwt_required()
-def get_history():
-    user_id = get_jwt_identity()
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
+@admin_required()
+def delete_novel(novel_id):
+    admin_id = get_jwt_identity()
     
-    history_records = UserHistory.query.filter_by(
-        user_id=user_id
-    ).order_by(
-        desc(UserHistory.last_read_time)
-    ).paginate(page=page, per_page=per_page)
+    # Use service to delete novel
+    result = NovelService.delete_novel(admin_id, novel_id)
     
-    # Get novel and chapter details for each history record
-    result = []
-    for history in history_records.items:
-        novel = Novel.query.get(history.novel_id)
-        chapter = Chapter.query.get(history.chapter_id)
-        
-        if novel and chapter:
-            record = {
-                'novel': novel.to_dict(),
-                'chapter': chapter.to_dict(),
-                'last_read_time': history.last_read_time.isoformat()
-            }
-            result.append(record)
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
     
-    return jsonify({
-        'total': history_records.total,
-        'pages': history_records.pages,
-        'current_page': page,
-        'history': result
-    }), 200 
+    return jsonify({'message': result['message']}), 200
+
+@novel_bp.route('/chapter/<int:chapter_id>/delete', methods=['DELETE'])
+@jwt_required()
+@author_required()
+def delete_chapter(chapter_id):
+    author_id = get_jwt_identity()
+    
+    # Use service to delete chapter
+    result = NovelService.delete_chapter(author_id, chapter_id)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({'message': result['message']}), 200
+
+@novel_bp.route('/refresh-cache', methods=['POST'])
+@jwt_required()
+@admin_required()
+def refresh_cache():
+    # Use service to refresh cache
+    result = NovelService.refresh_cache()
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 500
+    
+    return jsonify({'message': result['message']}), 200 

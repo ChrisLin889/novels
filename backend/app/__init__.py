@@ -31,12 +31,16 @@ def create_app(config_name=None):
     
     # Register blueprints
     from app.api.user import user_bp
-    from app.api.novel import novel_bp
-    from app.api.crawler import crawler_bp
-    
     app.register_blueprint(user_bp, url_prefix='/api/user')
+    
+    from app.api.novel import novel_bp
     app.register_blueprint(novel_bp, url_prefix='/api/novel')
+    
+    from app.api.crawler import crawler_bp
     app.register_blueprint(crawler_bp, url_prefix='/api/crawler')
+    
+    from app.api.interaction import interaction_bp
+    app.register_blueprint(interaction_bp, url_prefix='/api/interaction')
     
     @app.route('/')
     def index():
