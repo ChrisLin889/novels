@@ -1,0 +1,14 @@
+{
+    "database-client.connections": [
+        {
+            "name": "Novel Database",
+            "driver": "MySQL",
+            "server": "localhost",
+            "port": 3306,
+            "database": "novel_db",
+            "username": "root",
+            "password": "ok123456",
+            "connectionTimeout": 15000
+        }
+    ]
+} 
