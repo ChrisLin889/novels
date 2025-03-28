@@ -3,6 +3,8 @@ import sys
 from app.tests.test_interaction_service import TestInteractionService
 from app.tests.test_cache_service import TestCacheService
 from app.tests.test_api_endpoints import TestAPIEndpoints
+from app.tests.test_search_service import TestSearchService
+from app.tests.test_admin_service import TestAdminService
 
 def run_tests():
     """Run all tests"""
@@ -13,6 +15,8 @@ def run_tests():
     test_suite.addTest(unittest.makeSuite(TestInteractionService))
     test_suite.addTest(unittest.makeSuite(TestCacheService))
     test_suite.addTest(unittest.makeSuite(TestAPIEndpoints))
+    test_suite.addTest(unittest.makeSuite(TestSearchService))
+    test_suite.addTest(unittest.makeSuite(TestAdminService))
     
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)

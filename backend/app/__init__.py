@@ -42,6 +42,15 @@ def create_app(config_name=None):
     from app.api.interaction import interaction_bp
     app.register_blueprint(interaction_bp, url_prefix='/api/interaction')
     
+    from app.api.cache import cache_bp
+    app.register_blueprint(cache_bp, url_prefix='/api/cache')
+    
+    from app.api.search import search_bp
+    app.register_blueprint(search_bp, url_prefix='/api/search')
+    
+    from app.api.admin import admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    
     @app.route('/')
     def index():
         return {'message': 'Novel API is running!'}
