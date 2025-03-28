@@ -17,10 +17,17 @@ def create_app(config_name=None):
     
     # Configure app
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-        'DATABASE_URL',
-        'mysql+pymysql://root:password@localhost/novel_db'
-    )
+    
+    # Set database URI based on environment
+    if config_name == 'testing':
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        app.config['TESTING'] = True
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+            'DATABASE_URL',
+            'mysql+pymysql://root:password@localhost/novel_db'
+        )
+    
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt_dev_key')
     

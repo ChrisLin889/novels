@@ -4,6 +4,9 @@ import os
 from typing import Any, Dict, List, Optional, Union
 from functools import wraps
 import time
+import hashlib
+import sys
+from datetime import datetime
 
 # Initialize Redis connection
 redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
@@ -13,6 +16,7 @@ class MockRedis:
     def __init__(self):
         self.data = {}
         self.expiry = {}
+        self.sorted_sets = {}  # For storing sorted set data
     
     def setex(self, key, ttl, value):
         self.data[key] = value
@@ -47,10 +51,62 @@ class MockRedis:
     def flushdb(self):
         self.data.clear()
         self.expiry.clear()
+        self.sorted_sets.clear()
         return True
     
     def ping(self):
         return True
+        
+    def zincrby(self, name, amount, value):
+        """Increment the score of a member in a sorted set"""
+        if name not in self.sorted_sets:
+            self.sorted_sets[name] = {}
+        
+        if value not in self.sorted_sets[name]:
+            self.sorted_sets[name][value] = 0
+            
+        self.sorted_sets[name][value] += amount
+        return self.sorted_sets[name][value]
+    
+    def zremrangebyrank(self, name, start, end):
+        """Remove all members in a sorted set within the given indexes"""
+        if name not in self.sorted_sets:
+            return 0
+            
+        # Convert negative indices
+        if end < 0:
+            end = len(self.sorted_sets[name]) + end + 1
+            
+        # Sort by score
+        sorted_items = sorted(self.sorted_sets[name].items(), key=lambda x: x[1])
+        
+        # Get items to remove
+        to_remove = sorted_items[start:end]
+        
+        # Remove items
+        count = 0
+        for key, _ in to_remove:
+            if key in self.sorted_sets[name]:
+                del self.sorted_sets[name][key]
+                count += 1
+                
+        return count
+        
+    def zrevrange(self, name, start, end, withscores=False):
+        """Return a range of members in a sorted set, by score, with scores ordered from high to low"""
+        if name not in self.sorted_sets:
+            return []
+            
+        # Sort by score (highest first)
+        sorted_items = sorted(self.sorted_sets[name].items(), key=lambda x: x[1], reverse=True)
+        
+        # Get range
+        result_items = sorted_items[start:end+1]
+        
+        if withscores:
+            return [(k.encode('utf-8') if isinstance(k, str) else k, v) for k, v in result_items]
+        else:
+            return [k.encode('utf-8') if isinstance(k, str) else k for k, _ in result_items]
 
 # Try to connect to Redis, fall back to mock if unavailable
 try:
@@ -438,4 +494,106 @@ def invalidate_cache_version(version_key: str):
     """
     new_version = int(time.time())
     CacheService.set(version_key, new_version, LONG_TTL)
-    return new_version 
+    return new_version
+
+
+def generate_key(prefix, *args, **kwargs):
+    """Generate a unique cache key based on function arguments"""
+    # Convert args and kwargs to strings and join
+    args_str = ':'.join([str(arg) for arg in args])
+    kwargs_str = ':'.join([f"{k}={v}" for k, v in sorted(kwargs.items())])
+    
+    # Combine with prefix
+    key_base = f"{prefix}:{args_str}:{kwargs_str}"
+    
+    # Hash if the key is too long
+    if len(key_base) > 100:
+        return f"{prefix}:{hashlib.md5(key_base.encode()).hexdigest()}"
+    
+    return key_base
+
+
+def cached_redis(prefix, ttl=DEFAULT_TTL):
+    """
+    Decorator for caching function results in Redis
+    
+    Args:
+        prefix: Key prefix for the cache
+        ttl: Cache TTL in seconds
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Generate cache key
+            cache_key = generate_key(prefix, *args, **kwargs)
+            
+            # Try to get from cache
+            cached_data = redis_client.get(cache_key)
+            
+            if cached_data:
+                try:
+                    return json.loads(cached_data)
+                except json.JSONDecodeError:
+                    # If invalid JSON, ignore cache
+                    pass
+            
+            # Execute function and cache result
+            result = func(*args, **kwargs)
+            
+            # Store in cache (if result is not None)
+            if result is not None:
+                try:
+                    redis_client.set(cache_key, json.dumps(result), ex=ttl)
+                except (TypeError, OverflowError) as e:
+                    # Log error but continue (don't break the application if caching fails)
+                    print(f"Caching error for {cache_key}: {e}", file=sys.stderr)
+            
+            return result
+        return wrapper
+    return decorator
+
+
+def invalidate_cache(prefix, *args, **kwargs):
+    """
+    Invalidate specific cache entry
+    
+    Args:
+        prefix: Key prefix for the cache
+        *args, **kwargs: Arguments to generate the key
+    """
+    cache_key = generate_key(prefix, *args, **kwargs)
+    redis_client.delete(cache_key)
+
+
+def invalidate_by_pattern(pattern):
+    """
+    Invalidate cache entries by pattern
+    
+    Args:
+        pattern: Redis key pattern to match (e.g., "novel_list:*")
+    """
+    keys = redis_client.keys(pattern)
+    if keys:
+        redis_client.delete(*keys)
+
+
+def invalidate_user_cache(user_id):
+    """
+    Invalidate all cache entries for a specific user
+    
+    Args:
+        user_id: User ID whose cache to invalidate
+    """
+    # Invalidate user-specific caches
+    invalidate_by_pattern(f"user_profile:{user_id}:*")
+    invalidate_by_pattern(f"reading_history:{user_id}:*")
+    invalidate_by_pattern(f"user_bookshelf:{user_id}:*")
+    
+    # Also invalidate any other user-specific patterns
+    invalidate_by_pattern(f"*:{user_id}:*")
+
+# Create a function alias for the decorator
+cached_redis = cached_redis
+
+# Create a function alias for the invalidate_user_cache function
+invalidate_user_cache = invalidate_user_cache 

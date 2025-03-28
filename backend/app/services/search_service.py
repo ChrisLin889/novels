@@ -118,36 +118,43 @@ class SearchService:
             print(f"Failed to record search keyword: {str(e)}")
     
     @staticmethod
+    def track_search_keyword(keyword):
+        """
+        Track search keywords for trending
+        
+        Args:
+            keyword: Keyword to track
+        """
+        try:
+            # Increment score for the keyword
+            redis_client.zincrby("trending_searches", 1, keyword)
+            
+            # Trim the set to keep only top 100 keywords
+            redis_client.zremrangebyrank("trending_searches", 0, -101)
+        except Exception as e:
+            print(f"Failed to record search keyword: {e}")
+    
+    @staticmethod
     @cached(SEARCH_TRENDING_PREFIX, ttl=3600)  # Cache for 1 hour
-    def get_trending_keywords(limit: int = 10) -> List[Dict]:
+    def get_trending_keywords(limit=10):
         """
         Get trending search keywords
         
         Args:
-            limit: Number of trending keywords to return
+            limit: Number of keywords to return
             
         Returns:
-            List of trending keywords with counts
+            List of trending keywords
         """
         try:
-            from redis import Redis
-            from app.services.cache_service import redis_client
-            
-            # Get top keywords from sorted set
-            results = redis_client.zrevrange(
-                HOT_KEYWORDS_PREFIX, 
-                0, 
-                limit-1, 
-                withscores=True
-            )
+            # Get top keywords with scores
+            keywords = redis_client.zrevrange("trending_searches", 0, limit-1, withscores=True)
             
             # Format results
-            return [
-                {'keyword': keyword.decode('utf-8'), 'count': int(count)}
-                for keyword, count in results
-            ]
+            return [{"keyword": kw.decode('utf-8'), "count": int(score)} for kw, score in keywords]
         except Exception as e:
-            print(f"Failed to get trending keywords: {str(e)}")
+            print(f"Failed to get trending keywords: {e}")
+            # Return empty list if Redis not available
             return []
     
     @staticmethod
