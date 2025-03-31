@@ -62,7 +62,8 @@ class UserDAO:
         if not user:
             return None
         
-        user.status = status
+        # Convert boolean to integer: True = enabled (0), False = disabled (1)
+        user.status = 0 if status else 1
         db.session.commit()
         return user
     
@@ -132,8 +133,8 @@ class UserService:
         if not user:
             return {'success': False, 'error': 'User not found'}
         
-        # Check account status
-        if not user.status:
+        # Check account status (0 = active, 1 = banned)
+        if user.status != 0:
             return {'success': False, 'error': 'Account is disabled'}
         
         # Verify password

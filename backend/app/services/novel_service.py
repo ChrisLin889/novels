@@ -241,7 +241,6 @@ class NovelService:
     """
     
     @staticmethod
-    @cached("novel_detail", 1800)  # Cache for 30 minutes
     def get_novel_detail(novel_id: int, with_chapters: bool = True) -> Dict[str, Any]:
         """Get novel details with optional chapter list"""
         novel = NovelDAO.get_novel_by_id(novel_id)

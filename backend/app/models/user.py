@@ -14,8 +14,7 @@ class User(db.Model):
     avatar = db.Column(db.String(255), default='default.jpg')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    status = db.Column(db.String(20), default='active')  # active, banned
-    ban_until = db.Column(db.DateTime, nullable=True)  # End time for temporary bans
+    status = db.Column(db.Integer, default=0)  # 0 = active, 1 = banned
     
     def set_password(self, password):
         password_bytes = password.encode('utf-8')
@@ -28,7 +27,7 @@ class User(db.Model):
         return bcrypt.checkpw(password_bytes, hash_bytes)
     
     def to_dict(self):
-        result = {
+        return {
             'id': self.id,
             'username': self.username,
             'phone': self.phone,
@@ -36,10 +35,5 @@ class User(db.Model):
             'role': self.role,
             'avatar': self.avatar,
             'created_at': self.created_at.isoformat(),
-            'status': self.status
-        }
-        
-        if self.ban_until:
-            result['ban_until'] = self.ban_until.isoformat()
-        
-        return result 
+            'status': 'active' if self.status == 0 else 'banned'
+        } 

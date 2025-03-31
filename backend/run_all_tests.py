@@ -7,7 +7,7 @@ from app.tests.test_search_service import TestSearchService
 from app.tests.test_admin_service import TestAdminService
 
 def run_tests():
-    """Run all tests"""
+    """Run all backend unit tests"""
     # Create test suite
     test_suite = unittest.TestSuite()
     
@@ -26,4 +26,5 @@ def run_tests():
     return 0 if result.wasSuccessful() else 1
 
 if __name__ == '__main__':
+    print("Running all backend unit tests...")
     sys.exit(run_tests()) 

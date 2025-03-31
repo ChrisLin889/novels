@@ -4,12 +4,14 @@ from app.models.user import User
 from app.services.user_service import UserService
 from app import db
 import datetime
+import json
 
 user_bp = Blueprint('user', __name__)
 
 @user_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
+    print(f"Register request data: {json.dumps(data)}")
     
     # Extract registration data
     username = data.get('username')
@@ -17,10 +19,13 @@ def register():
     phone = data.get('phone')
     email = data.get('email')
     
+    print(f"Extracted data - username: {username}, phone: {phone}, email: {email}, password length: {len(password) if password else 0}")
+    
     # Use service to handle registration
     result = UserService.register(username, password, phone, email)
     
     if not result['success']:
+        print(f"Registration failed: {result['error']}")
         return jsonify({'error': result['error']}), 400
     
     return jsonify({

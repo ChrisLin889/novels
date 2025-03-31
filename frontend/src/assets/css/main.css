@@ -1,0 +1,108 @@
+/* Reset CSS */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  color: #333;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+}
+
+/* Common styles */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.page-container {
+  padding: 20px 0;
+  min-height: calc(100vh - 120px); /* Adjust based on header/footer height */
+}
+
+/* Novel card styles */
+.novel-card {
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.novel-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.2);
+}
+
+.novel-cover {
+  width: 100%;
+  height: 0;
+  padding-bottom: 133%; /* 3:4 aspect ratio for book covers */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Reader styles */
+.reader-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+  min-height: 80vh;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.chapter-content {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  text-align: justify;
+}
+
+.chapter-content p {
+  margin-bottom: 1em;
+  text-indent: 2em;
+}
+
+/* Dark mode for the reader */
+.reader-dark {
+  background-color: #252525;
+  color: #e0e0e0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .chapter-content {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+  
+  .container {
+    padding: 0 10px;
+  }
+}
+
+/* Utility classes */
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mb-10 {
+  margin-bottom: 10px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}

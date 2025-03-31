@@ -301,6 +301,49 @@ class InteractionDAO:
         }
         
     @staticmethod
+    def get_user_comments(user_id: int, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+        """Get paginated comments made by a user"""
+        comments = Comment.query.filter_by(user_id=user_id).order_by(
+            desc(Comment.created_at)
+        ).paginate(page=page, per_page=per_page)
+        
+        # Get novel and user info for each comment
+        result = []
+        for comment in comments.items:
+            novel = Novel.query.get(comment.novel_id)
+            chapter = None
+            if comment.chapter_id:
+                chapter = Chapter.query.get(comment.chapter_id)
+                
+            if novel:
+                comment_dict = {
+                    'id': comment.id,
+                    'content': comment.content,
+                    'created_at': comment.created_at.isoformat(),
+                    'novel': {
+                        'id': novel.id,
+                        'title': novel.title,
+                        'cover': novel.cover
+                    }
+                }
+                
+                if chapter:
+                    comment_dict['chapter'] = {
+                        'id': chapter.id,
+                        'title': chapter.title,
+                        'chapter_number': chapter.chapter_number
+                    }
+                    
+                result.append(comment_dict)
+        
+        return {
+            'total': comments.total,
+            'pages': comments.pages,
+            'current_page': page,
+            'comments': result
+        }
+        
+    @staticmethod
     def send_message(sender_id: int, recipient_id: int, content: str) -> Optional[PrivateMessage]:
         """Send a private message to another user"""
         # Prevent self-messaging
@@ -743,6 +786,17 @@ class InteractionService:
             return {'success': False, 'error': 'User not found'}
             
         result = InteractionDAO.get_following(user_id, page, per_page)
+        return {'success': True, **result}
+        
+    @staticmethod
+    def get_user_comments(user_id: int, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+        """Get comments made by a user"""
+        # Check if user exists
+        user = User.query.get(user_id)
+        if not user:
+            return {'success': False, 'error': 'User not found'}
+            
+        result = InteractionDAO.get_user_comments(user_id, page, per_page)
         return {'success': True, **result}
         
     @staticmethod

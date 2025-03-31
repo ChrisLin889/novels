@@ -154,4 +154,244 @@ def delete_comment(comment_id):
     if not result['success']:
         return jsonify({'error': result['error']}), 403 if 'Permission denied' in result['error'] else 404
     
-    return jsonify({'message': result['message']}), 200 
+    return jsonify({'message': result['message']}), 200
+
+# New routes for following functionality
+@interaction_bp.route('/follow', methods=['POST'])
+@jwt_required()
+def toggle_follow():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    
+    if 'user_id' not in data:
+        return jsonify({'error': 'User ID to follow is required'}), 400
+    
+    followed_id = data.get('user_id')
+    
+    # Use service to toggle follow
+    result = InteractionService.toggle_follow(user_id, followed_id)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({
+        'message': result['message'],
+        'is_following': result['is_following']
+    }), 200
+
+@interaction_bp.route('/follow/status/<int:user_id>', methods=['GET'])
+@jwt_required()
+def get_follow_status(user_id):
+    follower_id = get_jwt_identity()
+    
+    # Use service to check follow status
+    result = InteractionService.get_follow_status(follower_id, user_id)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({'is_following': result['is_following']}), 200
+
+@interaction_bp.route('/followers/<int:user_id>', methods=['GET'])
+def get_followers(user_id):
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Use service to get followers
+    result = InteractionService.get_followers(user_id, page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'followers': result['followers']
+    }), 200
+
+@interaction_bp.route('/following/<int:user_id>', methods=['GET'])
+def get_following(user_id):
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Use service to get following
+    result = InteractionService.get_following(user_id, page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'following': result['following']
+    }), 200
+
+# New routes for messaging functionality
+@interaction_bp.route('/message', methods=['POST'])
+@jwt_required()
+def send_message():
+    sender_id = get_jwt_identity()
+    data = request.get_json()
+    
+    if not all(key in data for key in ['recipient_id', 'content']):
+        return jsonify({'error': 'Recipient ID and content are required'}), 400
+    
+    recipient_id = data.get('recipient_id')
+    content = data.get('content')
+    
+    # Use service to send message
+    result = InteractionService.send_message(sender_id, recipient_id, content)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({
+        'message': result['message'],
+        'data': result['data']
+    }), 201
+
+@interaction_bp.route('/conversation/<int:user_id>', methods=['GET'])
+@jwt_required()
+def get_conversation(user_id):
+    current_user_id = get_jwt_identity()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    
+    # Use service to get conversation
+    result = InteractionService.get_conversation(current_user_id, user_id, page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'messages': result['messages']
+    }), 200
+
+@interaction_bp.route('/inbox', methods=['GET'])
+@jwt_required()
+def get_inbox():
+    user_id = get_jwt_identity()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Use service to get inbox
+    result = InteractionService.get_inbox(user_id, page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'messages': result['messages'],
+        'unread_count': result['unread_count']
+    }), 200
+
+@interaction_bp.route('/message/<int:message_id>/read', methods=['POST'])
+@jwt_required()
+def mark_message_read(message_id):
+    user_id = get_jwt_identity()
+    
+    # Use service to mark message as read
+    result = InteractionService.mark_message_read(user_id, message_id)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({'message': result['message']}), 200
+
+# New routes for tipping functionality
+@interaction_bp.route('/tip', methods=['POST'])
+@jwt_required()
+def send_tip():
+    tipper_id = get_jwt_identity()
+    data = request.get_json()
+    
+    required_fields = ['author_id', 'novel_id', 'amount']
+    if not all(key in data for key in required_fields):
+        return jsonify({'error': 'Author ID, novel ID, and amount are required'}), 400
+    
+    author_id = data.get('author_id')
+    novel_id = data.get('novel_id')
+    amount = data.get('amount')
+    message = data.get('message')
+    chapter_id = data.get('chapter_id')
+    
+    # Use service to send tip
+    result = InteractionService.send_tip(tipper_id, author_id, novel_id, amount, message, chapter_id)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({
+        'message': result['message'],
+        'tip': result['tip']
+    }), 201
+
+@interaction_bp.route('/tips/received', methods=['GET'])
+@jwt_required()
+def get_tips_received():
+    user_id = get_jwt_identity()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Use service to get tips received
+    result = InteractionService.get_tips_received(user_id, page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'tips': result['tips'],
+        'total_amount': result['total_amount']
+    }), 200
+
+@interaction_bp.route('/tips/sent', methods=['GET'])
+@jwt_required()
+def get_tips_sent():
+    user_id = get_jwt_identity()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Use service to get tips sent
+    result = InteractionService.get_tips_sent(user_id, page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'tips': result['tips'],
+        'total_amount': result['total_amount']
+    }), 200
+
+@interaction_bp.route('/user-comments', methods=['GET'])
+@jwt_required()
+def get_user_comments():
+    user_id = get_jwt_identity()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Use service to get user comments
+    result = InteractionService.get_user_comments(user_id, page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 404
+    
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'comments': result['comments']
+    }), 200 
