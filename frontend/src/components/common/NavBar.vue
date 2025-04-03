@@ -19,6 +19,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">个人中心</el-dropdown-item>
+                <el-dropdown-item v-if="isAdmin" command="admin">管理后台</el-dropdown-item>
                 <el-dropdown-item command="bookshelf">我的书架</el-dropdown-item>
                 <el-dropdown-item command="messages">
                   我的消息
@@ -102,6 +103,7 @@ export default {
     const userInfo = computed(() => store.getters['user/userInfo']);
     const userName = computed(() => userInfo.value?.username || '用户');
     const userAvatar = computed(() => userInfo.value?.avatar || '');
+    const isAdmin = computed(() => userInfo.value?.role === 'admin');
     
     // 获取未读消息数量
     const fetchUnreadCount = async () => {
@@ -134,11 +136,13 @@ export default {
     };
     
     const handleCommand = (command) => {
-      if (command === 'profile') {
-        router.push('/user/profile');
-      } else if (command === 'logout') {
+      if (command === 'logout') {
         store.dispatch('user/logout');
-        router.push('/');
+        router.push('/login');
+      } else if (command === 'profile') {
+        router.push('/user/profile');
+      } else if (command === 'admin') {
+        router.push('/admin/dashboard');
       } else if (command === 'bookshelf') {
         router.push('/user/bookshelf');
       } else if (command === 'messages') {
@@ -182,6 +186,7 @@ export default {
       userName,
       userAvatar,
       unreadCount,
+      isAdmin,
       handleSearch,
       goToLogin,
       goToRegister,

@@ -1,24 +1,41 @@
 <template>
   <div id="app">
-    <NavBar />
-    <div class="main-content">
-      <router-view />
-    </div>
-    <Footer />
+    <!-- 非管理后台页面显示导航栏 -->
+    <nav-bar v-if="!isAdminRoute" />
+    
+    <!-- 路由视图 -->
+    <router-view />
+    
+    <!-- 非管理后台页面显示页脚 -->
+    <app-footer v-if="!isAdminRoute" />
   </div>
 </template>
 
 <script>
-import NavBar from '@/components/common/NavBar.vue'
-import Footer from '@/components/common/Footer.vue'
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import NavBar from '@/components/common/NavBar.vue';
+import AppFooter from '@/components/common/AppFooter.vue';
 
 export default {
   name: 'App',
   components: {
     NavBar,
-    Footer
+    AppFooter
+  },
+  setup() {
+    const route = useRoute();
+    
+    // 判断当前是否为管理后台路由
+    const isAdminRoute = computed(() => {
+      return route.path.startsWith('/admin');
+    });
+    
+    return {
+      isAdminRoute
+    };
   }
-}
+};
 </script>
 
 <style>
@@ -135,9 +152,39 @@ export default {
 }
 
 #app {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f5f7fa;
+}
+
+/* 全局滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .main-content {

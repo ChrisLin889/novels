@@ -91,7 +91,10 @@ export default {
       if (!loginFormRef.value) return;
       
       await loginFormRef.value.validate(async (valid) => {
-        if (!valid) return;
+        if (!valid) {
+          console.error('表单验证失败');
+          return;
+        }
         
         loading.value = true;
         
@@ -105,24 +108,42 @@ export default {
           
           if (isEmail) {
             loginData.email = loginForm.account;
+            console.log('使用邮箱登录:', loginData.email);
           } else {
             loginData.phone = loginForm.account;
+            console.log('使用手机号登录:', loginData.phone);
           }
           
-          await store.dispatch('user/login', loginData);
+          console.log('发送登录请求:', JSON.stringify(loginData));
+          
+          const result = await store.dispatch('user/login', loginData);
+          console.log('登录成功，用户信息:', result);
           
           ElMessage({
             type: 'success',
             message: '登录成功'
           });
           
+          // 验证用户角色是否保存
+          const savedRole = localStorage.getItem('userRole');
+          console.log('保存的用户角色:', savedRole);
+          
           // Redirect to intended page or home
           const redirectPath = route.query.redirect || '/';
-          router.push(redirectPath);
+          
+          // 如果是管理员用户，则重定向到管理仪表盘
+          if (savedRole === 'admin') {
+            console.log('检测到管理员用户，重定向到管理页面');
+            router.push('/admin/dashboard');
+          } else {
+            console.log('重定向到:', redirectPath);
+            router.push(redirectPath);
+          }
         } catch (error) {
+          console.error('登录错误:', error);
           ElMessage({
             type: 'error',
-            message: error || '登录失败，请重试'
+            message: typeof error === 'string' ? error : '登录失败，请重试'
           });
         } finally {
           loading.value = false;

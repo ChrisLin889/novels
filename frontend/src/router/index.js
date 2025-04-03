@@ -1,11 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import Home from '@/views/Home.vue';
+import Login from '@/views/Login.vue';
+import Register from '@/views/Register.vue';
+import NovelDetail from '@/views/NovelDetail.vue';
+import Reader from '@/views/Reader.vue';
+import AdminLayout from '@/views/admin/AdminLayout.vue';
+import AdminDashboard from '@/views/admin/Dashboard.vue';
+import AdminUsers from '@/views/admin/Users.vue';
+import AdminUserActions from '@/views/admin/UserActions.vue';
+import AdminSensitiveWords from '@/views/admin/SensitiveWords.vue';
+import AdminContent from '@/views/admin/Content.vue';
+import AdminCrawledNovels from '@/views/admin/CrawledNovels.vue';
 
 // Lazy loading routes for better performance
-const Home = () => import('@/views/Home.vue');
-const NovelDetail = () => import('@/views/NovelDetail.vue');
-const Reader = () => import('@/views/Reader.vue');
-const Login = () => import('@/views/Login.vue');
-const Register = () => import('@/views/Register.vue');
 const UserCenter = () => import('@/views/UserCenter.vue');
 const UserProfile = () => import('@/views/UserProfile.vue');
 const UserBookshelf = () => import('@/views/UserBookshelf.vue');
@@ -25,19 +32,7 @@ const routes = [
     path: '/',
     name: 'Home',
     component: Home,
-    meta: { title: '首页 - 小说网站' }
-  },
-  {
-    path: '/novel/:id',
-    name: 'NovelDetail',
-    component: NovelDetail,
-    meta: { title: '小说详情' }
-  },
-  {
-    path: '/read/:novelId/:chapterId',
-    name: 'Reader',
-    component: Reader,
-    meta: { title: '阅读' }
+    meta: { title: '首页' }
   },
   {
     path: '/login',
@@ -50,6 +45,18 @@ const routes = [
     name: 'Register',
     component: Register,
     meta: { title: '注册' }
+  },
+  {
+    path: '/novel/:id',
+    name: 'NovelDetail',
+    component: NovelDetail,
+    meta: { title: '小说详情' }
+  },
+  {
+    path: '/read/:novelId/:chapterId',
+    name: 'Reader',
+    component: Reader,
+    meta: { title: '阅读' }
   },
   {
     path: '/search',
@@ -117,11 +124,58 @@ const routes = [
         meta: { title: '我的评论' }
       }
     ]
+  },
+  {
+    path: '/admin',
+    component: AdminLayout,
+    meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      {
+        path: '',
+        redirect: '/admin/dashboard'
+      },
+      {
+        path: 'dashboard',
+        name: 'AdminDashboard',
+        component: AdminDashboard,
+        meta: { title: '管理仪表盘' }
+      },
+      {
+        path: 'users',
+        name: 'AdminUsers',
+        component: AdminUsers,
+        meta: { title: '用户管理' }
+      },
+      {
+        path: 'user-actions',
+        name: 'AdminUserActions',
+        component: AdminUserActions,
+        meta: { title: '用户行为' }
+      },
+      {
+        path: 'sensitive-words',
+        name: 'AdminSensitiveWords',
+        component: AdminSensitiveWords,
+        meta: { title: '敏感词管理' }
+      },
+      {
+        path: 'content',
+        name: 'AdminContent',
+        component: AdminContent,
+        meta: { title: '内容审核' }
+      },
+      {
+        path: 'crawled-novels',
+        name: 'AdminCrawledNovels',
+        component: AdminCrawledNovels,
+        meta: { title: '爬取小说' }
+      }
+    ]
   }
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(process.env.BASE_URL),
   routes
 });
 
@@ -143,8 +197,25 @@ router.beforeEach((to, from, next) => {
     }
   }
   
+  // Check admin requirement
+  if (to.matched.some(record => record.meta.requiresAdmin)) {
+    const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('userRole');
+    
+    if (!token) {
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath }
+      });
+    } else if (userRole !== 'admin') {
+      // 不是管理员，重定向到首页
+      next({ path: '/' });
+    } else {
+      next();
+    }
+  }
   // Check auth requirement
-  if (to.matched.some(record => record.meta.requiresAuth)) {
+  else if (to.matched.some(record => record.meta.requiresAuth)) {
     const token = localStorage.getItem('token');
     if (!token) {
       next({

@@ -4,7 +4,10 @@ export default {
   namespaced: true,
   state: {
     token: localStorage.getItem('token') || null,
-    userInfo: JSON.parse(localStorage.getItem('userInfo')) || null
+    userInfo: JSON.parse(localStorage.getItem('userInfo')) || null,
+    userRole: localStorage.getItem('userRole') || null,
+    isAuthenticated: false,
+    loading: false
   },
   mutations: {
     SET_TOKEN(state, token) {
@@ -18,13 +21,23 @@ export default {
     LOGOUT(state) {
       state.token = null;
       state.userInfo = null;
+      state.userRole = null;
+      state.isAuthenticated = false;
       localStorage.removeItem('token');
       localStorage.removeItem('userInfo');
+      localStorage.removeItem('userRole');
+    },
+    SET_AUTH(state, isAuthenticated) {
+      state.isAuthenticated = isAuthenticated;
+    },
+    SET_LOADING(state, loading) {
+      state.loading = loading;
     }
   },
   actions: {
     // Login action
     async login({ commit }, credentials) {
+      commit('SET_LOADING', true);
       try {
         const response = await request({
           url: '/user/login',
@@ -32,11 +45,20 @@ export default {
           data: credentials
         });
         
+        // 保存token和用户信息
+        localStorage.setItem('token', response.access_token);
+        localStorage.setItem('userRole', response.user.role);
+        
         commit('SET_TOKEN', response.access_token);
         commit('SET_USER_INFO', response.user);
-        return Promise.resolve(response);
+        commit('SET_AUTH', true);
+        commit('SET_LOADING', false);
+        
+        return response.user;
       } catch (error) {
-        return Promise.reject(error);
+        commit('SET_LOADING', false);
+        console.error('登录失败:', error);
+        throw error;
       }
     },
     
@@ -93,6 +115,8 @@ export default {
   getters: {
     isAuthenticated: state => !!state.token,
     userInfo: state => state.userInfo,
-    token: state => state.token
+    token: state => state.token,
+    userRole: state => state.userRole,
+    loading: state => state.loading
   }
 }; 
