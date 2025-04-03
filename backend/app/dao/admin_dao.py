@@ -59,7 +59,7 @@ class AdminDAO:
         if not user:
             raise ValueError(f"User with ID {user_id} not found")
             
-        user.status = 'banned'
+        user.status = 1  # 1 = banned
         if duration:
             user.ban_until = datetime.utcnow() + timedelta(days=duration)
         
@@ -96,7 +96,7 @@ class AdminDAO:
         if not user:
             raise ValueError(f"User with ID {user_id} not found")
             
-        user.status = 'active'
+        user.status = 0  # 0 = active
         user.ban_until = None
         
         # Create action record

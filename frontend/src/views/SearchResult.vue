@@ -2,33 +2,6 @@
   <div class="search-result container page-container">
     <div class="search-header">
       <h2>搜索结果: "{{ keyword }}"</h2>
-      
-      <div class="search-filters">
-        <el-form :inline="true" :model="filters" class="filter-form">
-          <el-form-item label="分类">
-            <el-select v-model="filters.category" placeholder="全部分类" clearable>
-              <el-option
-                v-for="item in categories"
-                :key="item.id"
-                :label="item.name"
-                :value="item.id"
-              ></el-option>
-            </el-select>
-          </el-form-item>
-          
-          <el-form-item label="状态">
-            <el-select v-model="filters.status" placeholder="全部状态" clearable>
-              <el-option label="连载中" value="ongoing"></el-option>
-              <el-option label="已完结" value="completed"></el-option>
-            </el-select>
-          </el-form-item>
-          
-          <el-form-item>
-            <el-button type="primary" @click="applyFilters">筛选</el-button>
-            <el-button @click="resetFilters">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
     </div>
     
     <div v-if="loading" class="loading-container">
@@ -73,10 +46,9 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import NovelCard from '@/components/novel/NovelCard.vue';
-// eslint-disable-next-line no-unused-vars
 import { searchNovels } from '@/api/search';
 import { ElMessage } from 'element-plus';
 
@@ -93,88 +65,32 @@ export default {
     const novels = ref([]);
     const loading = ref(false);
     const total = ref(0);
-    const pageSize = ref(12);
+    const pageSize = ref(20);
     const currentPage = ref(1);
-    
-    // Categories data
-    const categories = ref([
-      { id: 'xuanhuan', name: '玄幻奇幻' },
-      { id: 'wuxia', name: '武侠仙侠' },
-      { id: 'urban', name: '都市现实' },
-      { id: 'history', name: '历史军事' },
-      { id: 'scifi', name: '科幻灵异' },
-      { id: 'game', name: '游戏竞技' },
-      { id: 'romance', name: '言情女生' },
-      { id: 'other', name: '其他分类' }
-    ]);
-    
-    // Search filters
-    const filters = reactive({
-      category: '',
-      status: '',
-      sortBy: 'relevance'
-    });
     
     // Fetch search results
     const fetchSearchResults = async () => {
-      if (!keyword.value) return;
+      if (!keyword.value) {
+        novels.value = [];
+        total.value = 0;
+        return;
+      }
       
       loading.value = true;
-      
       try {
-        const params = {
-          keyword: keyword.value,
+        const response = await searchNovels({
+          q: keyword.value,
           page: currentPage.value,
           per_page: pageSize.value
-        };
+        });
         
-        // Add filters if selected
-        if (filters.category) params.category = filters.category;
-        if (filters.status) params.status = filters.status;
-        
-        // Mock search
-        // In real application, uncomment below to call API
-        /*
-        const response = await searchNovels(params);
-        novels.value = response.novels;
+        novels.value = response.results;
         total.value = response.total;
-        */
-        
-        // Mock data for demo
-        novels.value = [
-          {
-            id: 1,
-            title: '修真世界',
-            author: '方想',
-            category: '玄幻奇幻',
-            status: 'ongoing',
-            cover: 'https://images.unsplash.com/photo-1516373947948-93b232e9b153?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            view_count: 120000,
-            word_count: 5000000
-          }
-        ];
-        total.value = 1;
       } catch (error) {
-        ElMessage.error('搜索失败，请重试');
-        console.error('Search failed:', error);
+        ElMessage.error('搜索失败，请稍后重试');
       } finally {
         loading.value = false;
       }
-    };
-    
-    // Apply search filters
-    const applyFilters = () => {
-      currentPage.value = 1;
-      fetchSearchResults();
-    };
-    
-    // Reset search filters
-    const resetFilters = () => {
-      Object.keys(filters).forEach(key => {
-        filters[key] = '';
-      });
-      currentPage.value = 1;
-      fetchSearchResults();
     };
     
     // Handle page change
@@ -208,10 +124,6 @@ export default {
       total,
       pageSize,
       currentPage,
-      categories,
-      filters,
-      applyFilters,
-      resetFilters,
       handlePageChange,
       goToHome
     };
@@ -226,14 +138,6 @@ export default {
 
 .search-header h2 {
   margin-bottom: 15px;
-}
-
-.search-filters {
-  background-color: #fff;
-  padding: 15px;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
 }
 
 .novels-container {

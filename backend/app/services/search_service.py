@@ -18,25 +18,15 @@ class SearchService:
     @staticmethod
     @cached(SEARCH_RESULT_PREFIX, ttl=600)  # Cache search results for 10 minutes
     def search_novels(
-        keyword: str, 
-        category: Optional[str] = None,
-        min_words: Optional[int] = None,
-        max_words: Optional[int] = None,
-        status: Optional[str] = None,
-        updated_after: Optional[datetime] = None,
+        q: str, 
         page: int = 1, 
         per_page: int = 20
     ) -> Dict:
         """
-        Search novels by keyword with advanced filters
+        Search novels by keyword (title or author)
         
         Args:
-            keyword: Search keyword
-            category: Novel category (fantasy, sci-fi, etc)
-            min_words: Minimum word count
-            max_words: Maximum word count
-            status: Novel status (ongoing, completed)
-            updated_after: Last updated after this date
+            q: Search keyword
             page: Page number
             per_page: Items per page
             
@@ -44,36 +34,17 @@ class SearchService:
             Dict with search results and pagination info
         """
         # Record this keyword in trending searches (non-blocking)
-        SearchService.record_search_keyword(keyword)
+        SearchService.record_search_keyword(q)
         
-        # Build the query with filters
+        # Build the query
         query = Novel.query
         
-        # Apply keyword search (in title, author, intro)
-        if keyword:
+        # Apply keyword search (in title or author)
+        if q:
             query = query.filter(or_(
-                Novel.title.ilike(f'%{keyword}%'),
-                Novel.author.ilike(f'%{keyword}%'),
-                Novel.intro.ilike(f'%{keyword}%')
+                Novel.title.ilike(f'%{q}%'),
+                Novel.author.ilike(f'%{q}%')
             ))
-        
-        # Apply additional filters
-        if category:
-            query = query.filter(Novel.category == category)
-        
-        if status:
-            query = query.filter(Novel.status == status)
-            
-        if min_words:
-            # Assuming we track total_words in the Novel model
-            # If not, this would need a JOIN with chapters to calculate
-            query = query.filter(Novel.total_words >= min_words)
-            
-        if max_words:
-            query = query.filter(Novel.total_words <= max_words)
-            
-        if updated_after:
-            query = query.filter(Novel.updated_at >= updated_after)
         
         # Get total count for pagination
         total = query.count()

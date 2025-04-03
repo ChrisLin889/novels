@@ -20,10 +20,6 @@
               <i class="el-icon-collection"></i>
               <span>我的书架</span>
             </el-menu-item>
-            <el-menu-item index="/user/history">
-              <i class="el-icon-time"></i>
-              <span>阅读历史</span>
-            </el-menu-item>
             <el-menu-item index="/user/comments">
               <i class="el-icon-chat-line-round"></i>
               <span>我的评论</span>

@@ -2,8 +2,12 @@ from typing import List, Dict, Optional, Tuple
 from app.dao.admin_dao import AdminDAO
 from app.models.admin import SensitiveWord, ContentAudit, UserAction, CrawledNovel, CrawledChapter
 from app.models.user import User
+from app.models.novel import Novel, Chapter
+from app.models.interaction import Comment, UserTip
 from datetime import datetime
 import re
+from sqlalchemy import func
+from app import db
 
 class AdminService:
     """
@@ -329,24 +333,48 @@ class AdminService:
         Returns:
             Dict with statistics
         """
-        # This would be implemented with actual queries
-        # For simplicity, returning mock data
+        # Get today's date range
+        today = datetime.now().date()
+        today_start = datetime.combine(today, datetime.min.time())
+        today_end = datetime.combine(today, datetime.max.time())
+        
+        # User statistics
+        total_users = User.query.count()
+        new_users_today = User.query.filter(User.created_at >= today_start).count()
+        active_users_today = User.query.filter(User.updated_at >= today_start).count()
+        banned_users = User.query.filter(User.status == 1).count()
+        
+        # Content statistics
+        total_novels = Novel.query.count()
+        total_chapters = Chapter.query.count()
+        pending_moderation = ContentAudit.query.filter_by(status='pending').count()
+        rejected_content = ContentAudit.query.filter_by(status='rejected').count()
+        
+        # Activity statistics
+        comments_today = Comment.query.filter(Comment.created_at >= today_start).count()
+        readings_today = db.session.query(func.sum(Novel.view_count)).filter(
+            Novel.updated_at >= today_start
+        ).scalar() or 0
+        tips_today = db.session.query(func.sum(UserTip.amount)).filter(
+            UserTip.created_at >= today_start
+        ).scalar() or 0
+        
         return {
             'user_stats': {
-                'total_users': 1000,
-                'new_users_today': 25,
-                'active_users_today': 150,
-                'banned_users': 10
+                'total_users': total_users,
+                'new_users_today': new_users_today,
+                'active_users_today': active_users_today,
+                'banned_users': banned_users
             },
             'content_stats': {
-                'total_novels': 500,
-                'total_chapters': 10000,
-                'pending_moderation': 15,
-                'rejected_content': 5
+                'total_novels': total_novels,
+                'total_chapters': total_chapters,
+                'pending_moderation': pending_moderation,
+                'rejected_content': rejected_content
             },
             'activity_stats': {
-                'comments_today': 120,
-                'readings_today': 5000,
-                'tips_today': 50
+                'comments_today': comments_today,
+                'readings_today': readings_today,
+                'tips_today': tips_today
             }
         } 

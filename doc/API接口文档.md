@@ -840,23 +840,24 @@
 
 ## 5. 搜索模块
 
-### 5.1 关键词搜索
+### 5.1 小说搜索
 
-- **URL**: `/api/search/keyword`
+- **URL**: `/api/search/novels`
 - **方法**: `GET`
 - **权限**: 无需登录
 - **查询参数**:
-  - `q`: 关键词
+  - `q`: 搜索关键词（标题或作者）
   - `page`: 页码 (默认: 1)
-  - `per_page`: 每页数量 (默认: 20)
+  - `per_page`: 每页数量 (默认: 20，最大: 50)
 
 - **成功响应** (200 OK):
 
 ```json
 {
   "total": 100,
-  "pages": 5,
-  "current_page": 1,
+  "page": 1,
+  "per_page": 20,
+  "total_pages": 5,
   "results": [
     {
       "id": 1,
@@ -866,8 +867,8 @@
       "status": "ongoing",
       "cover": "string",
       "intro": "string",
-      "word_count": 100000,
       "view_count": 1000,
+      "collection_count": 100,
       "created_at": "2023-01-01T00:00:00",
       "updated_at": "2023-01-02T00:00:00"
     }
@@ -875,68 +876,20 @@
 }
 ```
 
-### 5.2 高级搜索
+### 5.2 标签搜索
 
-- **URL**: `/api/search/advanced`
+- **URL**: `/api/search/novels/tag/{tag}`
 - **方法**: `GET`
 - **权限**: 无需登录
+- **路径参数**:
+  - `tag`: 标签名称
 - **查询参数**:
-  - `keyword`: 关键词 (可选)
-  - `category`: 分类 (可选)
-  - `status`: 状态 (可选)
-  - `min_words`: 最小字数 (可选)
-  - `max_words`: 最大字数 (可选)
-  - `sort_by`: 排序字段 (可选, 更新时间/点击量)
   - `page`: 页码 (默认: 1)
-  - `per_page`: 每页数量 (默认: 20)
+  - `per_page`: 每页数量 (默认: 20，最大: 50)
 
-- **成功响应** (200 OK):
+- **成功响应** (200 OK): 与小说搜索格式相同
 
-```json
-{
-  "total": 100,
-  "pages": 5,
-  "current_page": 1,
-  "results": [
-    {
-      "id": 1,
-      "title": "string",
-      "author": "string",
-      "category": "string",
-      "status": "ongoing",
-      "cover": "string",
-      "intro": "string",
-      "word_count": 100000,
-      "view_count": 1000,
-      "created_at": "2023-01-01T00:00:00",
-      "updated_at": "2023-01-02T00:00:00"
-    }
-  ]
-}
-```
-
-### 5.3 热门搜索词
-
-- **URL**: `/api/search/trending`
-- **方法**: `GET`
-- **权限**: 无需登录
-- **查询参数**:
-  - `limit`: 返回数量 (默认: 10)
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "keywords": [
-    {
-      "keyword": "string",
-      "count": 100
-    }
-  ]
-}
-```
-
-### 5.4 相似小说推荐
+### 5.3 相似小说推荐
 
 - **URL**: `/api/search/similar/{novel_id}`
 - **方法**: `GET`
@@ -957,7 +910,10 @@
       "author": "string",
       "category": "string",
       "cover": "string",
-      "similarity": 0.85
+      "view_count": 1000,
+      "collection_count": 100,
+      "created_at": "2023-01-01T00:00:00",
+      "updated_at": "2023-01-02T00:00:00"
     }
   ]
 }
@@ -965,7 +921,59 @@
 
 ## 6. 管理模块
 
-### 6.1 获取用户列表 (管理员)
+本模块提供管理员使用的API接口，包括用户管理、内容审核、敏感词管理和数据统计等功能。
+
+### 6.1 仪表盘统计
+
+- **URL**: `/api/admin/dashboard`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **描述**: 获取管理员仪表盘统计数据，包括用户统计、内容统计和活动统计。
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "user_stats": {
+    "total_users": 100,
+    "new_users_today": 5,
+    "active_users_today": 30,
+    "banned_users": 2
+  },
+  "content_stats": {
+    "total_novels": 50,
+    "total_chapters": 1500,
+    "pending_moderation": 10,
+    "rejected_content": 5
+  },
+  "activity_stats": {
+    "comments_today": 25,
+    "readings_today": 300,
+    "tips_today": 10
+  }
+}
+```
+
+- **错误响应** (401 Unauthorized):
+
+```json
+{
+  "error": "未授权操作"
+}
+```
+
+- **错误响应** (403 Forbidden):
+
+```json
+{
+  "error": "需要管理员权限"
+}
+```
+
+### 6.2 用户管理
+
+#### 6.2.1 获取用户列表
 
 - **URL**: `/api/admin/users`
 - **方法**: `GET`
@@ -973,16 +981,17 @@
 - **请求头**: `Authorization: Bearer {token}`
 - **查询参数**:
   - `page`: 页码 (默认: 1)
-  - `per_page`: 每页数量 (默认: 20)
-  - `role`: 角色筛选 (可选)
+  - `per_page`: 每页数量 (默认: 20，最大: 100)
+  - `role`: 角色筛选 (可选，如：admin, user, author)
 
 - **成功响应** (200 OK):
 
 ```json
 {
   "total": 100,
-  "pages": 5,
-  "current_page": 1,
+  "total_pages": 5,
+  "page": 1,
+  "per_page": 20,
   "users": [
     {
       "id": 1,
@@ -992,14 +1001,21 @@
       "role": "user",
       "avatar": "string",
       "created_at": "2023-01-01T00:00:00",
-      "status": "active",
-      "ban_until": null
+      "status": "active"
     }
   ]
 }
 ```
 
-### 6.2 管理用户状态 (禁用/启用)
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "无效的分页参数"
+}
+```
+
+#### 6.2.2 管理用户状态
 
 - **URL**: `/api/admin/users/{user_id}`
 - **方法**: `POST`
@@ -1012,8 +1028,8 @@
 ```json
 {
   "action": "ban",    // "ban" 或 "unban"
-  "reason": "string", // 操作原因
-  "duration": 7       // 禁用天数（仅当action为ban时需要）
+  "reason": "string", // 操作原因（必填）
+  "duration": 7       // 禁用天数（仅当action为ban时可选，不提供则永久禁用）
 }
 ```
 
@@ -1022,51 +1038,195 @@
 ```json
 {
   "success": true,
-  "message": "User banned successfully",
-  "user": {
-    "id": 1,
-    "username": "string",
-    "status": "banned",
-    "ban_until": "2023-01-08T00:00:00"
-  }
+  "message": "User 5 has been banned", // 或 "User 5 has been unbanned"
+  "action_id": 3 // 用户操作记录ID
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "缺少必要参数" // 或其他错误信息
+}
+```
+
+#### 6.2.3 获取用户操作历史
+
+- **URL**: `/api/admin/user-actions`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `user_id`: 目标用户ID（可选，用于筛选特定用户的操作记录）
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 20，最大: 100)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 10,
+  "total_pages": 1,
+  "page": 1,
+  "per_page": 20,
+  "actions": [
+    {
+      "id": 1,
+      "admin_id": 7,
+      "target_user_id": 5,
+      "action_type": "ban",
+      "reason": "违反社区规则",
+      "duration": 7,
+      "created_at": "2023-01-01T00:00:00"
+    }
+  ]
 }
 ```
 
 ### 6.3 敏感词管理
 
+#### 6.3.1 获取敏感词列表
+
 - **URL**: `/api/admin/sensitive-words`
-- **方法**: `POST`
+- **方法**: `GET`
 - **权限**: 管理员
 - **请求头**: `Authorization: Bearer {token}`
-- **请求参数**:
-
-```json
-{
-  "action": "add",        // "add" 或 "delete"
-  "word": "string",       // 敏感词
-  "level": 2,             // 敏感级别 (1-3)
-  "category": "profanity" // 分类
-}
-```
+- **查询参数**:
+  - `category`: 分类筛选（可选）
+  - `page`: 页码（默认: 1）
+  - `per_page`: 每页数量（默认: 50，最大: 200）
 
 - **成功响应** (200 OK):
 
 ```json
 {
+  "total": 100,
+  "total_pages": 2,
+  "page": 1,
+  "per_page": 50,
+  "words": [
+    {
+      "id": 1,
+      "word": "string",
+      "level": 2,
+      "category": "profanity",
+      "added_by": 1,
+      "created_at": "2023-01-01T00:00:00"
+    }
+  ]
+}
+```
+
+#### 6.3.2 管理敏感词
+
+- **URL**: `/api/admin/sensitive-words`
+- **方法**: `POST`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **描述**: 添加或删除敏感词
+
+- **添加敏感词请求参数**:
+
+```json
+{
+  "action": "add",        // 固定为 "add"
+  "word": "string",       // 敏感词内容（必填）
+  "level": 2,             // 敏感级别 (1-3)（必填）
+  "category": "profanity" // 分类（必填）
+}
+```
+
+- **删除敏感词请求参数**:
+
+```json
+{
+  "action": "delete",  // 固定为 "delete"
+  "word_id": 25        // 敏感词ID（必填）
+}
+```
+
+- **成功响应-添加** (200 OK):
+
+```json
+{
   "success": true,
-  "message": "Sensitive word added successfully",
+  "message": "Word 'test_sensitive_word' added to sensitive words list",
   "word": {
-    "id": 1,
-    "word": "string",
+    "id": 25,
+    "word": "test_sensitive_word",
     "level": 2,
     "category": "profanity",
-    "added_by": 1,
+    "added_by": 7,
     "created_at": "2023-01-01T00:00:00"
   }
 }
 ```
 
-### 6.4 内容审核
+- **成功响应-删除** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "Word deleted"
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "缺少必要参数" // 或其他错误信息，如"无效的敏感级别"
+}
+```
+
+### 6.4 内容管理
+
+#### 6.4.1 获取待审核内容
+
+- **URL**: `/api/admin/content/{content_type}`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `content_type`: 内容类型，可选值："novel", "chapter", "comment"
+- **查询参数**:
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 20，最大: 50)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 10,
+  "total_pages": 1,
+  "page": 1,
+  "per_page": 20,
+  "content_type": "novel",
+  "content": [
+    {
+      "id": 1,
+      "content_type": "novel",
+      "content_id": 5,
+      "title": "小说标题",
+      "submitter_id": 3,
+      "submitter_name": "作者用户名",
+      "created_at": "2023-01-01T00:00:00",
+      "content_summary": "内容摘要..."
+    }
+  ]
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "无效的内容类型: blog" // 不支持的content_type
+}
+```
+
+#### 6.4.2 审核内容
 
 - **URL**: `/api/admin/content/audit/{audit_id}`
 - **方法**: `POST`
@@ -1088,6 +1248,144 @@
 ```json
 {
   "success": true,
-  "message": "Content approved successfully"
+  "message": "Content 5 has been approved", // 或 "Content 5 has been rejected"
+  "audit": {
+    "id": 3,
+    "content_type": "novel",
+    "content_id": 5,
+    "status": "approved",
+    "reason": null,
+    "audited_by": 7,
+    "created_at": "2023-01-01T00:00:00",
+    "updated_at": "2023-01-02T00:00:00"
+  }
 }
-``` 
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "无效的状态" // 或 "拒绝时必须提供原因"
+}
+```
+
+### 6.5 爬虫内容管理
+
+#### 6.5.1 获取爬取的小说列表
+
+- **URL**: `/api/admin/crawled-novels`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `status`: 状态筛选（可选，如：pending, approved, rejected）
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 20)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 10,
+  "total_pages": 1,
+  "page": 1,
+  "per_page": 20,
+  "novels": [
+    {
+      "id": 1,
+      "title": "小说标题",
+      "author": "作者名",
+      "category": "科幻",
+      "status": "pending",
+      "chapter_count": 20,
+      "source_site": "来源网站",
+      "created_at": "2023-01-01T00:00:00"
+    }
+  ]
+}
+```
+
+#### 6.5.2 获取爬取的小说章节
+
+- **URL**: `/api/admin/crawled-novels/{novel_id}/chapters`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `novel_id`: 爬取的小说ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 20,
+  "novel": {
+    "id": 1,
+    "title": "小说标题",
+    "status": "pending"
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "novel_id": 1,
+      "chapter_number": 1,
+      "title": "第一章 标题",
+      "content_length": 2500,
+      "source_url": "http://example.com/chapter1"
+    }
+  ]
+}
+```
+
+#### 6.5.3 管理爬取的小说
+
+- **URL**: `/api/admin/crawled-novels/{novel_id}`
+- **方法**: `POST`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `novel_id`: 爬取的小说ID
+- **请求参数**:
+
+```json
+{
+  "action": "approve",  // "approve" 或 "reject"
+  "reason": "string"    // 拒绝原因（action为reject时必填）
+}
+```
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "Novel approved and moved to production" // 或 "Novel rejected"
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "无效的操作" // 或 "拒绝时必须提供原因"
+}
+```
+
+### 附录: 错误代码及说明
+
+| 错误代码 | 描述                       | 解决方案                                     |
+|----------|----------------------------|----------------------------------------------|
+| 400      | 请求参数错误               | 检查请求参数是否符合要求                     |
+| 401      | 未授权（未登录）           | 确保请求中包含有效的授权令牌                 |
+| 403      | 权限不足                   | 确认当前用户是否具有管理员权限               |
+| 404      | 资源不存在                 | 检查请求的资源ID是否存在                     |
+| 500      | 服务器内部错误             | 请联系管理员，并提供错误发生时的详细信息     |
+
+### 敏感词级别说明
+
+| 级别 | 说明                                               | 处理方式                                             |
+|------|----------------------------------------------------|----------------------------------------------------|
+| 1    | 轻度敏感，一般为轻微不良词汇                       | 系统自动替换为星号                                   |
+| 2    | 中度敏感，涉及政治、暴力等内容                     | 需人工审核，默认不通过审核                           |
+| 3    | 高度敏感，严重违法违规内容                         | 内容直接拒绝，同时记录用户违规行为                   | 

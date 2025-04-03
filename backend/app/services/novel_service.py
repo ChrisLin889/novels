@@ -241,93 +241,45 @@ class NovelService:
     """
     
     @staticmethod
-    def get_novel_detail(novel_id: int, with_chapters: bool = True) -> Dict[str, Any]:
-        """Get novel details with optional chapter list"""
+    def get_novel_list(category: Optional[str] = None, page: int = 1, 
+                      per_page: int = 10, sort_by: str = 'updated_at') -> Dict[str, Any]:
+        """Get paginated list of novels with optional filtering"""
+        if not category and not sort_by:
+            return {'success': False, 'error': 'At least one filter is required'}
+            
+        result = NovelDAO.get_novel_list(category, page, per_page, sort_by)
+        return {'success': True, **result}
+    
+    @staticmethod
+    def get_novel_detail(novel_id: int) -> Dict[str, Any]:
+        """Get novel details with chapters"""
         novel = NovelDAO.get_novel_by_id(novel_id)
         if not novel:
             return {'success': False, 'error': 'Novel not found'}
-        
-        # Increment view count
-        NovelDAO.increment_view_count(novel_id)
-        
-        result = {
-            'success': True,
-            'novel': novel.to_dict()
-        }
-        
-        # Include chapters if requested
-        if with_chapters:
-            chapters = NovelDAO.get_novel_chapters(novel_id)
-            result['chapters'] = [chapter.to_dict() for chapter in chapters]
-        
-        return result
-    
-    @staticmethod
-    def get_novel_list(category: Optional[str] = None, page: int = 1, 
-                      per_page: int = 10, sort_by: str = 'updated_at') -> Dict[str, Any]:
-        """Get paginated list of novels"""
-        # Generate cache key
-        cache_key = f"novel_list:{category or 'all'}:{page}:{per_page}:{sort_by}"
-        
-        # Try to get from cache
-        cached_data = CacheService.get(cache_key)
-        if cached_data:
-            return {'success': True, **cached_data}
-        
-        # Query database
-        result = NovelDAO.get_novel_list(category, page, per_page, sort_by)
-        
-        # Cache result
-        CacheService.set(cache_key, result, 3600)  # Cache for 1 hour
-        
-        return {'success': True, **result}
-    
-    @staticmethod
-    def search_novels(keyword: str, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
-        """Search novels by title or author"""
-        if not keyword or len(keyword) < 2:
-            return {'success': False, 'error': 'Search keyword too short'}
-        
-        result = NovelDAO.search_novels(keyword, page, per_page)
-        return {'success': True, **result}
-    
-    @staticmethod
-    @cached("chapter", 3600)  # Cache for 1 hour
-    def get_chapter(chapter_id: int, update_history: bool = True, 
-                   user_id: Optional[int] = None) -> Dict[str, Any]:
-        """Get chapter details with navigation info"""
-        chapter = NovelDAO.get_chapter_by_id(chapter_id)
-        if not chapter:
-            return {'success': False, 'error': 'Chapter not found'}
-        
-        # Get previous and next chapters
-        prev_chapter, next_chapter = NovelDAO.get_adjacent_chapters(chapter)
-        
-        result = {
-            'success': True,
-            'chapter': chapter.to_dict(include_content=True),
-            'prev_chapter': prev_chapter.to_dict() if prev_chapter else None,
-            'next_chapter': next_chapter.to_dict() if next_chapter else None
-        }
-        
-        # Update reading history if user is logged in
-        if update_history and user_id:
-            # Dynamic import to avoid circular dependencies
-            from app.services.interaction_service import InteractionService
-            InteractionService.update_reading_history(user_id, chapter.novel_id, chapter_id)
-        
-        return result
-    
-    @staticmethod
-    def get_chapter_by_number(novel_id: int, chapter_number: int) -> Dict[str, Any]:
-        """Get chapter by novel ID and chapter number"""
-        chapter = NovelDAO.get_chapter_by_number(novel_id, chapter_number)
-        if not chapter:
-            return {'success': False, 'error': 'Chapter not found'}
-        
+            
+        chapters = NovelDAO.get_novel_chapters(novel_id)
         return {
             'success': True,
-            'chapter_id': chapter.id
+            'novel': novel.to_dict(),
+            'chapters': [chapter.to_dict() for chapter in chapters]
+        }
+    
+    @staticmethod
+    def get_popular_novels(limit: int = 10) -> Dict[str, Any]:
+        """Get popular novels"""
+        novels = NovelDAO.get_popular_novels(limit)
+        return {
+            'success': True,
+            'novels': [novel.to_dict() for novel in novels]
+        }
+    
+    @staticmethod
+    def get_latest_novels(limit: int = 10) -> Dict[str, Any]:
+        """Get latest novels"""
+        novels = NovelDAO.get_latest_novels(limit)
+        return {
+            'success': True,
+            'novels': [novel.to_dict() for novel in novels]
         }
     
     @staticmethod
@@ -502,24 +454,6 @@ class NovelService:
         except Exception as e:
             db.session.rollback()
             return {'success': False, 'error': str(e)}
-    
-    @staticmethod
-    @cached("popular_novels", 21600)  # Cache for 6 hours
-    def get_popular_novels(limit: int = 10) -> Dict[str, Any]:
-        """Get list of popular novels by view count"""
-        novels = Novel.query.order_by(desc(Novel.view_count)).limit(limit).all()
-        result = [novel.to_dict() for novel in novels]
-        
-        return {'success': True, 'novels': result}
-    
-    @staticmethod
-    @cached("latest_novels", 21600)  # Cache for 6 hours
-    def get_latest_novels(limit: int = 10) -> Dict[str, Any]:
-        """Get list of latest novels by creation date"""
-        novels = Novel.query.order_by(desc(Novel.created_at)).limit(limit).all()
-        result = [novel.to_dict() for novel in novels]
-        
-        return {'success': True, 'novels': result}
     
     @staticmethod
     def refresh_cache() -> Dict[str, Any]:

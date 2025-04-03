@@ -43,7 +43,7 @@
         <div class="nav-search">
           <el-input
             v-model="searchText"
-            placeholder="搜索小说"
+            placeholder="搜索小说标题或作者"
             @keyup.enter="handleSearch"
             clearable
             size="small"
