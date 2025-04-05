@@ -156,4 +156,26 @@ def toggle_user_status(target_user_id):
     return jsonify({
         'message': result['message'],
         'user': result['user']
+    }), 200
+
+@user_bp.route('/admin/users/<int:target_user_id>/role', methods=['PUT'])
+@jwt_required()
+def update_user_role(target_user_id):
+    """Update a user's role (admin only)"""
+    admin_id = get_jwt_identity()
+    data = request.get_json()
+    new_role = data.get('role')
+    
+    if not new_role or new_role not in ['user', 'author', 'admin']:
+        return jsonify({'error': 'Invalid role'}), 400
+    
+    # Use service to update role
+    result = UserService.update_user_role(admin_id, target_user_id, new_role)
+    
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify({
+        'message': result['message'],
+        'user': result['user']
     }), 200 

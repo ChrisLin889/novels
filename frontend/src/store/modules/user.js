@@ -1,122 +1,55 @@
-import request from '@/utils/request';
-
 export default {
   namespaced: true,
   state: {
-    token: localStorage.getItem('token') || null,
-    userInfo: JSON.parse(localStorage.getItem('userInfo')) || null,
-    userRole: localStorage.getItem('userRole') || null,
-    isAuthenticated: false,
-    loading: false
+    user: JSON.parse(localStorage.getItem('user')) || null
   },
   mutations: {
-    SET_TOKEN(state, token) {
-      state.token = token;
-      localStorage.setItem('token', token);
+    SET_USER(state, user) {
+      state.user = user
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user))
+        console.log('User state updated:', user)
+      } else {
+        localStorage.removeItem('user')
+        console.log('User state cleared')
+      }
     },
-    SET_USER_INFO(state, userInfo) {
-      state.userInfo = userInfo;
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-    },
-    LOGOUT(state) {
-      state.token = null;
-      state.userInfo = null;
-      state.userRole = null;
-      state.isAuthenticated = false;
-      localStorage.removeItem('token');
-      localStorage.removeItem('userInfo');
-      localStorage.removeItem('userRole');
-    },
-    SET_AUTH(state, isAuthenticated) {
-      state.isAuthenticated = isAuthenticated;
-    },
-    SET_LOADING(state, loading) {
-      state.loading = loading;
+    CLEAR_USER(state) {
+      state.user = null
+      localStorage.removeItem('user')
+      console.log('User state cleared')
     }
   },
   actions: {
-    // Login action
-    async login({ commit }, credentials) {
-      commit('SET_LOADING', true);
-      try {
-        const response = await request({
-          url: '/user/login',
-          method: 'post',
-          data: credentials
-        });
-        
-        // 保存token和用户信息
-        localStorage.setItem('token', response.access_token);
-        localStorage.setItem('userRole', response.user.role);
-        
-        commit('SET_TOKEN', response.access_token);
-        commit('SET_USER_INFO', response.user);
-        commit('SET_AUTH', true);
-        commit('SET_LOADING', false);
-        
-        return response.user;
-      } catch (error) {
-        commit('SET_LOADING', false);
-        console.error('登录失败:', error);
-        throw error;
-      }
+    setUser({ commit }, user) {
+      console.log('Setting user in store:', user)
+      commit('SET_USER', user)
     },
-    
-    // Register action
-    async register(_, userData) {
-      try {
-        const response = await request({
-          url: '/user/register',
-          method: 'post',
-          data: userData
-        });
-        return Promise.resolve(response);
-      } catch (error) {
-        return Promise.reject(error);
-      }
+    clearUser({ commit }) {
+      console.log('Clearing user from store')
+      commit('CLEAR_USER')
     },
-    
-    // Get user profile
-    async getProfile({ commit }) {
-      try {
-        const response = await request({
-          url: '/user/profile',
-          method: 'get'
-        });
-        
-        commit('SET_USER_INFO', response);
-        return Promise.resolve(response);
-      } catch (error) {
-        return Promise.reject(error);
+    updateProfile({ commit, state }, profileData) {
+      console.log('Updating user profile:', profileData)
+      
+      // 合并当前用户数据与更新的资料
+      const updatedUser = {
+        ...state.user,
+        ...profileData
       }
-    },
-    
-    // Update user profile
-    async updateProfile({ commit }, profileData) {
-      try {
-        const response = await request({
-          url: '/user/profile',
-          method: 'put',
-          data: profileData
-        });
-        
-        commit('SET_USER_INFO', response.user);
-        return Promise.resolve(response);
-      } catch (error) {
-        return Promise.reject(error);
-      }
-    },
-    
-    // Logout action
-    logout({ commit }) {
-      commit('LOGOUT');
+      
+      // 更新状态
+      commit('SET_USER', updatedUser)
+      
+      return updatedUser
     }
   },
   getters: {
-    isAuthenticated: state => !!state.token,
-    userInfo: state => state.userInfo,
-    token: state => state.token,
-    userRole: state => state.userRole,
-    loading: state => state.loading
+    state: state => state,
+    user: state => state.user,
+    userInfo: state => state.user,
+    username: state => state.user?.username || state.user?.email || '用户',
+    avatar: state => state.user?.avatar || '',
+    isAuthor: state => state.user?.role === 'author'
   }
 }; 

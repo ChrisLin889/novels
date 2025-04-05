@@ -5,7 +5,7 @@
       <div class="novel-status" v-if="novel.status">{{ statusText }}</div>
     </div>
     <div v-else class="novel-cover">
-      <img :src="novel.cover" :alt="novel.title" @error="handleImageError" />
+      <img :src="novel.cover || '/images/default_cover.jpg'" :alt="novel.title" class="novel-cover" @error="handleImageError">
       <div class="novel-status" v-if="novel.status">{{ statusText }}</div>
     </div>
     <div class="novel-info">
@@ -64,8 +64,8 @@ export default {
     
     // 处理图片加载错误
     const handleImageError = (e) => {
-      // 设置默认图片
-      e.target.src = "https://images.unsplash.com/photo-1610882648335-ced8fc8fa6b6?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60";
+      console.log('图片加载失败，使用默认图片');
+      e.target.src = '/images/default_cover.jpg';
       e.target.onerror = null; // 防止循环触发错误
     };
     

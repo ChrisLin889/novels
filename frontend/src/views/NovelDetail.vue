@@ -62,7 +62,7 @@
         </div>
         <div v-else class="chapter-list">
           <div v-for="chapter in chapters" :key="chapter.id" class="chapter-item">
-            <router-link :to="`/novel/${novel.id}/chapter/${chapter.id}`" class="chapter-link">
+            <router-link :to="`/read/${novel.id}/${chapter.id}`" class="chapter-link">
               {{ chapter.title }}
             </router-link>
             <span class="chapter-time">{{ formatDate(chapter.updated_at) }}</span>
@@ -197,10 +197,11 @@ export default {
     // 收藏/取消收藏
     const toggleCollection = async () => {
       if (!store.getters['user/isAuthenticated']) {
-        // 未登录时跳转到登录页
-        router.push({
-          path: '/login',
-          query: { redirect: route.fullPath }
+        // 未登录时显示提示消息而非跳转
+        ElMessage({
+          message: '请先登录后再收藏小说',
+          type: 'warning',
+          duration: 3000
         });
         return;
       }

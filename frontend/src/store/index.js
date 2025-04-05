@@ -3,6 +3,7 @@ import user from './modules/user';
 import novel from './modules/novel';
 import interaction from './modules/interaction';
 import admin from './modules/admin';
+import { login, register, updateProfile, changePassword } from '@/api/user';
 
 // HTTP拦截器
 import axios from 'axios';
@@ -51,7 +52,9 @@ export default createStore({
     darkMode: localStorage.getItem('darkMode') === 'true',
     globalError: null,
     successMessage: null,
-    notifications: []
+    notifications: [],
+    isLoggedIn: !!localStorage.getItem('token'),
+    token: localStorage.getItem('token') || ''
   },
   // Synchronous state mutations
   mutations: {
@@ -82,6 +85,22 @@ export default createStore({
     },
     REMOVE_NOTIFICATION(state, id) {
       state.notifications = state.notifications.filter(n => n.id !== id);
+    },
+    SET_TOKEN(state, token) {
+      state.token = token;
+      if (token) {
+        localStorage.setItem('token', token);
+      } else {
+        localStorage.removeItem('token');
+      }
+    },
+    SET_LOGIN_STATUS(state, status) {
+      state.isLoggedIn = status;
+    },
+    CLEAR_AUTH(state) {
+      state.token = '';
+      state.isLoggedIn = false;
+      localStorage.removeItem('token');
     }
   },
   // Actions that can be asynchronous
@@ -106,13 +125,70 @@ export default createStore({
       setTimeout(() => {
         commit('REMOVE_NOTIFICATION', id);
       }, duration);
+    },
+    async login({ commit, dispatch }, userData) {
+      try {
+        console.log('开始登录请求:', userData);
+        const response = await login(userData);
+        console.log('登录响应:', response);
+        
+        if (response && response.access_token && response.user) {
+          const { access_token, user } = response;
+          console.log('解析的token:', access_token);
+          console.log('解析的用户信息:', user);
+          
+          // 保存 token
+          commit('SET_TOKEN', access_token);
+          commit('SET_LOGIN_STATUS', true);
+          
+          // 保存用户信息
+          await dispatch('user/setUser', user, { root: true });
+          
+          return { token: access_token, user };
+        } else {
+          console.error('响应数据格式错误:', response);
+          throw new Error('登录响应格式错误：缺少 token 或用户信息');
+        }
+      } catch (error) {
+        console.error('登录失败:', error);
+        commit('SET_TOKEN', '');
+        commit('SET_LOGIN_STATUS', false);
+        throw error;
+      }
+    },
+    // eslint-disable-next-line no-unused-vars
+    async register(_, userData) {
+      return await register(userData);
+    },
+    logout({ commit, dispatch }) {
+      commit('SET_TOKEN', '');
+      commit('SET_LOGIN_STATUS', false);
+      dispatch('user/clearUser', null, { root: true });
+    },
+    // eslint-disable-next-line no-unused-vars
+    async updateProfile({ dispatch }, profileData) {
+      const response = await updateProfile(profileData);
+      if (response && response.data) {
+        await dispatch('user/setUser', response.data, { root: true });
+      }
+      return response;
+    },
+    // eslint-disable-next-line no-unused-vars
+    async changePassword(_, passwordData) {
+      return await changePassword(passwordData);
     }
   },
   // Computed properties for the state
   getters: {
+    state: state => state,
     isLoading: state => state.loading,
     globalError: state => state.globalError,
     successMessage: state => state.successMessage,
-    notifications: state => state.notifications
+    notifications: state => state.notifications,
+    isLoggedIn: state => state.isLoggedIn || !!localStorage.getItem('token'),
+    isAuthenticated: state => !!state.user?.user || !!localStorage.getItem('token'),
+    user: state => state.user?.user || null,
+    isAuthor: state => state.user?.user?.role === 'author',
+    token: state => state.token || localStorage.getItem('token')
   }
 }); 

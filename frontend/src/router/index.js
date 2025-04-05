@@ -20,6 +20,11 @@ const SearchResult = () => import('@/views/SearchResult.vue');
 const Category = () => import('@/views/Category.vue');
 const Ranking = () => import('@/views/Ranking.vue');
 
+// 作者相关组件
+const AuthorCenter = () => import('@/views/author/AuthorCenter.vue');
+const NovelManagement = () => import('@/views/author/NovelManagement.vue');
+const ChapterManagement = () => import('@/views/author/ChapterManagement.vue');
+
 // 互动模块路由
 const Messages = () => import('@/views/interaction/Messages.vue');
 const UserFollowing = () => import('@/views/interaction/UserFollowing.vue');
@@ -33,6 +38,12 @@ const routes = [
     name: 'Home',
     component: Home,
     meta: { title: '首页' }
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: () => import('@/views/About.vue'),
+    meta: { title: '关于我们' }
   },
   {
     path: '/login',
@@ -171,6 +182,35 @@ const routes = [
         meta: { title: '爬取小说' }
       }
     ]
+  },
+  {
+    path: '/author',
+    component: AuthorCenter,
+    meta: { requiresAuth: true, requiresAuthor: true, title: '作者中心' },
+    children: [
+      {
+        path: '',
+        redirect: '/author/center'
+      },
+      {
+        path: 'center',
+        name: 'AuthorCenter',
+        component: AuthorCenter,
+        meta: { title: '作者中心' }
+      },
+      {
+        path: 'novels',
+        name: 'NovelManagement',
+        component: NovelManagement,
+        meta: { title: '小说管理' }
+      }
+    ]
+  },
+  {
+    path: '/author/novel/:novelId/chapters',
+    name: 'ChapterManagement',
+    component: ChapterManagement,
+    meta: { requiresAuth: true, requiresAuthor: true, title: '章节管理' }
   }
 ];
 

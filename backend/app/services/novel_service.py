@@ -251,6 +251,15 @@ class NovelService:
         return {'success': True, **result}
     
     @staticmethod
+    def search_novels(keyword: str, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
+        """Search novels by title or author"""
+        if not keyword:
+            return {'success': False, 'error': 'Search keyword is required'}
+            
+        result = NovelDAO.search_novels(keyword, page, per_page)
+        return {'success': True, **result}
+    
+    @staticmethod
     def get_novel_detail(novel_id: int) -> Dict[str, Any]:
         """Get novel details with chapters"""
         novel = NovelDAO.get_novel_by_id(novel_id)
@@ -299,20 +308,49 @@ class NovelService:
         return {'success': True, 'categories': categories}
     
     @staticmethod
-    def add_novel(author_id: int, title: str, author: str, category: str, 
-                 intro: str, cover: str = 'default_cover.jpg') -> Dict[str, Any]:
-        """Add a new novel (author only)"""
-        # Check for missing required fields
-        if not all([title, author, category, intro]):
-            return {'success': False, 'error': 'Missing required fields'}
-        
+    def get_author_novels(author_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
+        """Get novels created by a specific author"""
         try:
-            novel = NovelDAO.add_novel(title, author, category, intro, cover)
+            # Get paginated results for internal author
+            pagination = Novel.query.filter_by(author_id=author_id)\
+                .order_by(Novel.updated_at.desc())\
+                .paginate(page=page, per_page=per_page, error_out=False)
             
-            # Invalidate relevant caches
-            CacheService.delete(f"novel_list:all:1:10:updated_at")
-            CacheService.delete(f"novel_list:{category}:1:10:updated_at")
-            CacheService.delete("novel_categories")
+            # Convert novels to dict
+            novels = [novel.to_dict() for novel in pagination.items]
+            
+            return {
+                'success': True,
+                'novels': novels,
+                'total': pagination.total,
+                'total_pages': pagination.pages,
+                'current_page': page
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @staticmethod
+    def add_novel(title: str, author_name: str, category: str, intro: str, 
+                  author_id: Optional[int] = None, cover: str = 'default_cover.jpg',
+                  status: str = 'ongoing') -> Dict[str, Any]:
+        """Add a new novel"""
+        try:
+            # 创建新小说
+            novel = Novel(
+                title=title,
+                author=author_name,  # 使用作者名称
+                author_id=author_id,  # 如果是内部作者，设置作者ID
+                category=category,
+                intro=intro,
+                cover=cover,
+                status=status
+            )
+            
+            db.session.add(novel)
+            db.session.commit()
             
             return {
                 'success': True,
@@ -321,7 +359,42 @@ class NovelService:
             }
         except Exception as e:
             db.session.rollback()
-            return {'success': False, 'error': str(e)}
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @staticmethod
+    def update_novel(novel_id: int, data: Dict[str, Any], user_id: Optional[int] = None) -> Dict[str, Any]:
+        """Update novel information"""
+        try:
+            novel = Novel.query.get(novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+            
+            # 检查权限：只有内部作者可以修改自己的小说
+            if novel.author_id and novel.author_id != user_id:
+                return {'success': False, 'error': 'Permission denied'}
+            
+            # 更新小说属性
+            allowed_fields = ['title', 'author', 'category', 'cover', 'intro', 'status']
+            for key, value in data.items():
+                if key in allowed_fields:
+                    setattr(novel, key, value)
+            
+            db.session.commit()
+            
+            return {
+                'success': True,
+                'message': 'Novel updated successfully',
+                'novel': novel.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     @staticmethod
     def add_chapter(author_id: int, novel_id: int, title: str, 
@@ -346,34 +419,6 @@ class NovelService:
                 'success': True,
                 'message': 'Chapter added successfully',
                 'chapter': chapter.to_dict()
-            }
-        except Exception as e:
-            db.session.rollback()
-            return {'success': False, 'error': str(e)}
-    
-    @staticmethod
-    def update_novel(author_id: int, novel_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Update novel information (author or admin only)"""
-        # Verify novel exists
-        novel = NovelDAO.get_novel_by_id(novel_id)
-        if not novel:
-            return {'success': False, 'error': 'Novel not found'}
-        
-        try:
-            updated_novel = NovelDAO.update_novel(novel_id, data)
-            
-            # Invalidate relevant caches
-            CacheService.delete(f"novel_detail:{novel_id}")
-            CacheService.delete(f"novel_list:all:1:10:updated_at")
-            if 'category' in data:
-                CacheService.delete(f"novel_list:{data['category']}:1:10:updated_at")
-                CacheService.delete(f"novel_list:{novel.category}:1:10:updated_at")
-                CacheService.delete("novel_categories")
-            
-            return {
-                'success': True,
-                'message': 'Novel updated successfully',
-                'novel': updated_novel.to_dict()
             }
         except Exception as e:
             db.session.rollback()
@@ -468,4 +513,84 @@ class NovelService:
             else:
                 return {'success': False, 'error': 'Failed to refresh cache'}
         except Exception as e:
-            return {'success': False, 'error': str(e)} 
+            return {'success': False, 'error': str(e)}
+    
+    @staticmethod
+    def get_chapter(chapter_id: int, include_content: bool = True, user_id: Optional[int] = None) -> Dict[str, Any]:
+        """Get chapter details with optional content"""
+        # Get chapter from DAO
+        chapter = NovelDAO.get_chapter_by_id(chapter_id)
+        if not chapter:
+            return {'success': False, 'error': 'Chapter not found'}
+            
+        # Get novel for this chapter
+        novel = NovelDAO.get_novel_by_id(chapter.novel_id)
+        if not novel:
+            return {'success': False, 'error': 'Novel not found'}
+            
+        # Get adjacent chapters
+        prev_chapter, next_chapter = NovelDAO.get_adjacent_chapters(chapter)
+        
+        # Update reading history if user is logged in
+        if user_id:
+            InteractionDAO.update_reading_history(user_id, novel.id, chapter.id)
+            
+        # Update view count
+        NovelDAO.increment_view_count(novel.id)
+        
+        # Prepare response
+        chapter_data = chapter.to_dict(include_content=include_content)
+        
+        return {
+            'success': True,
+            'chapter': chapter_data,
+            'prev_chapter': prev_chapter.to_dict() if prev_chapter else None,
+            'next_chapter': next_chapter.to_dict() if next_chapter else None
+        }
+    
+    @staticmethod
+    def get_author_stats(author_id: int) -> Dict[str, Any]:
+        """Get statistics for an author"""
+        try:
+            # 获取作者的小说列表
+            novels = Novel.query.filter_by(author_id=author_id).all()
+            
+            # 统计数据
+            novel_count = len(novels)
+            novel_ids = [novel.id for novel in novels]
+            
+            # 总字数
+            total_words = db.session.query(func.sum(Chapter.word_count))\
+                .filter(Chapter.novel_id.in_(novel_ids))\
+                .scalar() or 0
+            
+            # 总收藏数
+            total_collections = db.session.query(func.sum(Novel.collection_count))\
+                .filter(Novel.id.in_(novel_ids))\
+                .scalar() or 0
+            
+            # 总浏览量
+            total_views = db.session.query(func.sum(Novel.view_count))\
+                .filter(Novel.id.in_(novel_ids))\
+                .scalar() or 0
+            
+            # 总章节数
+            total_chapters = Chapter.query.filter(Chapter.novel_id.in_(novel_ids)).count()
+            
+            stats = {
+                'novel_count': novel_count,
+                'total_words': total_words,
+                'total_collections': total_collections,
+                'total_views': total_views,
+                'total_chapters': total_chapters
+            }
+            
+            return {
+                'success': True,
+                'stats': stats
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            } 

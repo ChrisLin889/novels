@@ -112,6 +112,44 @@ def get_user_actions():
     
     return jsonify(result)
 
+@admin_bp.route('/users/<int:user_id>/role', methods=['PUT'])
+@admin_required
+def update_user_role(user_id):
+    """
+    Update a user's role
+    
+    PUT params:
+    - role: New role for the user
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    # Get request data
+    data = request.json
+    if not data:
+        return jsonify({
+            'error': 'Missing request data'
+        }), 400
+    
+    role = data.get('role')
+    if not role:
+        return jsonify({
+            'error': 'Missing role parameter'
+        }), 400
+    
+    result = AdminService.update_user_role(
+        admin_id=admin_id,
+        user_id=user_id,
+        role=role
+    )
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
 # ====== Content Management ======
 
 @admin_bp.route('/content/<content_type>', methods=['GET'])

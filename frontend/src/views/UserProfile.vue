@@ -73,12 +73,47 @@ export default {
     
     // Initialize form with user data
     onMounted(() => {
-      if (userInfo.value) {
-        profileForm.username = userInfo.value.username || '';
-        profileForm.email = userInfo.value.email || '';
-        profileForm.phone = userInfo.value.phone || '';
-        profileForm.avatar = userInfo.value.avatar || '';
-        avatarUrl.value = userInfo.value.avatar || '';
+      console.log('UserProfile mounted - store中的用户信息:', userInfo.value);
+      
+      // 尝试直接从localStorage获取用户信息
+      try {
+        const localUserData = localStorage.getItem('user');
+        if (localUserData) {
+          const userData = JSON.parse(localUserData);
+          console.log('UserProfile - localStorage中的用户信息:', userData);
+          
+          // 使用localStorage的用户数据初始化表单
+          profileForm.username = userData.username || '';
+          profileForm.email = userData.email || '';
+          profileForm.phone = userData.phone || '';
+          profileForm.avatar = userData.avatar || '';
+          avatarUrl.value = userData.avatar || '';
+          
+          // 确保store中也有这些数据
+          store.dispatch('user/setUser', userData);
+        } else {
+          console.log('UserProfile - localStorage中没有用户数据');
+          
+          // 回退到使用store中的数据
+          if (userInfo.value) {
+            profileForm.username = userInfo.value.username || '';
+            profileForm.email = userInfo.value.email || '';
+            profileForm.phone = userInfo.value.phone || '';
+            profileForm.avatar = userInfo.value.avatar || '';
+            avatarUrl.value = userInfo.value.avatar || '';
+          }
+        }
+      } catch (e) {
+        console.error('UserProfile - 解析localStorage用户数据失败:', e);
+        
+        // 回退到使用store中的数据
+        if (userInfo.value) {
+          profileForm.username = userInfo.value.username || '';
+          profileForm.email = userInfo.value.email || '';
+          profileForm.phone = userInfo.value.phone || '';
+          profileForm.avatar = userInfo.value.avatar || '';
+          avatarUrl.value = userInfo.value.avatar || '';
+        }
       }
     });
     

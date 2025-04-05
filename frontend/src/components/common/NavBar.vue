@@ -20,6 +20,7 @@
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">个人中心</el-dropdown-item>
                 <el-dropdown-item v-if="isAdmin" command="admin">管理后台</el-dropdown-item>
+                <el-dropdown-item v-if="isAuthor" command="author">作家中心</el-dropdown-item>
                 <el-dropdown-item command="bookshelf">我的书架</el-dropdown-item>
                 <el-dropdown-item command="messages">
                   我的消息
@@ -98,12 +99,44 @@ export default {
       return route.path;
     });
     
-    // User auth state from store
-    const isLoggedIn = computed(() => store.getters['user/isAuthenticated']);
-    const userInfo = computed(() => store.getters['user/userInfo']);
-    const userName = computed(() => userInfo.value?.username || '用户');
+    // User auth state - 直接从 localStorage 读取
+    const isLoggedIn = computed(() => {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+      console.log('NavBar - 当前登录状态:', !!token && !!user);
+      console.log('NavBar - localStorage token:', token);
+      console.log('NavBar - localStorage user:', user);
+      // 刷新用户状态到 store
+      if (token && user) {
+        try {
+          const userData = JSON.parse(user);
+          store.dispatch('user/setUser', userData);
+          return true;
+        } catch (e) {
+          console.error('解析用户数据失败:', e);
+          return false;
+        }
+      }
+      return false;
+    });
+    
+    const userInfo = computed(() => {
+      try {
+        const userData = localStorage.getItem('user');
+        return userData ? JSON.parse(userData) : null;
+      } catch (e) {
+        console.error('NavBar - 解析用户数据失败:', e);
+        return null;
+      }
+    });
+    
+    const userName = computed(() => {
+      return userInfo.value?.email || userInfo.value?.username || '用户';
+    });
+    
     const userAvatar = computed(() => userInfo.value?.avatar || '');
     const isAdmin = computed(() => userInfo.value?.role === 'admin');
+    const isAuthor = computed(() => userInfo.value?.role === 'author');
     
     // 获取未读消息数量
     const fetchUnreadCount = async () => {
@@ -137,12 +170,16 @@ export default {
     
     const handleCommand = (command) => {
       if (command === 'logout') {
-        store.dispatch('user/logout');
+        store.dispatch('user/clearUser');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         router.push('/login');
       } else if (command === 'profile') {
         router.push('/user/profile');
       } else if (command === 'admin') {
         router.push('/admin/dashboard');
+      } else if (command === 'author') {
+        router.push('/author/center');
       } else if (command === 'bookshelf') {
         router.push('/user/bookshelf');
       } else if (command === 'messages') {
@@ -187,6 +224,7 @@ export default {
       userAvatar,
       unreadCount,
       isAdmin,
+      isAuthor,
       handleSearch,
       goToLogin,
       goToRegister,

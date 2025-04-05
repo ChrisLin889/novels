@@ -2,8 +2,21 @@ from typing import List, Dict, Optional
 from sqlalchemy import or_, and_, func
 from app import db
 from app.models.novel import Novel
-from app.services.cache_service import CacheService, cached
+from app.services.cache_service import CacheService, cached, MockRedis
 from datetime import datetime, timedelta
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+# Initialize Redis client
+try:
+    import redis
+    redis_client = redis.Redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'))
+    redis_client.ping()  # Test connection
+except (redis.ConnectionError, ImportError):
+    logger.warning("Redis connection failed, using in-memory mock Redis instead")
+    redis_client = MockRedis()
 
 # Cache prefixes
 SEARCH_RESULT_PREFIX = "search_result:"
@@ -76,8 +89,6 @@ class SearchService:
         try:
             # Increment the keyword count in the sorted set
             # This is non-blocking and won't affect search performance
-            from redis import Redis
-            from app.services.cache_service import redis_client
             
             # Increment score for this keyword
             redis_client.zincrby(HOT_KEYWORDS_PREFIX, 1, keyword.lower())

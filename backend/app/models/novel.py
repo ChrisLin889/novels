@@ -6,7 +6,9 @@ class Novel(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False, index=True)
-    author = db.Column(db.String(50), nullable=False)
+    author = db.Column(db.String(50), nullable=False)  # 作者名称（必填）
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # 内部作者ID（可选）
+    user = db.relationship('User', backref='novels', foreign_keys=[author_id])  # 改名为user以避免混淆
     category = db.Column(db.String(30), nullable=False, index=True)
     cover = db.Column(db.String(255), default='default_cover.jpg')
     intro = db.Column(db.Text, nullable=True)
@@ -23,7 +25,9 @@ class Novel(db.Model):
         return {
             'id': self.id,
             'title': self.title,
-            'author': self.author,
+            'author': self.author,  # 使用作者名称
+            'author_id': self.author_id,  # 添加作者ID（如果是内部作者）
+            'is_internal_author': self.author_id is not None,  # 添加是否为内部作者标志
             'category': self.category,
             'cover': self.cover,
             'intro': self.intro,

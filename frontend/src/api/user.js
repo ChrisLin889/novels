@@ -18,13 +18,20 @@ export function register(data) {
  * @param {Object} data - User login credentials
  * @returns {Promise}
  */
-export function login(data) {
+export const login = (data) => {
+  console.log('发送登录请求:', data);
   return request({
     url: '/user/login',
     method: 'post',
     data
+  }).then(response => {
+    console.log('登录原始响应:', response);
+    return response;
+  }).catch(error => {
+    console.error('登录请求失败:', error);
+    throw error;
   });
-}
+};
 
 /**
  * Get user profile
@@ -57,8 +64,22 @@ export function updateProfile(data) {
  */
 export function changePassword(data) {
   return request({
-    url: '/user/change-password',
-    method: 'post',
+    url: '/user/password',
+    method: 'put',
     data
+  });
+}
+
+export function logout() {
+  return request({
+    url: '/user/logout',
+    method: 'post'
+  });
+}
+
+export function getUserProfile() {
+  return request({
+    url: '/user/profile',
+    method: 'get'
   });
 } 

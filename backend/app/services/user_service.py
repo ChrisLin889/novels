@@ -254,4 +254,31 @@ class UserService:
         return {
             'success': True,
             **result
-        } 
+        }
+    
+    @staticmethod
+    def update_user_role(admin_id: int, target_user_id: int, new_role: str) -> Dict[str, Any]:
+        """Update a user's role (admin only)"""
+        try:
+            # Check if admin exists and has admin role
+            admin = UserDAO.get_user_by_id(admin_id)
+            if not admin or admin.role != 'admin':
+                return {'success': False, 'error': 'Admin privileges required'}
+            
+            # Check if target user exists
+            target_user = UserDAO.get_user_by_id(target_user_id)
+            if not target_user:
+                return {'success': False, 'error': 'User not found'}
+            
+            # Update role
+            target_user.role = new_role
+            db.session.commit()
+            
+            return {
+                'success': True,
+                'message': f'User role updated to {new_role}',
+                'user': target_user.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': str(e)} 

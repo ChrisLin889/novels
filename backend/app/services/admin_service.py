@@ -97,6 +97,63 @@ class AdminService:
             'total_pages': (total + per_page - 1) // per_page
         }
     
+    @staticmethod
+    def update_user_role(admin_id: int, user_id: int, role: str) -> Dict:
+        """
+        Update a user's role
+        
+        Args:
+            admin_id: ID of admin performing the action
+            user_id: ID of user to update
+            role: New role for the user
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        admin = User.query.get(admin_id)
+        if not admin or admin.role != 'admin':
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Verify target user exists
+        user = User.query.get(user_id)
+        if not user:
+            return {
+                'success': False,
+                'message': f'User with ID {user_id} not found'
+            }
+        
+        # Verify role is valid
+        valid_roles = ['user', 'author', 'admin']
+        if role not in valid_roles:
+            return {
+                'success': False,
+                'message': f'Invalid role: {role}'
+            }
+        
+        # Update user role
+        user.role = role
+        db.session.commit()
+        
+        # Create action record
+        action = UserAction(
+            admin_id=admin_id,
+            target_user_id=user_id,
+            action_type='update_role',
+            reason=f'Role updated to {role}'
+        )
+        db.session.add(action)
+        db.session.commit()
+        
+        return {
+            'success': True,
+            'message': f'User role updated to {role}',
+            'user': user.to_dict()
+        }
+    
     # ====== Content Management ======
     
     @staticmethod

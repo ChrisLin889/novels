@@ -45,9 +45,9 @@ export function getChapterList(novelId, params) {
  * @param {Number} chapterNum - Chapter number
  * @returns {Promise}
  */
-export function getChapterContent(novelId, chapterNum) {
+export function getChapterContent(id) {
   return request({
-    url: `/novel/${novelId}/chapter/${chapterNum}`,
+    url: `/novel/chapter/${id}`,
     method: 'get'
   });
 }
@@ -159,5 +159,69 @@ export function checkCollection(novelId) {
   return request({
     url: `/interaction/collection/status/${novelId}`,
     method: 'get'
+  });
+}
+
+/**
+ * Get novel chapters
+ * @param {Number} id - Novel ID
+ * @returns {Promise}
+ */
+export function getNovelChapters(id) {
+  return request({
+    url: `/novel/${id}/chapters`,
+    method: 'get'
+  });
+}
+
+/**
+ * Get novel categories
+ * @returns {Promise}
+ */
+export function getCategories() {
+  return request({
+    url: '/novel/categories',
+    method: 'get'
+  });
+}
+
+/**
+ * Get popular novels
+ * @param {Number} limit - Number of novels to return (default: 10)
+ * @returns {Promise}
+ */
+export function getPopularNovels(limit = 10) {
+  return request({
+    url: '/novel/popular',
+    method: 'get',
+    params: { limit }
+  });
+}
+
+/**
+ * Get latest novels
+ * @param {Number} limit - Number of novels to return (default: 10)
+ * @returns {Promise}
+ */
+export function getLatestNovels(limit = 10) {
+  return request({
+    url: '/novel/latest',
+    method: 'get',
+    params: { limit }
+  });
+}
+
+/**
+ * Search novels
+ * @param {String} keyword - Search keyword
+ * @param {Number} page - Page number (default: 1)
+ * @param {Number} per_page - Number of novels per page (default: 10)
+ * @returns {Promise}
+ */
+export function searchNovels(keyword, page = 1, per_page = 10) {
+  return request({
+    url: '/novel/search',
+    method: 'get',
+    params: { keyword, page, per_page }
   });
 } 

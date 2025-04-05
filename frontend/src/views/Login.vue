@@ -58,15 +58,15 @@
 <script>
 import { ref, reactive } from 'vue';
 import { useStore } from 'vuex';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import request from '@/utils/request';
 
 export default {
   name: 'Login',
   setup() {
     const store = useStore();
     const router = useRouter();
-    const route = useRoute();
     
     const loginForm = reactive({
       account: '',
@@ -88,67 +88,81 @@ export default {
     const rememberMe = ref(false);
     
     const handleLogin = async () => {
-      if (!loginFormRef.value) return;
-      
-      await loginFormRef.value.validate(async (valid) => {
-        if (!valid) {
-          console.error('表单验证失败');
-          return;
-        }
-        
-        loading.value = true;
+      try {
+        await loginFormRef.value.validate()
+        console.log('使用邮箱登录:', loginForm.account)
         
         try {
-          // Determine if account is email or phone
-          const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginForm.account);
-          
+          // 将 account 转换为 email
           const loginData = {
+            email: loginForm.account,
             password: loginForm.password
-          };
-          
-          if (isEmail) {
-            loginData.email = loginForm.account;
-            console.log('使用邮箱登录:', loginData.email);
-          } else {
-            loginData.phone = loginForm.account;
-            console.log('使用手机号登录:', loginData.phone);
           }
           
-          console.log('发送登录请求:', JSON.stringify(loginData));
+          console.log('发送登录请求:', loginData)
+          const response = await request.post('/user/login', loginData);
+          console.log('登录成功，响应数据:', response)
           
-          const result = await store.dispatch('user/login', loginData);
-          console.log('登录成功，用户信息:', result);
-          
-          ElMessage({
-            type: 'success',
-            message: '登录成功'
-          });
-          
-          // 验证用户角色是否保存
-          const savedRole = localStorage.getItem('userRole');
-          console.log('保存的用户角色:', savedRole);
-          
-          // Redirect to intended page or home
-          const redirectPath = route.query.redirect || '/';
-          
-          // 如果是管理员用户，则重定向到管理仪表盘
-          if (savedRole === 'admin') {
-            console.log('检测到管理员用户，重定向到管理页面');
-            router.push('/admin/dashboard');
+          if (response && response.access_token && response.user) {
+            // 先明确设置token
+            const token = response.access_token;
+            localStorage.setItem('token', token);
+            store.commit('SET_TOKEN', token);
+            
+            // 确保用户对象格式正确并包含必要信息
+            const userData = {
+              ...response.user,
+              id: response.user.id,
+              username: response.user.username || '用户' + response.user.id,
+              email: response.user.email,
+              role: response.user.role,
+              avatar: response.user.avatar || 'default.jpg'
+            };
+            
+            console.log('处理后的用户数据:', userData);
+            
+            // 保存用户信息到 store (使用 action)
+            await store.dispatch('user/setUser', userData);
+            
+            // 再次确认用户数据已保存到 localStorage
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            // 额外保存一些关键信息便于访问
+            localStorage.setItem('userRole', userData.role);
+            localStorage.setItem('userId', userData.id);
+            
+            // 更新全局登录状态
+            store.commit('SET_LOGIN_STATUS', true);
+            
+            console.log('保存完成的用户信息 (Store):', store.state.user.user);
+            console.log('保存完成的用户信息 (localStorage):', JSON.parse(localStorage.getItem('user')));
+            
+            // 根据用户角色设置重定向路径
+            let redirectPath = '/'
+            if (userData.role === 'author') {
+              redirectPath = '/author/center'
+              console.log('用户是作者，重定向到:', redirectPath)
+            } else if (userData.role === 'admin') {
+              redirectPath = '/admin/dashboard'
+              console.log('用户是管理员，重定向到:', redirectPath)
+            } else {
+              console.log('普通用户，重定向到:', redirectPath)
+            }
+            
+            console.log('最终重定向到:', redirectPath)
+            router.push(redirectPath)
           } else {
-            console.log('重定向到:', redirectPath);
-            router.push(redirectPath);
+            throw new Error('登录响应格式错误：缺少token或用户信息')
           }
         } catch (error) {
-          console.error('登录错误:', error);
-          ElMessage({
-            type: 'error',
-            message: typeof error === 'string' ? error : '登录失败，请重试'
-          });
-        } finally {
-          loading.value = false;
+          console.error('登录失败:', error)
+          const errorMessage = error.response?.data?.message || error.message || '登录失败，请重试'
+          ElMessage.error(errorMessage)
         }
-      });
+      } catch (error) {
+        console.error('表单验证失败:', error)
+        return false
+      }
     };
     
     return {
