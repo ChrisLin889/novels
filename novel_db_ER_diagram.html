@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小说数据库 E-R 图</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin: 0 auto;
+            max-width: 1200px;
+            overflow-x: auto;
+        }
+        svg {
+            display: block;
+            margin: 0 auto;
+        }
+        .entity {
+            fill: #e8f0fe;
+            stroke: #1a73e8;
+            stroke-width: 2;
+        }
+        .attribute {
+            fill: #fff3e0;
+            stroke: #ffb74d;
+            stroke-width: 1;
+        }
+        .pk-attribute {
+            fill: #ffebee;
+            stroke: #d32f2f;
+            stroke-width: 1;
+        }
+        .relationship {
+            fill: #e1f5fe;
+            stroke: #29b6f6;
+            stroke-width: 1;
+        }
+        .connector {
+            stroke: #555;
+            stroke-width: 1.5;
+            fill: none;
+        }
+        text {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            font-size: 14px;
+            text-anchor: middle;
+        }
+        .relationship-text {
+            fill: white;
+            font-weight: bold;
+        }
+        .cardinality {
+            font-weight: bold;
+            fill: #333;
+            font-size: 12px;
+        }
+        .legend {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .legend-symbol {
+            margin-right: 10px;
+            width: 40px;
+            height: 25px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>小说数据库 E-R 图</h1>
+        
+        <svg width="1400" height="1200" viewBox="0 0 1400 1200">
+            <!-- 实体：用户 -->
+            <rect x="150" y="250" width="100" height="60" class="entity" />
+            <text x="200" y="285">用户</text>
+            
+            <!-- 用户的属性 -->
+            <ellipse cx="80" cy="180" rx="45" ry="25" class="pk-attribute" />
+            <text x="80" y="180">编号</text>
+            <line x1="110" y1="195" x2="150" y2="255" class="connector" />
+            
+            <ellipse cx="160" cy="150" rx="45" ry="25" class="attribute" />
+            <text x="160" y="150">用户名</text>
+            <line x1="160" y1="175" x2="180" y2="250" class="connector" />
+            
+            <ellipse cx="240" cy="160" rx="45" ry="25" class="attribute" />
+            <text x="240" y="160">邮箱</text>
+            <line x1="225" y1="180" x2="210" y2="250" class="connector" />
+            
+            <ellipse cx="300" cy="210" rx="45" ry="25" class="attribute" />
+            <text x="300" y="210">手机号</text>
+            <line x1="270" y1="225" x2="250" y2="260" class="connector" />
+            
+            <ellipse cx="80" cy="320" rx="45" ry="25" class="attribute" />
+            <text x="80" y="320">角色</text>
+            <line x1="115" y1="310" x2="150" y2="290" class="connector" />
+            
+            <!-- 实体：小说 -->
+            <rect x="900" y="250" width="100" height="60" class="entity" />
+            <text x="950" y="285">小说</text>
+            
+            <!-- 小说的属性 -->
+            <ellipse cx="830" cy="180" rx="45" ry="25" class="pk-attribute" />
+            <text x="830" y="180">编号</text>
+            <line x1="850" y1="195" x2="900" y2="255" class="connector" />
+            
+            <ellipse cx="910" cy="150" rx="45" ry="25" class="attribute" />
+            <text x="910" y="150">标题</text>
+            <line x1="910" y1="175" x2="930" y2="250" class="connector" />
+            
+            <ellipse cx="990" cy="160" rx="45" ry="25" class="attribute" />
+            <text x="990" y="160">作者名</text>
+            <line x1="975" y1="180" x2="960" y2="250" class="connector" />
+            
+            <ellipse cx="1050" cy="210" rx="45" ry="25" class="attribute" />
+            <text x="1050" y="210">分类</text>
+            <line x1="1020" y1="225" x2="1000" y2="260" class="connector" />
+            
+            <ellipse cx="1070" cy="350" rx="45" ry="25" class="attribute" />
+            <text x="1070" y="350">状态</text>
+            <line x1="1030" y1="345" x2="990" y2="310" class="connector" />
+            
+            <!-- 实体：章节 -->
+            <rect x="900" y="700" width="100" height="60" class="entity" />
+            <text x="950" y="735">章节</text>
+            
+            <!-- 章节的属性 -->
+            <ellipse cx="830" cy="630" rx="45" ry="25" class="pk-attribute" />
+            <text x="830" y="630">编号</text>
+            <line x1="860" y1="645" x2="900" y2="705" class="connector" />
+            
+            <ellipse cx="910" cy="600" rx="45" ry="25" class="attribute" />
+            <text x="910" y="600">标题</text>
+            <line x1="910" y1="625" x2="930" y2="700" class="connector" />
+            
+            <ellipse cx="990" cy="620" rx="45" ry="25" class="attribute" />
+            <text x="990" y="620">章节号</text>
+            <line x1="975" y1="635" x2="960" y2="700" class="connector" />
+            
+            <ellipse cx="1050" cy="670" rx="45" ry="25" class="attribute" />
+            <text x="1050" y="670">内容</text>
+            <line x1="1020" y1="675" x2="1000" y2="715" class="connector" />
+            
+            <!-- 实体：评论 -->
+            <rect x="150" y="700" width="100" height="60" class="entity" />
+            <text x="200" y="735">评论</text>
+            
+            <!-- 评论的属性 -->
+            <ellipse cx="80" cy="630" rx="45" ry="25" class="pk-attribute" />
+            <text x="80" y="630">编号</text>
+            <line x1="100" y1="645" x2="150" y2="705" class="connector" />
+            
+            <ellipse cx="70" cy="700" rx="45" ry="25" class="attribute" />
+            <text x="70" y="700">内容</text>
+            <line x1="100" y1="700" x2="150" y2="720" class="connector" />
+            
+            <ellipse cx="80" cy="770" rx="45" ry="25" class="attribute" />
+            <text x="80" y="770">点赞数</text>
+            <line x1="110" y1="760" x2="150" y2="740" class="connector" />
+            
+            <!-- 关系：创作 -->
+            <polygon points="525,280 545,250 565,280 545,310" class="relationship" />
+            <text x="545" y="285">创作</text>
+            
+            <!-- 用户到创作的连线 -->
+            <path d="M 250,280 L 525,280" class="connector" />
+            <text x="385" y="265" class="cardinality">1</text>
+            
+            <!-- 创作到小说的连线 -->
+            <path d="M 565,280 L 900,280" class="connector" />
+            <text x="730" y="265" class="cardinality">N</text>
+            
+            <!-- 关系：包含 -->
+            <polygon points="950,475 970,445 990,475 970,505" class="relationship" />
+            <text x="970" y="480">包含</text>
+            
+            <!-- 小说到包含的连线 -->
+            <path d="M 950,310 Q 950,380 950,445" class="connector" />
+            <text x="935" y="380" class="cardinality">1</text>
+            
+            <!-- 包含到章节的连线 -->
+            <path d="M 950,505 Q 950,600 950,700" class="connector" />
+            <text x="935" y="600" class="cardinality">N</text>
+            
+            <!-- 用户收藏关系实体 -->
+            <rect x="525" y="400" width="120" height="60" class="entity" />
+            <text x="585" y="435">用户收藏</text>
+            
+            <!-- 用户到用户收藏的连线 -->
+            <path d="M 250,280 Q 350,340 525,430" class="connector" />
+            <text x="370" y="350" class="cardinality">多</text>
+            
+            <!-- 用户收藏到小说的连线 -->
+            <path d="M 645,430 Q 750,380 900,310" class="connector" />
+            <text x="750" y="380" class="cardinality">多</text>
+            
+            <!-- 用户评论关系 -->
+            <polygon points="280,500 300,470 320,500 300,530" class="relationship" />
+            <text x="300" y="505">发表</text>
+            
+            <!-- 用户到发表的连线 -->
+            <path d="M 200,310 Q 230,400 280,470" class="connector" />
+            <text x="235" y="390" class="cardinality">1</text>
+            
+            <!-- 发表到评论的连线 -->
+            <path d="M 300,530 Q 260,610 200,700" class="connector" />
+            <text x="260" y="610" class="cardinality">N</text>
+            
+            <!-- 阅读历史关系实体 -->
+            <rect x="525" y="600" width="120" height="60" class="entity" />
+            <text x="585" y="635">阅读历史</text>
+            
+            <!-- 用户到阅读历史的连线 -->
+            <path d="M 200,310 Q 270,450 525,630" class="connector" />
+            <text x="320" y="450" class="cardinality">多</text>
+            
+            <!-- 阅读历史到章节的连线 -->
+            <path d="M 645,630 Q 770,660 900,720" class="connector" />
+            <text x="770" y="665" class="cardinality">多</text>
+        </svg>
+        
+        <div class="legend">
+            <h3>图例</h3>
+            <div class="legend-item">
+                <svg class="legend-symbol">
+                    <rect x="5" y="5" width="30" height="20" class="entity" />
+                </svg>
+                <div>实体（矩形）</div>
+            </div>
+            <div class="legend-item">
+                <svg class="legend-symbol">
+                    <ellipse cx="20" cy="12" rx="18" ry="10" class="attribute" />
+                </svg>
+                <div>属性（椭圆）</div>
+            </div>
+            <div class="legend-item">
+                <svg class="legend-symbol">
+                    <ellipse cx="20" cy="12" rx="18" ry="10" class="pk-attribute" />
+                </svg>
+                <div>主键属性（椭圆）</div>
+            </div>
+            <div class="legend-item">
+                <svg class="legend-symbol">
+                    <polygon points="10,12 20,2 30,12 20,22" class="relationship" />
+                </svg>
+                <div>关系（菱形）</div>
+            </div>
+            <div class="legend-item">
+                <svg class="legend-symbol">
+                    <path d="M 5,12 L 35,12" class="connector" />
+                </svg>
+                <div>连接线</div>
+            </div>
+        </div>
+        
+        <div style="margin-top:20px; font-size:0.9em; color:#666;">
+            <p>注：此E-R图按照Chen表示法绘制，实体以矩形表示，属性以椭圆表示，关系以菱形表示。</p>
+            <p>图中展示了核心实体（用户、小说、章节、评论）及其关系，多对多关系通过实体化处理。</p>
+            <p>主要关系：用户可以创作小说（一对多），小说包含章节（一对多），用户可以发表评论（一对多），用户可以收藏小说和阅读章节（多对多）。</p>
+        </div>
+    </div>
+</body>
+</html> 
