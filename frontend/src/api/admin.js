@@ -1,14 +1,14 @@
-import axios from 'axios';
+import request from '@/utils/request';
 
-const API_URL = '/api/admin';
+const API_URL = '/admin';
 
 /**
  * 获取管理员仪表盘统计数据
  */
 export const getDashboardStats = async () => {
   try {
-    const response = await axios.get(`${API_URL}/dashboard`);
-    return response.data;
+    const response = await request.get(`${API_URL}/dashboard`);
+    return response;
   } catch (error) {
     console.error('获取仪表盘数据失败:', error);
     throw error.response?.data?.error || '获取仪表盘数据失败';
@@ -24,8 +24,8 @@ export const getDashboardStats = async () => {
  */
 export const getUsers = async (params = {}) => {
   try {
-    const response = await axios.get(`${API_URL}/users`, { params });
-    return response.data;
+    const response = await request.get(`${API_URL}/users`, { params });
+    return response;
   } catch (error) {
     console.error('获取用户列表失败:', error);
     throw error.response?.data?.error || '获取用户列表失败';
@@ -42,8 +42,8 @@ export const getUsers = async (params = {}) => {
  */
 export const manageUser = async (userId, data) => {
   try {
-    const response = await axios.post(`${API_URL}/users/${userId}`, data);
-    return response.data;
+    const response = await request.post(`${API_URL}/users/${userId}`, data);
+    return response;
   } catch (error) {
     console.error('管理用户状态失败:', error);
     throw error.response?.data?.error || '管理用户状态失败';
@@ -59,8 +59,8 @@ export const manageUser = async (userId, data) => {
  */
 export const getUserActions = async (params = {}) => {
   try {
-    const response = await axios.get(`${API_URL}/user-actions`, { params });
-    return response.data;
+    const response = await request.get(`${API_URL}/user-actions`, { params });
+    return response;
   } catch (error) {
     console.error('获取用户操作历史失败:', error);
     throw error.response?.data?.error || '获取用户操作历史失败';
@@ -76,8 +76,8 @@ export const getUserActions = async (params = {}) => {
  */
 export const getSensitiveWords = async (params = {}) => {
   try {
-    const response = await axios.get(`${API_URL}/sensitive-words`, { params });
-    return response.data;
+    const response = await request.get(`${API_URL}/sensitive-words`, { params });
+    return response;
   } catch (error) {
     console.error('获取敏感词列表失败:', error);
     throw error.response?.data?.error || '获取敏感词列表失败';
@@ -93,11 +93,11 @@ export const getSensitiveWords = async (params = {}) => {
  */
 export const addSensitiveWord = async (data) => {
   try {
-    const response = await axios.post(`${API_URL}/sensitive-words`, {
+    const response = await request.post(`${API_URL}/sensitive-words`, {
       action: 'add',
       ...data
     });
-    return response.data;
+    return response;
   } catch (error) {
     console.error('添加敏感词失败:', error);
     throw error.response?.data?.error || '添加敏感词失败';
@@ -110,11 +110,11 @@ export const addSensitiveWord = async (data) => {
  */
 export const deleteSensitiveWord = async (wordId) => {
   try {
-    const response = await axios.post(`${API_URL}/sensitive-words`, {
+    const response = await request.post(`${API_URL}/sensitive-words`, {
       action: 'delete',
       word_id: wordId
     });
-    return response.data;
+    return response;
   } catch (error) {
     console.error('删除敏感词失败:', error);
     throw error.response?.data?.error || '删除敏感词失败';
@@ -130,8 +130,8 @@ export const deleteSensitiveWord = async (wordId) => {
  */
 export const getPendingContent = async (contentType, params = {}) => {
   try {
-    const response = await axios.get(`${API_URL}/content/${contentType}`, { params });
-    return response.data;
+    const response = await request.get(`${API_URL}/content/${contentType}`, { params });
+    return response;
   } catch (error) {
     console.error('获取待审核内容失败:', error);
     throw error.response?.data?.error || '获取待审核内容失败';
@@ -147,8 +147,8 @@ export const getPendingContent = async (contentType, params = {}) => {
  */
 export const auditContent = async (auditId, data) => {
   try {
-    const response = await axios.post(`${API_URL}/content/audit/${auditId}`, data);
-    return response.data;
+    const response = await request.post(`${API_URL}/content/audit/${auditId}`, data);
+    return response;
   } catch (error) {
     console.error('审核内容失败:', error);
     throw error.response?.data?.error || '审核内容失败';
@@ -164,8 +164,8 @@ export const auditContent = async (auditId, data) => {
  */
 export const getCrawledNovels = async (params = {}) => {
   try {
-    const response = await axios.get(`${API_URL}/crawled-novels`, { params });
-    return response.data;
+    const response = await request.get(`${API_URL}/crawled-novels`, { params });
+    return response;
   } catch (error) {
     console.error('获取爬取的小说列表失败:', error);
     throw error.response?.data?.error || '获取爬取的小说列表失败';
@@ -178,8 +178,8 @@ export const getCrawledNovels = async (params = {}) => {
  */
 export const getCrawledChapters = async (novelId) => {
   try {
-    const response = await axios.get(`${API_URL}/crawled-novels/${novelId}/chapters`);
-    return response.data;
+    const response = await request.get(`${API_URL}/crawled-novels/${novelId}/chapters`);
+    return response;
   } catch (error) {
     console.error('获取爬取的小说章节失败:', error);
     throw error.response?.data?.error || '获取爬取的小说章节失败';
@@ -195,8 +195,8 @@ export const getCrawledChapters = async (novelId) => {
  */
 export const manageCrawledNovel = async (novelId, data) => {
   try {
-    const response = await axios.post(`${API_URL}/crawled-novels/${novelId}`, data);
-    return response.data;
+    const response = await request.post(`${API_URL}/crawled-novels/${novelId}`, data);
+    return response;
   } catch (error) {
     console.error('管理爬取的小说失败:', error);
     throw error.response?.data?.error || '管理爬取的小说失败';
