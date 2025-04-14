@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang=en>
+  <head>
+    <title>sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1054, &#34;Unknown column &#39;sensitive_word.level&#39; in &#39;field list&#39;&#34;)
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT sensitive_word.id AS sensitive_word_id, sensitive_word.word AS sensitive_word_word, sensitive_word.level AS sensitive_word_level, sensitive_word.category AS sensitive_word_category, sensitive_word.added_by AS sensitive_word_added_by, sensitive_word.created_at AS sensitive_word_created_at 
+FROM sensitive_word) AS anon_1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+ // Werkzeug Debugger</title>
+    <link rel="stylesheet" href="?__debugger__=yes&amp;cmd=resource&amp;f=style.css">
+    <link rel="shortcut icon"
+        href="?__debugger__=yes&amp;cmd=resource&amp;f=console.png">
+    <script src="?__debugger__=yes&amp;cmd=resource&amp;f=debugger.js"></script>
+    <script>
+      var CONSOLE_MODE = false,
+          EVALEX = true,
+          EVALEX_TRUSTED = false,
+          SECRET = "mn2FuojFbsExy2m3z9pP";
+    </script>
+  </head>
+  <body style="background-color: #fff">
+    <div class="debugger">
+<h1>OperationalError</h1>
+<div class="detail">
+  <p class="errormsg">sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1054, &#34;Unknown column &#39;sensitive_word.level&#39; in &#39;field list&#39;&#34;)
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT sensitive_word.id AS sensitive_word_id, sensitive_word.word AS sensitive_word_word, sensitive_word.level AS sensitive_word_level, sensitive_word.category AS sensitive_word_category, sensitive_word.added_by AS sensitive_word_added_by, sensitive_word.created_at AS sensitive_word_created_at 
+FROM sensitive_word) AS anon_1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+</p>
+</div>
+<h2 class="traceback">Traceback <em>(most recent call last)</em></h2>
+<div class="traceback">
+  <h3></h3>
+  <ul><li><div class="frame" id="frame-140229796136096">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py"</cite>,
+      line <em class="line">1964</em>,
+      in <code class="function">_exec_single_context</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">                            </span>context,</pre>
+<pre class="line before"><span class="ws">                        </span>):</pre>
+<pre class="line before"><span class="ws">                            </span>evt_handled = True</pre>
+<pre class="line before"><span class="ws">                            </span>break</pre>
+<pre class="line before"><span class="ws">                </span>if not evt_handled:</pre>
+<pre class="line current"><span class="ws">                    </span>self.dialect.do_execute(</pre>
+<pre class="line after"><span class="ws">                        </span>cursor, str_statement, effective_parameters, context</pre>
+<pre class="line after"><span class="ws">                    </span>)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">            </span>if self._has_events or self.engine._has_events:</pre>
+<pre class="line after"><span class="ws">                </span>self.dispatch.after_cursor_execute(</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796145504">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/default.py"</cite>,
+      line <em class="line">945</em>,
+      in <code class="function">do_execute</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>def do_executemany(self, cursor, statement, parameters, context=None):</pre>
+<pre class="line before"><span class="ws">        </span>cursor.executemany(statement, parameters)</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>def do_execute(self, cursor, statement, parameters, context=None):</pre>
+<pre class="line current"><span class="ws">        </span>cursor.execute(statement, parameters)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def do_execute_no_params(self, cursor, statement, context=None):</pre>
+<pre class="line after"><span class="ws">        </span>cursor.execute(statement)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def is_disconnect(</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796145616">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py"</cite>,
+      line <em class="line">153</em>,
+      in <code class="function">execute</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>while self.nextset():</pre>
+<pre class="line before"><span class="ws">            </span>pass</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>query = self.mogrify(query, args)</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">        </span>result = self._query(query)</pre>
+<pre class="line after"><span class="ws">        </span>self._executed = query</pre>
+<pre class="line after"><span class="ws">        </span>return result</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def executemany(self, query, args):</pre>
+<pre class="line after"><span class="ws">        </span>&#34;&#34;&#34;Run several data against one query.</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796135536">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py"</cite>,
+      line <em class="line">322</em>,
+      in <code class="function">_query</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>self.rownumber = r</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>def _query(self, q):</pre>
+<pre class="line before"><span class="ws">        </span>conn = self._get_db()</pre>
+<pre class="line before"><span class="ws">        </span>self._clear_result()</pre>
+<pre class="line current"><span class="ws">        </span>conn.query(q)</pre>
+<pre class="line after"><span class="ws">        </span>self._do_get_result()</pre>
+<pre class="line after"><span class="ws">        </span>return self.rowcount</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def _clear_result(self):</pre>
+<pre class="line after"><span class="ws">        </span>self.rownumber = 0</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796150880">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py"</cite>,
+      line <em class="line">558</em>,
+      in <code class="function">query</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span># if DEBUG:</pre>
+<pre class="line before"><span class="ws">        </span>#     print(&#34;DEBUG: sending query:&#34;, sql)</pre>
+<pre class="line before"><span class="ws">        </span>if isinstance(sql, str):</pre>
+<pre class="line before"><span class="ws">            </span>sql = sql.encode(self.encoding, &#34;surrogateescape&#34;)</pre>
+<pre class="line before"><span class="ws">        </span>self._execute_command(COMMAND.COM_QUERY, sql)</pre>
+<pre class="line current"><span class="ws">        </span>self._affected_rows = self._read_query_result(unbuffered=unbuffered)</pre>
+<pre class="line after"><span class="ws">        </span>return self._affected_rows</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def next_result(self, unbuffered=False):</pre>
+<pre class="line after"><span class="ws">        </span>self._affected_rows = self._read_query_result(unbuffered=unbuffered)</pre>
+<pre class="line after"><span class="ws">        </span>return self._affected_rows</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796136320">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py"</cite>,
+      line <em class="line">822</em>,
+      in <code class="function">_read_query_result</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">                </span>result.unbuffered_active = False</pre>
+<pre class="line before"><span class="ws">                </span>result.connection = None</pre>
+<pre class="line before"><span class="ws">                </span>raise</pre>
+<pre class="line before"><span class="ws">        </span>else:</pre>
+<pre class="line before"><span class="ws">            </span>result = MySQLResult(self)</pre>
+<pre class="line current"><span class="ws">            </span>result.read()</pre>
+<pre class="line after"><span class="ws">        </span>self._result = result</pre>
+<pre class="line after"><span class="ws">        </span>if result.server_status is not None:</pre>
+<pre class="line after"><span class="ws">            </span>self.server_status = result.server_status</pre>
+<pre class="line after"><span class="ws">        </span>return result.affected_rows</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796144944">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py"</cite>,
+      line <em class="line">1200</em>,
+      in <code class="function">read</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>if self.unbuffered_active:</pre>
+<pre class="line before"><span class="ws">            </span>self._finish_unbuffered_query()</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>def read(self):</pre>
+<pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line current"><span class="ws">            </span>first_packet = self.connection._read_packet()</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">            </span>if first_packet.is_ok_packet():</pre>
+<pre class="line after"><span class="ws">                </span>self._read_ok_packet(first_packet)</pre>
+<pre class="line after"><span class="ws">            </span>elif first_packet.is_load_local_packet():</pre>
+<pre class="line after"><span class="ws">                </span>self._read_load_local_packet(first_packet)</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796150208">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py"</cite>,
+      line <em class="line">772</em>,
+      in <code class="function">_read_packet</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>packet = packet_type(bytes(buff), self.encoding)</pre>
+<pre class="line before"><span class="ws">        </span>if packet.is_error_packet():</pre>
+<pre class="line before"><span class="ws">            </span>if self._result is not None and self._result.unbuffered_active is True:</pre>
+<pre class="line before"><span class="ws">                </span>self._result.unbuffered_active = False</pre>
+<pre class="line current"><span class="ws">            </span>packet.raise_for_error()</pre>
+<pre class="line after"><span class="ws">        </span>return packet</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def _read_bytes(self, num_bytes):</pre>
+<pre class="line after"><span class="ws">        </span>self._sock.settimeout(self._read_timeout)</pre>
+<pre class="line after"><span class="ws">        </span>while True:</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796147856">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/protocol.py"</cite>,
+      line <em class="line">221</em>,
+      in <code class="function">raise_for_error</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>self.rewind()</pre>
+<pre class="line before"><span class="ws">        </span>self.advance(1)  # field_count == error (we already know that)</pre>
+<pre class="line before"><span class="ws">        </span>errno = self.read_uint16()</pre>
+<pre class="line before"><span class="ws">        </span>if DEBUG:</pre>
+<pre class="line before"><span class="ws">            </span>print(&#34;errno =&#34;, errno)</pre>
+<pre class="line current"><span class="ws">        </span>err.raise_mysql_exception(self._data)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def dump(self):</pre>
+<pre class="line after"><span class="ws">        </span>dump_packet(self._data)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796142928">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/err.py"</cite>,
+      line <em class="line">143</em>,
+      in <code class="function">raise_mysql_exception</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">    </span>errno = struct.unpack(&#34;&lt;h&#34;, data[1:3])[0]</pre>
+<pre class="line before"><span class="ws">    </span>errval = data[9:].decode(&#34;utf-8&#34;, &#34;replace&#34;)</pre>
+<pre class="line before"><span class="ws">    </span>errorclass = error_map.get(errno)</pre>
+<pre class="line before"><span class="ws">    </span>if errorclass is None:</pre>
+<pre class="line before"><span class="ws">        </span>errorclass = InternalError if errno &lt; 1000 else OperationalError</pre>
+<pre class="line current"><span class="ws">    </span>raise errorclass(errno, errval)</pre></div>
+</div>
+
+<li><div class="exc-divider">The above exception was the direct cause of the following exception:</div>
+<li><div class="frame" id="frame-140229796136880">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/flask/app.py"</cite>,
+      line <em class="line">2213</em>,
+      in <code class="function">__call__</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">    </span>def __call__(self, environ: dict, start_response: t.Callable) -&gt; t.Any:</pre>
+<pre class="line before"><span class="ws">        </span>&#34;&#34;&#34;The WSGI server calls the Flask application object as the</pre>
+<pre class="line before"><span class="ws">        </span>WSGI application. This calls :meth:`wsgi_app`, which can be</pre>
+<pre class="line before"><span class="ws">        </span>wrapped to apply middleware.</pre>
+<pre class="line before"><span class="ws">        </span>&#34;&#34;&#34;</pre>
+<pre class="line current"><span class="ws">        </span>return self.wsgi_app(environ, start_response)</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796146624">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/flask/app.py"</cite>,
+      line <em class="line">2193</em>,
+      in <code class="function">wsgi_app</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>try:</pre>
+<pre class="line before"><span class="ws">                </span>ctx.push()</pre>
+<pre class="line before"><span class="ws">                </span>response = self.full_dispatch_request()</pre>
+<pre class="line before"><span class="ws">            </span>except Exception as e:</pre>
+<pre class="line before"><span class="ws">                </span>error = e</pre>
+<pre class="line current"><span class="ws">                </span>response = self.handle_exception(e)</pre>
+<pre class="line after"><span class="ws">            </span>except:  # noqa: B001</pre>
+<pre class="line after"><span class="ws">                </span>error = sys.exc_info()[1]</pre>
+<pre class="line after"><span class="ws">                </span>raise</pre>
+<pre class="line after"><span class="ws">            </span>return response(environ, start_response)</pre>
+<pre class="line after"><span class="ws">        </span>finally:</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796137440">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/flask_cors/extension.py"</cite>,
+      line <em class="line">176</em>,
+      in <code class="function">wrapped_function</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span># Wrap exception handlers with cross_origin</pre>
+<pre class="line before"><span class="ws">        </span># These error handlers will still respect the behavior of the route</pre>
+<pre class="line before"><span class="ws">        </span>if options.get(&#39;intercept_exceptions&#39;, True):</pre>
+<pre class="line before"><span class="ws">            </span>def _after_request_decorator(f):</pre>
+<pre class="line before"><span class="ws">                </span>def wrapped_function(*args, **kwargs):</pre>
+<pre class="line current"><span class="ws">                    </span>return cors_after_request(app.make_response(f(*args, **kwargs)))</pre>
+<pre class="line after"><span class="ws">                </span>return wrapped_function</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">            </span>if hasattr(app, &#39;handle_exception&#39;):</pre>
+<pre class="line after"><span class="ws">                </span>app.handle_exception = _after_request_decorator(</pre>
+<pre class="line after"><span class="ws">                    </span>app.handle_exception)</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796139008">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/flask/app.py"</cite>,
+      line <em class="line">2190</em>,
+      in <code class="function">wsgi_app</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>ctx = self.request_context(environ)</pre>
+<pre class="line before"><span class="ws">        </span>error: BaseException | None = None</pre>
+<pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line before"><span class="ws">            </span>try:</pre>
+<pre class="line before"><span class="ws">                </span>ctx.push()</pre>
+<pre class="line current"><span class="ws">                </span>response = self.full_dispatch_request()</pre>
+<pre class="line after"><span class="ws">            </span>except Exception as e:</pre>
+<pre class="line after"><span class="ws">                </span>error = e</pre>
+<pre class="line after"><span class="ws">                </span>response = self.handle_exception(e)</pre>
+<pre class="line after"><span class="ws">            </span>except:  # noqa: B001</pre>
+<pre class="line after"><span class="ws">                </span>error = sys.exc_info()[1]</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796147072">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/flask/app.py"</cite>,
+      line <em class="line">1486</em>,
+      in <code class="function">full_dispatch_request</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>request_started.send(self, _async_wrapper=self.ensure_sync)</pre>
+<pre class="line before"><span class="ws">            </span>rv = self.preprocess_request()</pre>
+<pre class="line before"><span class="ws">            </span>if rv is None:</pre>
+<pre class="line before"><span class="ws">                </span>rv = self.dispatch_request()</pre>
+<pre class="line before"><span class="ws">        </span>except Exception as e:</pre>
+<pre class="line current"><span class="ws">            </span>rv = self.handle_user_exception(e)</pre>
+<pre class="line after"><span class="ws">        </span>return self.finalize_request(rv)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def finalize_request(</pre>
+<pre class="line after"><span class="ws">        </span>self,</pre>
+<pre class="line after"><span class="ws">        </span>rv: ft.ResponseReturnValue | HTTPException,</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796138896">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/flask_cors/extension.py"</cite>,
+      line <em class="line">176</em>,
+      in <code class="function">wrapped_function</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span># Wrap exception handlers with cross_origin</pre>
+<pre class="line before"><span class="ws">        </span># These error handlers will still respect the behavior of the route</pre>
+<pre class="line before"><span class="ws">        </span>if options.get(&#39;intercept_exceptions&#39;, True):</pre>
+<pre class="line before"><span class="ws">            </span>def _after_request_decorator(f):</pre>
+<pre class="line before"><span class="ws">                </span>def wrapped_function(*args, **kwargs):</pre>
+<pre class="line current"><span class="ws">                    </span>return cors_after_request(app.make_response(f(*args, **kwargs)))</pre>
+<pre class="line after"><span class="ws">                </span>return wrapped_function</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">            </span>if hasattr(app, &#39;handle_exception&#39;):</pre>
+<pre class="line after"><span class="ws">                </span>app.handle_exception = _after_request_decorator(</pre>
+<pre class="line after"><span class="ws">                    </span>app.handle_exception)</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796144832">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/flask/app.py"</cite>,
+      line <em class="line">1484</em>,
+      in <code class="function">full_dispatch_request</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line before"><span class="ws">            </span>request_started.send(self, _async_wrapper=self.ensure_sync)</pre>
+<pre class="line before"><span class="ws">            </span>rv = self.preprocess_request()</pre>
+<pre class="line before"><span class="ws">            </span>if rv is None:</pre>
+<pre class="line current"><span class="ws">                </span>rv = self.dispatch_request()</pre>
+<pre class="line after"><span class="ws">        </span>except Exception as e:</pre>
+<pre class="line after"><span class="ws">            </span>rv = self.handle_user_exception(e)</pre>
+<pre class="line after"><span class="ws">        </span>return self.finalize_request(rv)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def finalize_request(</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796146736">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/flask/app.py"</cite>,
+      line <em class="line">1469</em>,
+      in <code class="function">dispatch_request</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>and req.method == &#34;OPTIONS&#34;</pre>
+<pre class="line before"><span class="ws">        </span>):</pre>
+<pre class="line before"><span class="ws">            </span>return self.make_default_options_response()</pre>
+<pre class="line before"><span class="ws">        </span># otherwise dispatch to the handler for that endpoint</pre>
+<pre class="line before"><span class="ws">        </span>view_args: dict[str, t.Any] = req.view_args  # type: ignore[assignment]</pre>
+<pre class="line current"><span class="ws">        </span>return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def full_dispatch_request(self) -&gt; Response:</pre>
+<pre class="line after"><span class="ws">        </span>&#34;&#34;&#34;Dispatches the request and on top of that performs request</pre>
+<pre class="line after"><span class="ws">        </span>pre and postprocessing as well as HTTP exception catching and</pre>
+<pre class="line after"><span class="ws">        </span>error handling.</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796138000">
+  <h4>File <cite class="filename">"/home/chris/novels/backend/app/utils/auth.py"</cite>,
+      line <em class="line">50</em>,
+      in <code class="function">decorated</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>return jsonify({&#34;error&#34;: &#34;Admin privileges required&#34;}), 403</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span># Add user to Flask&#39;s g object for use in the route</pre>
+<pre class="line before"><span class="ws">        </span>g.user = user</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">        </span>return f(*args, **kwargs)</pre>
+<pre class="line after"><span class="ws">    </span>return decorated</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796149312">
+  <h4>File <cite class="filename">"/home/chris/novels/backend/app/api/admin.py"</cite>,
+      line <em class="line">256</em>,
+      in <code class="function">get_sensitive_words</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>&#39;error&#39;: &#39;Invalid pagination parameters&#39;</pre>
+<pre class="line before"><span class="ws">        </span>}), 400</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>category = request.args.get(&#39;category&#39;)</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">    </span>result = AdminService.get_sensitive_words(category=category, page=page, per_page=per_page)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>return jsonify(result)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span>@admin_bp.route(&#39;/sensitive-words&#39;, methods=[&#39;POST&#39;])</pre>
+<pre class="line after"><span class="ws"></span>@admin_required</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796147184">
+  <h4>File <cite class="filename">"/home/chris/novels/backend/app/services/admin_service.py"</cite>,
+      line <em class="line">263</em>,
+      in <code class="function">get_sensitive_words</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>per_page: Items per page</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>Returns:</pre>
+<pre class="line before"><span class="ws">            </span>Dict with words and pagination info</pre>
+<pre class="line before"><span class="ws">        </span>&#34;&#34;&#34;</pre>
+<pre class="line current"><span class="ws">        </span>words, total = AdminDAO.get_sensitive_words(category, page, per_page)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">        </span>return {</pre>
+<pre class="line after"><span class="ws">            </span>&#39;words&#39;: [word.to_dict() for word in words],</pre>
+<pre class="line after"><span class="ws">            </span>&#39;total&#39;: total,</pre>
+<pre class="line after"><span class="ws">            </span>&#39;page&#39;: page,</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796135200">
+  <h4>File <cite class="filename">"/home/chris/novels/backend/app/dao/admin_dao.py"</cite>,
+      line <em class="line">257</em>,
+      in <code class="function">get_sensitive_words</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>query = SensitiveWord.query</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>if category:</pre>
+<pre class="line before"><span class="ws">            </span>query = query.filter(SensitiveWord.category == category)</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">        </span>total = query.count()</pre>
+<pre class="line after"><span class="ws">        </span>words = query.order_by(SensitiveWord.word) \</pre>
+<pre class="line after"><span class="ws">                    </span>.offset((page - 1) * per_page) \</pre>
+<pre class="line after"><span class="ws">                    </span>.limit(per_page) \</pre>
+<pre class="line after"><span class="ws">                    </span>.all()</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796136992">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py"</cite>,
+      line <em class="line">3147</em>,
+      in <code class="function">count</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>:ref:`migration_20_query_usage`</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>&#34;&#34;&#34;</pre>
+<pre class="line before"><span class="ws">        </span>col = sql.func.count(sql.literal_column(&#34;*&#34;))</pre>
+<pre class="line before"><span class="ws">        </span>return (  # type: ignore</pre>
+<pre class="line current"><span class="ws">            </span>self._legacy_from_self(col).enable_eagerloads(False).scalar()</pre>
+<pre class="line after"><span class="ws">        </span>)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def delete(</pre>
+<pre class="line after"><span class="ws">        </span>self,</pre>
+<pre class="line after"><span class="ws">        </span>synchronize_session: SynchronizeSessionArgument = &#34;auto&#34;,</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796150432">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py"</cite>,
+      line <em class="line">2836</em>,
+      in <code class="function">scalar</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>:meth:`_engine.Result.scalar` - v2 comparable method.</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>&#34;&#34;&#34;</pre>
+<pre class="line before"><span class="ws">        </span># TODO: not sure why we can&#39;t use result.scalar() here</pre>
+<pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line current"><span class="ws">            </span>ret = self.one()</pre>
+<pre class="line after"><span class="ws">            </span>if not isinstance(ret, collections_abc.Sequence):</pre>
+<pre class="line after"><span class="ws">                </span>return ret</pre>
+<pre class="line after"><span class="ws">            </span>return ret[0]</pre>
+<pre class="line after"><span class="ws">        </span>except sa_exc.NoResultFound:</pre>
+<pre class="line after"><span class="ws">            </span>return None</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796145952">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py"</cite>,
+      line <em class="line">2809</em>,
+      in <code class="function">one</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>:meth:`_engine.Result.one` - v2 comparable method.</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">            </span>:meth:`_engine.Result.scalar_one` - v2 comparable method.</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>&#34;&#34;&#34;</pre>
+<pre class="line current"><span class="ws">        </span>return self._iter().one()  # type: ignore</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def scalar(self) -&gt; Any:</pre>
+<pre class="line after"><span class="ws">        </span>&#34;&#34;&#34;Return the first element of the first result or None</pre>
+<pre class="line after"><span class="ws">        </span>if no rows present.  If multiple rows are returned,</pre>
+<pre class="line after"><span class="ws">        </span>raises MultipleResultsFound.</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796137328">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py"</cite>,
+      line <em class="line">2858</em>,
+      in <code class="function">_iter</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">    </span>def _iter(self) -&gt; Union[ScalarResult[_T], Result[_T]]:</pre>
+<pre class="line before"><span class="ws">        </span># new style execution.</pre>
+<pre class="line before"><span class="ws">        </span>params = self._params</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>statement = self._statement_20()</pre>
+<pre class="line current"><span class="ws">        </span>result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(</pre>
+<pre class="line after"><span class="ws">            </span>statement,</pre>
+<pre class="line after"><span class="ws">            </span>params,</pre>
+<pre class="line after"><span class="ws">            </span>execution_options={&#34;_sa_orm_load_options&#34;: self.load_options},</pre>
+<pre class="line after"><span class="ws">        </span>)</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796143376">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/session.py"</cite>,
+      line <em class="line">2365</em>,
+      in <code class="function">execute</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>:return: a :class:`_engine.Result` object.</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>&#34;&#34;&#34;</pre>
+<pre class="line current"><span class="ws">        </span>return self._execute_internal(</pre>
+<pre class="line after"><span class="ws">            </span>statement,</pre>
+<pre class="line after"><span class="ws">            </span>params,</pre>
+<pre class="line after"><span class="ws">            </span>execution_options=execution_options,</pre>
+<pre class="line after"><span class="ws">            </span>bind_arguments=bind_arguments,</pre>
+<pre class="line after"><span class="ws">            </span>_parent_execute_state=_parent_execute_state,</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796140352">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/session.py"</cite>,
+      line <em class="line">2251</em>,
+      in <code class="function">_execute_internal</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>return conn.scalar(</pre>
+<pre class="line before"><span class="ws">                </span>statement, params or {}, execution_options=execution_options</pre>
+<pre class="line before"><span class="ws">            </span>)</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>if compile_state_cls:</pre>
+<pre class="line current"><span class="ws">            </span>result: Result[Any] = compile_state_cls.orm_execute_statement(</pre>
+<pre class="line after"><span class="ws">                </span>self,</pre>
+<pre class="line after"><span class="ws">                </span>statement,</pre>
+<pre class="line after"><span class="ws">                </span>params or {},</pre>
+<pre class="line after"><span class="ws">                </span>execution_options,</pre>
+<pre class="line after"><span class="ws">                </span>bind_arguments,</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796138336">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/context.py"</cite>,
+      line <em class="line">306</em>,
+      in <code class="function">orm_execute_statement</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>params,</pre>
+<pre class="line before"><span class="ws">        </span>execution_options,</pre>
+<pre class="line before"><span class="ws">        </span>bind_arguments,</pre>
+<pre class="line before"><span class="ws">        </span>conn,</pre>
+<pre class="line before"><span class="ws">    </span>) -&gt; Result:</pre>
+<pre class="line current"><span class="ws">        </span>result = conn.execute(</pre>
+<pre class="line after"><span class="ws">            </span>statement, params or {}, execution_options=execution_options</pre>
+<pre class="line after"><span class="ws">        </span>)</pre>
+<pre class="line after"><span class="ws">        </span>return cls.orm_setup_cursor_result(</pre>
+<pre class="line after"><span class="ws">            </span>session,</pre>
+<pre class="line after"><span class="ws">            </span>statement,</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796145728">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py"</cite>,
+      line <em class="line">1416</em>,
+      in <code class="function">execute</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line before"><span class="ws">            </span>meth = statement._execute_on_connection</pre>
+<pre class="line before"><span class="ws">        </span>except AttributeError as err:</pre>
+<pre class="line before"><span class="ws">            </span>raise exc.ObjectNotExecutableError(statement) from err</pre>
+<pre class="line before"><span class="ws">        </span>else:</pre>
+<pre class="line current"><span class="ws">            </span>return meth(</pre>
+<pre class="line after"><span class="ws">                </span>self,</pre>
+<pre class="line after"><span class="ws">                </span>distilled_parameters,</pre>
+<pre class="line after"><span class="ws">                </span>execution_options or NO_OPTIONS,</pre>
+<pre class="line after"><span class="ws">            </span>)</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796138112">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/sql/elements.py"</cite>,
+      line <em class="line">523</em>,
+      in <code class="function">_execute_on_connection</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>execution_options: CoreExecuteOptionsParameter,</pre>
+<pre class="line before"><span class="ws">    </span>) -&gt; Result[Any]:</pre>
+<pre class="line before"><span class="ws">        </span>if self.supports_execution:</pre>
+<pre class="line before"><span class="ws">            </span>if TYPE_CHECKING:</pre>
+<pre class="line before"><span class="ws">                </span>assert isinstance(self, Executable)</pre>
+<pre class="line current"><span class="ws">            </span>return connection._execute_clauseelement(</pre>
+<pre class="line after"><span class="ws">                </span>self, distilled_params, execution_options</pre>
+<pre class="line after"><span class="ws">            </span>)</pre>
+<pre class="line after"><span class="ws">        </span>else:</pre>
+<pre class="line after"><span class="ws">            </span>raise exc.ObjectNotExecutableError(self)</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796136208">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py"</cite>,
+      line <em class="line">1638</em>,
+      in <code class="function">_execute_clauseelement</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>column_keys=keys,</pre>
+<pre class="line before"><span class="ws">            </span>for_executemany=for_executemany,</pre>
+<pre class="line before"><span class="ws">            </span>schema_translate_map=schema_translate_map,</pre>
+<pre class="line before"><span class="ws">            </span>linting=self.dialect.compiler_linting | compiler.WARN_LINTING,</pre>
+<pre class="line before"><span class="ws">        </span>)</pre>
+<pre class="line current"><span class="ws">        </span>ret = self._execute_context(</pre>
+<pre class="line after"><span class="ws">            </span>dialect,</pre>
+<pre class="line after"><span class="ws">            </span>dialect.execution_ctx_cls._init_compiled,</pre>
+<pre class="line after"><span class="ws">            </span>compiled_sql,</pre>
+<pre class="line after"><span class="ws">            </span>distilled_parameters,</pre>
+<pre class="line after"><span class="ws">            </span>execution_options,</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796142592">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py"</cite>,
+      line <em class="line">1843</em>,
+      in <code class="function">_execute_context</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>context.pre_exec()</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>if context.execute_style is ExecuteStyle.INSERTMANYVALUES:</pre>
+<pre class="line before"><span class="ws">            </span>return self._exec_insertmany_context(dialect, context)</pre>
+<pre class="line before"><span class="ws">        </span>else:</pre>
+<pre class="line current"><span class="ws">            </span>return self._exec_single_context(</pre>
+<pre class="line after"><span class="ws">                </span>dialect, context, statement, parameters</pre>
+<pre class="line after"><span class="ws">            </span>)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def _exec_single_context(</pre>
+<pre class="line after"><span class="ws">        </span>self,</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796142144">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py"</cite>,
+      line <em class="line">1983</em>,
+      in <code class="function">_exec_single_context</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">            </span>context.post_exec()</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">            </span>result = context._setup_result_proxy()</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>except BaseException as e:</pre>
+<pre class="line current"><span class="ws">            </span>self._handle_dbapi_exception(</pre>
+<pre class="line after"><span class="ws">                </span>e, str_statement, effective_parameters, cursor, context</pre>
+<pre class="line after"><span class="ws">            </span>)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">        </span>return result</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796148752">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py"</cite>,
+      line <em class="line">2352</em>,
+      in <code class="function">_handle_dbapi_exception</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">            </span>if newraise:</pre>
+<pre class="line before"><span class="ws">                </span>raise newraise.with_traceback(exc_info[2]) from e</pre>
+<pre class="line before"><span class="ws">            </span>elif should_wrap:</pre>
+<pre class="line before"><span class="ws">                </span>assert sqlalchemy_exception is not None</pre>
+<pre class="line current"><span class="ws">                </span>raise sqlalchemy_exception.with_traceback(exc_info[2]) from e</pre>
+<pre class="line after"><span class="ws">            </span>else:</pre>
+<pre class="line after"><span class="ws">                </span>assert exc_info[1] is not None</pre>
+<pre class="line after"><span class="ws">                </span>raise exc_info[1].with_traceback(exc_info[2])</pre>
+<pre class="line after"><span class="ws">        </span>finally:</pre>
+<pre class="line after"><span class="ws">            </span>del self._reentrant_error</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796150320">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py"</cite>,
+      line <em class="line">1964</em>,
+      in <code class="function">_exec_single_context</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">                            </span>context,</pre>
+<pre class="line before"><span class="ws">                        </span>):</pre>
+<pre class="line before"><span class="ws">                            </span>evt_handled = True</pre>
+<pre class="line before"><span class="ws">                            </span>break</pre>
+<pre class="line before"><span class="ws">                </span>if not evt_handled:</pre>
+<pre class="line current"><span class="ws">                    </span>self.dialect.do_execute(</pre>
+<pre class="line after"><span class="ws">                        </span>cursor, str_statement, effective_parameters, context</pre>
+<pre class="line after"><span class="ws">                    </span>)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">            </span>if self._has_events or self.engine._has_events:</pre>
+<pre class="line after"><span class="ws">                </span>self.dispatch.after_cursor_execute(</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796135984">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/default.py"</cite>,
+      line <em class="line">945</em>,
+      in <code class="function">do_execute</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>def do_executemany(self, cursor, statement, parameters, context=None):</pre>
+<pre class="line before"><span class="ws">        </span>cursor.executemany(statement, parameters)</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>def do_execute(self, cursor, statement, parameters, context=None):</pre>
+<pre class="line current"><span class="ws">        </span>cursor.execute(statement, parameters)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def do_execute_no_params(self, cursor, statement, context=None):</pre>
+<pre class="line after"><span class="ws">        </span>cursor.execute(statement)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def is_disconnect(</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796150096">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py"</cite>,
+      line <em class="line">153</em>,
+      in <code class="function">execute</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>while self.nextset():</pre>
+<pre class="line before"><span class="ws">            </span>pass</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>query = self.mogrify(query, args)</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">        </span>result = self._query(query)</pre>
+<pre class="line after"><span class="ws">        </span>self._executed = query</pre>
+<pre class="line after"><span class="ws">        </span>return result</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def executemany(self, query, args):</pre>
+<pre class="line after"><span class="ws">        </span>&#34;&#34;&#34;Run several data against one query.</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796137552">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py"</cite>,
+      line <em class="line">322</em>,
+      in <code class="function">_query</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>self.rownumber = r</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>def _query(self, q):</pre>
+<pre class="line before"><span class="ws">        </span>conn = self._get_db()</pre>
+<pre class="line before"><span class="ws">        </span>self._clear_result()</pre>
+<pre class="line current"><span class="ws">        </span>conn.query(q)</pre>
+<pre class="line after"><span class="ws">        </span>self._do_get_result()</pre>
+<pre class="line after"><span class="ws">        </span>return self.rowcount</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def _clear_result(self):</pre>
+<pre class="line after"><span class="ws">        </span>self.rownumber = 0</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796139680">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py"</cite>,
+      line <em class="line">558</em>,
+      in <code class="function">query</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span># if DEBUG:</pre>
+<pre class="line before"><span class="ws">        </span>#     print(&#34;DEBUG: sending query:&#34;, sql)</pre>
+<pre class="line before"><span class="ws">        </span>if isinstance(sql, str):</pre>
+<pre class="line before"><span class="ws">            </span>sql = sql.encode(self.encoding, &#34;surrogateescape&#34;)</pre>
+<pre class="line before"><span class="ws">        </span>self._execute_command(COMMAND.COM_QUERY, sql)</pre>
+<pre class="line current"><span class="ws">        </span>self._affected_rows = self._read_query_result(unbuffered=unbuffered)</pre>
+<pre class="line after"><span class="ws">        </span>return self._affected_rows</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def next_result(self, unbuffered=False):</pre>
+<pre class="line after"><span class="ws">        </span>self._affected_rows = self._read_query_result(unbuffered=unbuffered)</pre>
+<pre class="line after"><span class="ws">        </span>return self._affected_rows</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796136432">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py"</cite>,
+      line <em class="line">822</em>,
+      in <code class="function">_read_query_result</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">                </span>result.unbuffered_active = False</pre>
+<pre class="line before"><span class="ws">                </span>result.connection = None</pre>
+<pre class="line before"><span class="ws">                </span>raise</pre>
+<pre class="line before"><span class="ws">        </span>else:</pre>
+<pre class="line before"><span class="ws">            </span>result = MySQLResult(self)</pre>
+<pre class="line current"><span class="ws">            </span>result.read()</pre>
+<pre class="line after"><span class="ws">        </span>self._result = result</pre>
+<pre class="line after"><span class="ws">        </span>if result.server_status is not None:</pre>
+<pre class="line after"><span class="ws">            </span>self.server_status = result.server_status</pre>
+<pre class="line after"><span class="ws">        </span>return result.affected_rows</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796146064">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py"</cite>,
+      line <em class="line">1200</em>,
+      in <code class="function">read</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>if self.unbuffered_active:</pre>
+<pre class="line before"><span class="ws">            </span>self._finish_unbuffered_query()</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>def read(self):</pre>
+<pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line current"><span class="ws">            </span>first_packet = self.connection._read_packet()</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">            </span>if first_packet.is_ok_packet():</pre>
+<pre class="line after"><span class="ws">                </span>self._read_ok_packet(first_packet)</pre>
+<pre class="line after"><span class="ws">            </span>elif first_packet.is_load_local_packet():</pre>
+<pre class="line after"><span class="ws">                </span>self._read_load_local_packet(first_packet)</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796136656">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py"</cite>,
+      line <em class="line">772</em>,
+      in <code class="function">_read_packet</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>packet = packet_type(bytes(buff), self.encoding)</pre>
+<pre class="line before"><span class="ws">        </span>if packet.is_error_packet():</pre>
+<pre class="line before"><span class="ws">            </span>if self._result is not None and self._result.unbuffered_active is True:</pre>
+<pre class="line before"><span class="ws">                </span>self._result.unbuffered_active = False</pre>
+<pre class="line current"><span class="ws">            </span>packet.raise_for_error()</pre>
+<pre class="line after"><span class="ws">        </span>return packet</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def _read_bytes(self, num_bytes):</pre>
+<pre class="line after"><span class="ws">        </span>self._sock.settimeout(self._read_timeout)</pre>
+<pre class="line after"><span class="ws">        </span>while True:</pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796142816">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/protocol.py"</cite>,
+      line <em class="line">221</em>,
+      in <code class="function">raise_for_error</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>self.rewind()</pre>
+<pre class="line before"><span class="ws">        </span>self.advance(1)  # field_count == error (we already know that)</pre>
+<pre class="line before"><span class="ws">        </span>errno = self.read_uint16()</pre>
+<pre class="line before"><span class="ws">        </span>if DEBUG:</pre>
+<pre class="line before"><span class="ws">            </span>print(&#34;errno =&#34;, errno)</pre>
+<pre class="line current"><span class="ws">        </span>err.raise_mysql_exception(self._data)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def dump(self):</pre>
+<pre class="line after"><span class="ws">        </span>dump_packet(self._data)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+<li><div class="frame" id="frame-140229796145168">
+  <h4>File <cite class="filename">"/home/chris/.local/lib/python3.10/site-packages/pymysql/err.py"</cite>,
+      line <em class="line">143</em>,
+      in <code class="function">raise_mysql_exception</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">    </span>errno = struct.unpack(&#34;&lt;h&#34;, data[1:3])[0]</pre>
+<pre class="line before"><span class="ws">    </span>errval = data[9:].decode(&#34;utf-8&#34;, &#34;replace&#34;)</pre>
+<pre class="line before"><span class="ws">    </span>errorclass = error_map.get(errno)</pre>
+<pre class="line before"><span class="ws">    </span>if errorclass is None:</pre>
+<pre class="line before"><span class="ws">        </span>errorclass = InternalError if errno &lt; 1000 else OperationalError</pre>
+<pre class="line current"><span class="ws">    </span>raise errorclass(errno, errval)</pre></div>
+</div>
+</ul>
+  <blockquote>sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1054, &#34;Unknown column &#39;sensitive_word.level&#39; in &#39;field list&#39;&#34;)
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT sensitive_word.id AS sensitive_word_id, sensitive_word.word AS sensitive_word_word, sensitive_word.level AS sensitive_word_level, sensitive_word.category AS sensitive_word_category, sensitive_word.added_by AS sensitive_word_added_by, sensitive_word.created_at AS sensitive_word_created_at 
+FROM sensitive_word) AS anon_1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+</blockquote>
+</div>
+
+<div class="plain">
+    <p>
+      This is the Copy/Paste friendly version of the traceback.
+    </p>
+    <textarea cols="50" rows="10" name="code" readonly>Traceback (most recent call last):
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py&#34;, line 1964, in _exec_single_context
+    self.dialect.do_execute(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/default.py&#34;, line 945, in do_execute
+    cursor.execute(statement, parameters)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py&#34;, line 153, in execute
+    result = self._query(query)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py&#34;, line 322, in _query
+    conn.query(q)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py&#34;, line 558, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py&#34;, line 822, in _read_query_result
+    result.read()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py&#34;, line 1200, in read
+    first_packet = self.connection._read_packet()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py&#34;, line 772, in _read_packet
+    packet.raise_for_error()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/protocol.py&#34;, line 221, in raise_for_error
+    err.raise_mysql_exception(self._data)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/err.py&#34;, line 143, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.OperationalError: (1054, &#34;Unknown column &#39;sensitive_word.level&#39; in &#39;field list&#39;&#34;)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/flask/app.py&#34;, line 2213, in __call__
+    return self.wsgi_app(environ, start_response)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/flask/app.py&#34;, line 2193, in wsgi_app
+    response = self.handle_exception(e)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/flask_cors/extension.py&#34;, line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/flask/app.py&#34;, line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/flask/app.py&#34;, line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/flask_cors/extension.py&#34;, line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/flask/app.py&#34;, line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/flask/app.py&#34;, line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File &#34;/home/chris/novels/backend/app/utils/auth.py&#34;, line 50, in decorated
+    return f(*args, **kwargs)
+  File &#34;/home/chris/novels/backend/app/api/admin.py&#34;, line 256, in get_sensitive_words
+    result = AdminService.get_sensitive_words(category=category, page=page, per_page=per_page)
+  File &#34;/home/chris/novels/backend/app/services/admin_service.py&#34;, line 263, in get_sensitive_words
+    words, total = AdminDAO.get_sensitive_words(category, page, per_page)
+  File &#34;/home/chris/novels/backend/app/dao/admin_dao.py&#34;, line 257, in get_sensitive_words
+    total = query.count()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py&#34;, line 3147, in count
+    self._legacy_from_self(col).enable_eagerloads(False).scalar()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py&#34;, line 2836, in scalar
+    ret = self.one()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py&#34;, line 2809, in one
+    return self._iter().one()  # type: ignore
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py&#34;, line 2858, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/session.py&#34;, line 2365, in execute
+    return self._execute_internal(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/session.py&#34;, line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/context.py&#34;, line 306, in orm_execute_statement
+    result = conn.execute(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py&#34;, line 1416, in execute
+    return meth(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/sql/elements.py&#34;, line 523, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py&#34;, line 1638, in _execute_clauseelement
+    ret = self._execute_context(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py&#34;, line 1843, in _execute_context
+    return self._exec_single_context(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py&#34;, line 1983, in _exec_single_context
+    self._handle_dbapi_exception(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py&#34;, line 2352, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py&#34;, line 1964, in _exec_single_context
+    self.dialect.do_execute(
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/default.py&#34;, line 945, in do_execute
+    cursor.execute(statement, parameters)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py&#34;, line 153, in execute
+    result = self._query(query)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py&#34;, line 322, in _query
+    conn.query(q)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py&#34;, line 558, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py&#34;, line 822, in _read_query_result
+    result.read()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py&#34;, line 1200, in read
+    first_packet = self.connection._read_packet()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py&#34;, line 772, in _read_packet
+    packet.raise_for_error()
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/protocol.py&#34;, line 221, in raise_for_error
+    err.raise_mysql_exception(self._data)
+  File &#34;/home/chris/.local/lib/python3.10/site-packages/pymysql/err.py&#34;, line 143, in raise_mysql_exception
+    raise errorclass(errno, errval)
+sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1054, &#34;Unknown column &#39;sensitive_word.level&#39; in &#39;field list&#39;&#34;)
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT sensitive_word.id AS sensitive_word_id, sensitive_word.word AS sensitive_word_word, sensitive_word.level AS sensitive_word_level, sensitive_word.category AS sensitive_word_category, sensitive_word.added_by AS sensitive_word_added_by, sensitive_word.created_at AS sensitive_word_created_at 
+FROM sensitive_word) AS anon_1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+</textarea>
+</div>
+<div class="explanation">
+  The debugger caught an exception in your WSGI application.  You can now
+  look at the traceback which led to the error.  <span class="nojavascript">
+  If you enable JavaScript you can also use additional features such as code
+  execution (if the evalex feature is enabled), automatic pasting of the
+  exceptions and much more.</span>
+</div>
+      <div class="footer">
+        Brought to you by <strong class="arthur">DON'T PANIC</strong>, your
+        friendly Werkzeug powered traceback interpreter.
+      </div>
+    </div>
+
+    <div class="pin-prompt">
+      <div class="inner">
+        <h3>Console Locked</h3>
+        <p>
+          The console is locked and needs to be unlocked by entering the PIN.
+          You can find the PIN printed out on the standard output of your
+          shell that runs the server.
+        <form>
+          <p>PIN:
+            <input type=text name=pin size=14>
+            <input type=submit name=btn value="Confirm Pin">
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
+
+<!--
+
+Traceback (most recent call last):
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 945, in do_execute
+    cursor.execute(statement, parameters)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py", line 153, in execute
+    result = self._query(query)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py", line 322, in _query
+    conn.query(q)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py", line 558, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py", line 822, in _read_query_result
+    result.read()
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py", line 1200, in read
+    first_packet = self.connection._read_packet()
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py", line 772, in _read_packet
+    packet.raise_for_error()
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/protocol.py", line 221, in raise_for_error
+    err.raise_mysql_exception(self._data)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/err.py", line 143, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.OperationalError: (1054, "Unknown column 'sensitive_word.level' in 'field list'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/chris/.local/lib/python3.10/site-packages/flask/app.py", line 2213, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/home/chris/.local/lib/python3.10/site-packages/flask/app.py", line 2193, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/chris/.local/lib/python3.10/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+  File "/home/chris/.local/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/chris/.local/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/chris/.local/lib/python3.10/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+  File "/home/chris/.local/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/chris/.local/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/home/chris/novels/backend/app/utils/auth.py", line 50, in decorated
+    return f(*args, **kwargs)
+  File "/home/chris/novels/backend/app/api/admin.py", line 256, in get_sensitive_words
+    result = AdminService.get_sensitive_words(category=category, page=page, per_page=per_page)
+  File "/home/chris/novels/backend/app/services/admin_service.py", line 263, in get_sensitive_words
+    words, total = AdminDAO.get_sensitive_words(category, page, per_page)
+  File "/home/chris/novels/backend/app/dao/admin_dao.py", line 257, in get_sensitive_words
+    total = query.count()
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py", line 3147, in count
+    self._legacy_from_self(col).enable_eagerloads(False).scalar()
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py", line 2836, in scalar
+    ret = self.one()
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py", line 2809, in one
+    return self._iter().one()  # type: ignore
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/query.py", line 2858, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/session.py", line 2365, in execute
+    return self._execute_internal(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1416, in execute
+    return meth(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/sql/elements.py", line 523, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1638, in _execute_clauseelement
+    ret = self._execute_context(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1843, in _execute_context
+    return self._exec_single_context(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1983, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2352, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/chris/.local/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 945, in do_execute
+    cursor.execute(statement, parameters)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py", line 153, in execute
+    result = self._query(query)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/cursors.py", line 322, in _query
+    conn.query(q)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py", line 558, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py", line 822, in _read_query_result
+    result.read()
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py", line 1200, in read
+    first_packet = self.connection._read_packet()
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/connections.py", line 772, in _read_packet
+    packet.raise_for_error()
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/protocol.py", line 221, in raise_for_error
+    err.raise_mysql_exception(self._data)
+  File "/home/chris/.local/lib/python3.10/site-packages/pymysql/err.py", line 143, in raise_mysql_exception
+    raise errorclass(errno, errval)
+sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1054, "Unknown column 'sensitive_word.level' in 'field list'")
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT sensitive_word.id AS sensitive_word_id, sensitive_word.word AS sensitive_word_word, sensitive_word.level AS sensitive_word_level, sensitive_word.category AS sensitive_word_category, sensitive_word.added_by AS sensitive_word_added_by, sensitive_word.created_at AS sensitive_word_created_at 
+FROM sensitive_word) AS anon_1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+
+-->

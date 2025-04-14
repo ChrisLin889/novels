@@ -50,6 +50,7 @@ export default {
     userInfo: state => state.user,
     username: state => state.user?.username || state.user?.email || '用户',
     avatar: state => state.user?.avatar || '',
-    isAuthor: state => state.user?.role === 'author'
+    isAuthor: state => state.user?.role === 'author',
+    isAuthenticated: state => !!state.user
   }
 }; 

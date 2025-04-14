@@ -121,21 +121,15 @@ export default {
             
             console.log('处理后的用户数据:', userData);
             
-            // 保存用户信息到 store (使用 action)
-            await store.dispatch('user/setUser', userData);
-            
-            // 再次确认用户数据已保存到 localStorage
-            localStorage.setItem('user', JSON.stringify(userData));
-            
             // 额外保存一些关键信息便于访问
             localStorage.setItem('userRole', userData.role);
             localStorage.setItem('userId', userData.id);
             
-            // 更新全局登录状态
-            store.commit('SET_LOGIN_STATUS', true);
+            // 保存用户信息到Vuex模块
+            await store.dispatch('user/setUser', userData);
             
-            console.log('保存完成的用户信息 (Store):', store.state.user.user);
-            console.log('保存完成的用户信息 (localStorage):', JSON.parse(localStorage.getItem('user')));
+            console.log('保存完成的用户信息:', store.getters['user/userInfo']);
+            console.log('认证状态:', store.getters['user/isAuthenticated']);
             
             // 根据用户角色设置重定向路径
             let redirectPath = '/'

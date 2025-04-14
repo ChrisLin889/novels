@@ -186,7 +186,7 @@ export default createStore({
     successMessage: state => state.successMessage,
     notifications: state => state.notifications,
     isLoggedIn: state => state.isLoggedIn || !!localStorage.getItem('token'),
-    isAuthenticated: state => !!state.user?.user || !!localStorage.getItem('token'),
+    isAuthenticated: state => state.user?.isAuthenticated || !!localStorage.getItem('token'),
     user: state => state.user?.user || null,
     isAuthor: state => state.user?.user?.role === 'author',
     token: state => state.token || localStorage.getItem('token')

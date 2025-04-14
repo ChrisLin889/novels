@@ -7,6 +7,27 @@
 1. [用户模块](#1-用户模块)
 2. [小说模块](#2-小说模块)
 3. [互动模块](#3-互动模块)
+   - [3.1 发表评论](#31-发表评论)
+   - [3.2 获取小说评论](#32-获取小说评论)
+   - [3.3 获取章节评论](#33-获取章节评论)
+   - [3.4 关注/取消关注用户](#34-关注取消关注用户)
+   - [3.5 获取关注状态](#35-获取关注状态)
+   - [3.6 获取粉丝列表](#36-获取粉丝列表)
+   - [3.7 获取关注列表](#37-获取关注列表)
+   - [3.8 收藏/取消收藏小说](#38-收藏取消收藏小说)
+   - [3.9 获取收藏状态](#39-获取收藏状态)
+   - [3.10 获取收藏列表](#310-获取收藏列表)
+   - [3.11 获取阅读历史](#311-获取阅读历史)
+   - [3.12 获取阅读进度](#312-获取阅读进度)
+   - [3.13 发送私信](#313-发送私信)
+   - [3.14 获取与特定用户的对话](#314-获取与特定用户的对话)
+   - [3.15 获取收件箱](#315-获取收件箱)
+   - [3.16 标记消息为已读](#316-标记消息为已读)
+   - [3.17 删除评论](#317-删除评论)
+   - [3.18 打赏作者](#318-打赏作者)
+   - [3.19 获取收到的打赏](#319-获取收到的打赏)
+   - [3.20 获取发出的打赏](#320-获取发出的打赏)
+   - [3.21 获取用户评论历史](#321-获取用户评论历史)
 4. [缓存模块](#4-缓存模块)
 5. [搜索模块](#5-搜索模块)
 6. [管理模块](#6-管理模块)
@@ -613,12 +634,23 @@
     {
       "novel_id": 1,
       "novel_title": "string",
+      "novel_cover": "string",
+      "novel_author": "string",
       "chapter_id": 1,
       "chapter_title": "string",
-      "read_at": "2023-01-01T00:00:00",
+      "chapter_number": 5,
+      "last_read_time": "2023-01-01T00:00:00",
       "progress": 0.75
     }
   ]
+}
+```
+
+- **错误响应** (401 Unauthorized):
+
+```json
+{
+  "error": "未授权" // Token缺失或无效
 }
 ```
 
@@ -637,11 +669,31 @@
 {
   "success": true,
   "novel_id": 1,
+  "novel_title": "string",
   "current_chapter_id": 10,
   "current_chapter_number": 10,
   "current_chapter_title": "string",
   "progress_percentage": 0.5,
-  "total_chapters": 100
+  "total_chapters": 100,
+  "last_read_time": "2023-01-01T00:00:00"
+}
+```
+
+- **错误响应** (404 Not Found):
+
+```json
+{
+  "success": false,
+  "error": "Novel not found"
+}
+```
+
+或
+
+```json
+{
+  "success": false,
+  "error": "No reading history for this novel"
 }
 ```
 
@@ -659,6 +711,12 @@
   "content": "string"  // 私信内容
 }
 ```
+
+- **限制条件**:
+  - 消息内容不能为空
+  - 消息内容长度不能超过1000个字符
+  - 不能给自己发送私信
+  - **重要**：只有当接收者关注了发送者或发送者是管理员时，才能发送私信
 
 - **成功响应** (201 Created):
 
@@ -687,6 +745,46 @@
 }
 ```
 
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "Message cannot be empty"
+}
+```
+
+或
+
+```json
+{
+  "error": "Message is too long (maximum 1000 characters)"
+}
+```
+
+或
+
+```json
+{
+  "error": "Cannot send message to yourself"
+}
+```
+
+或
+
+```json
+{
+  "error": "This user is not following you and cannot receive your messages"
+}
+```
+
+或
+
+```json
+{
+  "error": "User not found"
+}
+```
+
 ### 3.14 获取与特定用户的对话
 
 - **URL**: `/api/interaction/conversation/{user_id}`
@@ -698,6 +796,9 @@
 - **查询参数**:
   - `page`: 页码 (默认: 1)
   - `per_page`: 每页数量 (默认: 50)
+
+- **特性说明**:
+  - 获取对话时，当前用户收到的未读消息会自动标记为已读
 
 - **成功响应** (200 OK):
 
@@ -727,6 +828,14 @@
       }
     }
   ]
+}
+```
+
+- **错误响应** (404 Not Found):
+
+```json
+{
+  "error": "User not found"
 }
 ```
 
@@ -803,6 +912,221 @@
 ```json
 {
   "message": "Comment deleted successfully"
+}
+```
+
+### 3.18 打赏作者
+
+- **URL**: `/api/interaction/tip`
+- **方法**: `POST`
+- **权限**: 用户登录
+- **请求头**: `Authorization: Bearer {token}`
+- **请求参数**:
+
+```json
+{
+  "author_id": 1,      // 作者ID
+  "novel_id": 1,       // 小说ID
+  "amount": 100,       // 打赏金额（单位：分）
+  "message": "string", // 打赏留言（可选）
+  "chapter_id": 1      // 章节ID（可选）
+}
+```
+
+- **限制条件**:
+  - 打赏金额必须为正数
+  - 留言长度不能超过200个字符
+  - 小说必须存在且属于指定作者
+  - 如果提供了章节ID，章节必须存在且属于指定小说
+
+- **成功响应** (201 Created):
+
+```json
+{
+  "message": "Successfully sent 1.00 to username",
+  "tip": {
+    "id": 1,
+    "tipper_id": 2,
+    "author_id": 1,
+    "novel_id": 1,
+    "chapter_id": 1,
+    "amount": 100,
+    "message": "string",
+    "created_at": "2023-01-01T00:00:00"
+  }
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "Author ID, novel ID, and amount are required"
+}
+```
+
+或
+
+```json
+{
+  "error": "Tip amount must be positive"
+}
+```
+
+或
+
+```json
+{
+  "error": "Message is too long (maximum 200 characters)"
+}
+```
+
+或
+
+```json
+{
+  "error": "Novel not found or does not belong to this author"
+}
+```
+
+或
+
+```json
+{
+  "error": "Chapter not found or does not belong to this novel"
+}
+```
+
+### 3.19 获取收到的打赏
+
+- **URL**: `/api/interaction/tips/received`
+- **方法**: `GET`
+- **权限**: 用户登录
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 20)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 100,
+  "pages": 5,
+  "current_page": 1,
+  "tips": [
+    {
+      "id": 1,
+      "tipper_id": 2,
+      "author_id": 1,
+      "novel_id": 1,
+      "chapter_id": 1,
+      "amount": 100,
+      "message": "string",
+      "created_at": "2023-01-01T00:00:00",
+      "tipper": {
+        "id": 2,
+        "username": "string",
+        "avatar": "string"
+      },
+      "novel": {
+        "id": 1,
+        "title": "string"
+      },
+      "chapter": {
+        "id": 1,
+        "title": "string"
+      }
+    }
+  ],
+  "total_amount": 5000
+}
+```
+
+### 3.20 获取发出的打赏
+
+- **URL**: `/api/interaction/tips/sent`
+- **方法**: `GET`
+- **权限**: 用户登录
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 20)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 100,
+  "pages": 5,
+  "current_page": 1,
+  "tips": [
+    {
+      "id": 1,
+      "tipper_id": 2,
+      "author_id": 1,
+      "novel_id": 1,
+      "chapter_id": 1,
+      "amount": 100,
+      "message": "string",
+      "created_at": "2023-01-01T00:00:00",
+      "author": {
+        "id": 1,
+        "username": "string",
+        "avatar": "string"
+      },
+      "novel": {
+        "id": 1,
+        "title": "string"
+      },
+      "chapter": {
+        "id": 1,
+        "title": "string"
+      }
+    }
+  ],
+  "total_amount": 5000
+}
+```
+
+### 3.21 获取用户评论历史
+
+- **URL**: `/api/interaction/user-comments`
+- **方法**: `GET`
+- **权限**: 用户登录
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 20)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 100,
+  "pages": 5,
+  "current_page": 1,
+  "comments": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "novel_id": 1,
+      "chapter_id": 5,
+      "content": "string",
+      "created_at": "2023-01-01T00:00:00",
+      "likes": 10,
+      "novel": {
+        "id": 1,
+        "title": "string",
+        "cover": "string" 
+      },
+      "chapter": {
+        "id": 5,
+        "title": "string",
+        "chapter_number": 5
+      }
+    }
+  ]
 }
 ```
 
