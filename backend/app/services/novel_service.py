@@ -62,6 +62,16 @@ class NovelDAO:
         }
     
     @staticmethod
+    def get_popular_novels(limit: int = 10) -> List[Novel]:
+        """Get popular novels sorted by view count"""
+        return Novel.query.order_by(desc(Novel.view_count)).limit(limit).all()
+    
+    @staticmethod
+    def get_latest_novels(limit: int = 10) -> List[Novel]:
+        """Get latest novels sorted by updated time"""
+        return Novel.query.order_by(desc(Novel.updated_at)).limit(limit).all()
+    
+    @staticmethod
     def increment_view_count(novel_id: int) -> bool:
         """Increment the view count of a novel"""
         novel = Novel.query.get(novel_id)

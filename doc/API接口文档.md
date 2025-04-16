@@ -358,9 +358,9 @@
 - **权限**: 无需登录
 - **查询参数**:
   - `page`: 页码 (默认: 1)
-  - `per_page`: 每页数量 (默认: 20)
+  - `per_page`: 每页数量 (默认: 10)
   - `category`: 分类 (可选)
-  - `status`: 状态 (可选, 连载/完结)
+  - `sort_by`: 排序方式 (可选, 'updated_at', 'view_count', 'collection_count', 默认为 'updated_at')
 
 - **成功响应** (200 OK):
 
@@ -378,10 +378,13 @@
       "status": "ongoing",
       "cover": "string",
       "intro": "string",
-      "word_count": 100000,
       "view_count": 1000,
+      "collection_count": 0,
       "created_at": "2023-01-01T00:00:00",
-      "updated_at": "2023-01-02T00:00:00"
+      "updated_at": "2023-01-02T00:00:00",
+      "chapter_count": 10,
+      "is_internal_author": false,
+      "author_id": null
     }
   ]
 }
@@ -389,7 +392,7 @@
 
 ### 2.2 获取小说详情
 
-- **URL**: `/api/novel/{id}`
+- **URL**: `/api/novel/detail/{id}`
 - **方法**: `GET`
 - **权限**: 无需登录
 - **路径参数**:
@@ -399,51 +402,70 @@
 
 ```json
 {
-  "id": 1,
-  "title": "string",
-  "author": "string",
-  "category": "string",
-  "status": "ongoing",
-  "cover": "string",
-  "intro": "string",
-  "word_count": 100000,
-  "view_count": 1000,
-  "created_at": "2023-01-01T00:00:00",
-  "updated_at": "2023-01-02T00:00:00",
-  "chapters_count": 100,
-  "latest_chapter": {
-    "id": 100,
+  "novel": {
+    "id": 1,
     "title": "string",
-    "created_at": "2023-01-02T00:00:00"
-  }
-}
-```
-
-### 2.3 获取章节列表
-
-- **URL**: `/api/novel/{id}/chapters`
-- **方法**: `GET`
-- **权限**: 无需登录
-- **路径参数**:
-  - `id`: 小说ID
-- **查询参数**:
-  - `page`: 页码 (默认: 1)
-  - `per_page`: 每页数量 (默认: 50)
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "total": 100,
-  "pages": 2,
-  "current_page": 1,
+    "author": "string",
+    "category": "string",
+    "status": "ongoing",
+    "cover": "string",
+    "intro": "string",
+    "view_count": 1000,
+    "collection_count": 0,
+    "created_at": "2023-01-01T00:00:00",
+    "updated_at": "2023-01-02T00:00:00",
+    "chapter_count": 10,
+    "is_internal_author": false,
+    "author_id": null
+  },
   "chapters": [
     {
       "id": 1,
       "chapter_number": 1,
       "title": "string",
       "word_count": 2000,
-      "created_at": "2023-01-01T00:00:00"
+      "created_at": "2023-01-01T00:00:00",
+      "novel_id": 1
+    }
+  ]
+}
+```
+
+### 2.3 获取章节列表
+
+- **URL**: `/api/novel/{novel_id}/chapters`
+- **方法**: `GET`
+- **权限**: 无需登录
+- **路径参数**:
+  - `novel_id`: 小说ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "novel": {
+    "id": 1,
+    "title": "string",
+    "author": "string",
+    "category": "string",
+    "status": "ongoing",
+    "cover": "string",
+    "intro": "string",
+    "view_count": 1000,
+    "collection_count": 0,
+    "created_at": "2023-01-01T00:00:00",
+    "updated_at": "2023-01-02T00:00:00",
+    "is_internal_author": false,
+    "author_id": null
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "chapter_number": 1,
+      "title": "string",
+      "word_count": 2000,
+      "created_at": "2023-01-01T00:00:00",
+      "novel_id": 1
     }
   ]
 }
@@ -451,29 +473,423 @@
 
 ### 2.4 获取章节内容
 
-- **URL**: `/api/novel/{id}/chapter/{num}`
+- **URL**: `/api/novel/chapter/{chapter_id}`
 - **方法**: `GET`
-- **权限**: 无需登录（VIP章节需要登录）
+- **权限**: 无需登录
 - **路径参数**:
-  - `id`: 小说ID
-  - `num`: 章节编号
+  - `chapter_id`: 章节ID
 
 - **成功响应** (200 OK):
 
 ```json
 {
-  "id": 1,
-  "novel_id": 1,
-  "chapter_number": 1,
-  "title": "string",
-  "content": "string",
-  "word_count": 2000,
-  "created_at": "2023-01-01T00:00:00",
+  "chapter": {
+    "id": 1,
+    "novel_id": 1,
+    "chapter_number": 1,
+    "title": "string",
+    "content": "string",
+    "word_count": 2000,
+    "created_at": "2023-01-01T00:00:00"
+  },
   "prev_chapter": null,
   "next_chapter": {
     "id": 2,
     "chapter_number": 2,
-    "title": "string"
+    "title": "string",
+    "novel_id": 1,
+    "word_count": 2500,
+    "created_at": "2023-01-02T00:00:00"
+  }
+}
+```
+
+### 2.5 获取分类列表
+
+- **URL**: `/api/novel/categories`
+- **方法**: `GET`
+- **权限**: 无需登录
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "categories": [
+    {
+      "name": "玄幻",
+      "count": 10
+    },
+    {
+      "name": "都市",
+      "count": 5
+    }
+  ]
+}
+```
+
+### 2.6 搜索小说
+
+- **URL**: `/api/novel/search`
+- **方法**: `GET`
+- **权限**: 无需登录
+- **查询参数**:
+  - `keyword`: 搜索关键词
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 10)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 100,
+  "pages": 5,
+  "current_page": 1,
+  "novels": [
+    {
+      "id": 1,
+      "title": "string",
+      "author": "string",
+      "category": "string",
+      "status": "ongoing",
+      "cover": "string",
+      "intro": "string",
+      "view_count": 1000,
+      "collection_count": 0,
+      "created_at": "2023-01-01T00:00:00",
+      "updated_at": "2023-01-02T00:00:00",
+      "chapter_count": 10,
+      "is_internal_author": false,
+      "author_id": null
+    }
+  ]
+}
+```
+
+### 2.7 获取热门小说
+
+- **URL**: `/api/novel/popular`
+- **方法**: `GET`
+- **权限**: 无需登录
+- **查询参数**:
+  - `limit`: 返回数量 (默认: 10)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "novels": [
+    {
+      "id": 1,
+      "title": "string",
+      "author": "string",
+      "category": "string",
+      "status": "ongoing",
+      "cover": "string",
+      "intro": "string",
+      "view_count": 1000,
+      "collection_count": 0,
+      "created_at": "2023-01-01T00:00:00",
+      "updated_at": "2023-01-02T00:00:00",
+      "chapter_count": 10,
+      "is_internal_author": false,
+      "author_id": null
+    }
+  ]
+}
+```
+
+### 2.8 获取最新小说
+
+- **URL**: `/api/novel/latest`
+- **方法**: `GET`
+- **权限**: 无需登录
+- **查询参数**:
+  - `limit`: 返回数量 (默认: 10)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "novels": [
+    {
+      "id": 1,
+      "title": "string",
+      "author": "string",
+      "category": "string",
+      "status": "ongoing",
+      "cover": "string",
+      "intro": "string",
+      "view_count": 1000,
+      "collection_count": 0,
+      "created_at": "2023-01-01T00:00:00",
+      "updated_at": "2023-01-02T00:00:00",
+      "chapter_count": 10,
+      "is_internal_author": false,
+      "author_id": null
+    }
+  ]
+}
+```
+
+### 2.9 新增小说
+
+- **URL**: `/api/novel/add`
+- **方法**: `POST`
+- **权限**: 作者
+- **请求头**: `Authorization: Bearer {token}`
+- **请求参数**:
+
+```json
+{
+  "title": "string",
+  "author": "string",
+  "category": "string",
+  "intro": "string",
+  "cover": "string",
+  "status": "ongoing"
+}
+```
+
+- **成功响应** (201 Created):
+
+```json
+{
+  "message": "Novel added successfully",
+  "novel": {
+    "id": 1,
+    "title": "string",
+    "author": "string",
+    "category": "string",
+    "status": "ongoing",
+    "cover": "string",
+    "intro": "string",
+    "view_count": 0,
+    "collection_count": 0,
+    "created_at": "2023-01-01T00:00:00",
+    "updated_at": "2023-01-01T00:00:00",
+    "chapter_count": 0,
+    "is_internal_author": true,
+    "author_id": 1
+  }
+}
+```
+
+### 2.10 新增章节
+
+- **URL**: `/api/novel/{novel_id}/chapter/add`
+- **方法**: `POST`
+- **权限**: 作者
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `novel_id`: 小说ID
+- **请求参数**:
+
+```json
+{
+  "title": "string",
+  "content": "string",
+  "chapter_number": 1
+}
+```
+
+- **成功响应** (201 Created):
+
+```json
+{
+  "message": "Chapter added successfully",
+  "chapter": {
+    "id": 1,
+    "novel_id": 1,
+    "chapter_number": 1,
+    "title": "string",
+    "word_count": 2000,
+    "created_at": "2023-01-01T00:00:00"
+  }
+}
+```
+
+### 2.11 更新小说信息
+
+- **URL**: `/api/novel/{novel_id}`
+- **方法**: `PUT`
+- **权限**: 用户登录（必须是小说作者）
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `novel_id`: 小说ID
+- **请求参数**:
+
+```json
+{
+  "title": "string",
+  "author": "string",
+  "category": "string",
+  "intro": "string",
+  "cover": "string",
+  "status": "ongoing"
+}
+```
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "message": "Novel updated successfully",
+  "novel": {
+    "id": 1,
+    "title": "string",
+    "author": "string",
+    "category": "string",
+    "status": "ongoing",
+    "cover": "string",
+    "intro": "string",
+    "view_count": 1000,
+    "collection_count": 0,
+    "created_at": "2023-01-01T00:00:00",
+    "updated_at": "2023-01-02T00:00:00",
+    "chapter_count": 10,
+    "is_internal_author": true,
+    "author_id": 1
+  }
+}
+```
+
+### 2.12 更新章节信息
+
+- **URL**: `/api/novel/chapter/{chapter_id}/update`
+- **方法**: `PUT`
+- **权限**: 作者
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `chapter_id`: 章节ID
+- **请求参数**:
+
+```json
+{
+  "title": "string",
+  "content": "string"
+}
+```
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "message": "Chapter updated successfully",
+  "chapter": {
+    "id": 1,
+    "novel_id": 1,
+    "chapter_number": 1,
+    "title": "string",
+    "word_count": 2000,
+    "created_at": "2023-01-01T00:00:00"
+  }
+}
+```
+
+### 2.13 删除小说
+
+- **URL**: `/api/novel/{novel_id}/delete`
+- **方法**: `DELETE`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `novel_id`: 小说ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "message": "Novel deleted successfully"
+}
+```
+
+### 2.14 删除章节
+
+- **URL**: `/api/novel/chapter/{chapter_id}/delete`
+- **方法**: `DELETE`
+- **权限**: 作者
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `chapter_id`: 章节ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "message": "Chapter deleted successfully"
+}
+```
+
+### 2.15 刷新缓存
+
+- **URL**: `/api/novel/refresh-cache`
+- **方法**: `POST`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "message": "Cache refreshed successfully"
+}
+```
+
+### 2.16 获取作者小说
+
+- **URL**: `/api/novel/my`
+- **方法**: `GET`
+- **权限**: 作者
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 10)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "novels": [
+    {
+      "id": 1,
+      "title": "string",
+      "author": "string",
+      "category": "string",
+      "status": "ongoing",
+      "cover": "string",
+      "intro": "string",
+      "view_count": 1000,
+      "collection_count": 0,
+      "created_at": "2023-01-01T00:00:00",
+      "updated_at": "2023-01-02T00:00:00",
+      "chapter_count": 10,
+      "is_internal_author": true,
+      "author_id": 1
+    }
+  ],
+  "total": 100,
+  "total_pages": 10,
+  "current_page": 1
+}
+```
+
+### 2.17 获取作者统计信息
+
+- **URL**: `/api/novel/author/stats`
+- **方法**: `GET`
+- **权限**: 作者
+- **请求头**: `Authorization: Bearer {token}`
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "stats": {
+    "novel_count": 10,
+    "total_words": 50000,
+    "total_collections": 100,
+    "total_views": 1000,
+    "total_chapters": 50
   }
 }
 ```
