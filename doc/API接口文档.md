@@ -43,8 +43,8 @@
 
 ```json
 {
-  "username": "string", // 用户名
-  "password": "string", // 密码
+  "username": "string", // 用户名（必填）
+  "password": "string", // 密码（必填）
   "phone": "string",    // 手机号（可选，phone和email至少提供一个）
   "email": "string"     // 邮箱（可选，phone和email至少提供一个）
 }
@@ -54,16 +54,14 @@
 
 ```json
 {
+  "success": true,
   "message": "User registered successfully",
   "user": {
     "id": 1,
     "username": "string",
     "phone": "string",
     "email": "string",
-    "role": "user",
-    "avatar": "string",
-    "created_at": "2023-01-01T00:00:00",
-    "status": "active"
+    "created_at": "2023-01-01T00:00:00"
   }
 }
 ```
@@ -72,7 +70,7 @@
 
 ```json
 {
-  "error": "错误信息" // 如：Missing required fields, Email already registered
+  "error": "错误信息" // 如：Username already exists, Email already exists, Password must be at least 6 characters long
 }
 ```
 
@@ -85,9 +83,12 @@
 
 ```json
 {
-  "phone": "string",    // 手机号（和email二选一）
-  "email": "string",    // 邮箱（和phone二选一）
-  "password": "string"  // 密码
+  // 以下三个至少提供一个
+  "username": "string", // 用户名
+  "phone": "string",    // 手机号
+  "email": "string",    // 邮箱
+  
+  "password": "string"  // 密码（必填）
 }
 ```
 
@@ -95,6 +96,7 @@
 
 ```json
 {
+  "success": true,
   "access_token": "string", // JWT令牌
   "user": {
     "id": 1,
@@ -104,6 +106,7 @@
     "role": "user",
     "avatar": "string",
     "created_at": "2023-01-01T00:00:00",
+    "updated_at": "2023-01-01T00:00:00",
     "status": "active"
   }
 }
@@ -113,7 +116,8 @@
 
 ```json
 {
-  "error": "错误信息" // 如：User not found, Invalid password
+  "success": false,
+  "error": "错误信息" // 如：User not found, Invalid password, Your account is disabled
 }
 ```
 
@@ -135,7 +139,12 @@
   "role": "user",
   "avatar": "string",
   "created_at": "2023-01-01T00:00:00",
-  "status": "active"
+  "status": "active",
+  "stats": {
+    "collection_count": 0,
+    "followers_count": 0,
+    "following_count": 0
+  }
 }
 ```
 
@@ -157,8 +166,9 @@
 
 ```json
 {
-  "username": "string",  // 可选
-  "avatar": "string"     // 可选
+  "email": "string",    // 可选
+  "phone": "string",    // 可选
+  "avatar": "string"    // 可选
 }
 ```
 
@@ -166,6 +176,7 @@
 
 ```json
 {
+  "success": true,
   "message": "Profile updated successfully",
   "user": {
     "id": 1,
@@ -175,12 +186,27 @@
     "role": "user",
     "avatar": "string",
     "created_at": "2023-01-01T00:00:00",
-    "status": "active"
+    "status": "active",
+    "stats": {
+      "collection_count": 0,
+      "followers_count": 0,
+      "following_count": 0
+    }
   }
 }
 ```
 
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "错误信息" // 如：No fields to update, Email already in use, Phone already in use
+}
+```
+
 ### 1.5 修改密码
+
+> **注意: 此接口目前尚未实现，后端缺少 UserService.change_password 方法**
 
 - **URL**: `/api/user/change-password`
 - **方法**: `POST`
@@ -208,6 +234,118 @@
 ```json
 {
   "error": "错误信息" // 如：Current password is incorrect
+}
+```
+
+- **错误响应** (500 Internal Server Error):
+
+```json
+{
+  // 当前会返回服务器错误，因为此方法尚未实现
+  "error": "AttributeError: type object 'UserService' has no attribute 'change_password'"
+}
+```
+
+### 1.6 管理员查看用户列表
+
+- **URL**: `/api/user/admin/users`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 20)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "total": 100,
+  "pages": 5,
+  "current_page": 1,
+  "users": [
+    {
+      // 用户信息
+    }
+  ]
+}
+```
+
+- **错误响应** (403 Forbidden):
+
+```json
+{
+  "error": "Admin privileges required"
+}
+```
+
+### 1.7 管理员修改用户状态
+
+- **URL**: `/api/user/admin/users/{target_user_id}/status`
+- **方法**: `PUT`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `target_user_id`: 目标用户ID
+- **请求参数**:
+
+```json
+{
+  "status": true  // true为启用账户，false为禁用账户
+}
+```
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "message": "User account enabled successfully", // 或 "User account disabled successfully"
+  "user": {
+    // 用户信息
+  }
+}
+```
+
+- **错误响应** (403 Forbidden):
+
+```json
+{
+  "error": "Admin privileges required"
+}
+```
+
+### 1.8 管理员修改用户角色
+
+- **URL**: `/api/user/admin/users/{target_user_id}/role`
+- **方法**: `PUT`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `target_user_id`: 目标用户ID
+- **请求参数**:
+
+```json
+{
+  "role": "string"  // 可选值: "user", "author", "admin"
+}
+```
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "message": "User role updated successfully",
+  "user": {
+    // 用户信息
+  }
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "Invalid role" // 角色必须是 user, author 或 admin
 }
 ```
 
