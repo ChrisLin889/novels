@@ -58,6 +58,9 @@ def create_app(config_name=None):
     from app.api.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     
+    from app.api.author import author_bp
+    app.register_blueprint(author_bp, url_prefix='/api/author')
+    
     @app.route('/')
     def index():
         return {'message': 'Novel API is running!'}

@@ -7,8 +7,7 @@ class Novel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False, index=True)
     author = db.Column(db.String(50), nullable=False)  # 作者名称（必填）
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # 内部作者ID（可选）
-    user = db.relationship('User', backref='novels', foreign_keys=[author_id])  # 改名为user以避免混淆
+    author_id = db.Column(db.Integer, db.ForeignKey('author.id'), nullable=True)  # 内部作者ID（可选）
     category = db.Column(db.String(30), nullable=False, index=True)
     cover = db.Column(db.String(255), default='default_cover.jpg')
     intro = db.Column(db.Text, nullable=True)
@@ -64,4 +63,4 @@ class Chapter(db.Model):
         if include_content:
             result['content'] = self.content
             
-        return result 
+        return result

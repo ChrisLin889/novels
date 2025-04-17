@@ -1,51 +1,41 @@
 from functools import wraps
-from flask import jsonify, g
-from flask_jwt_extended import get_jwt, verify_jwt_in_request, get_jwt_identity
+from flask import jsonify
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.models.user import User
 
-def token_required(f):
+def login_required(f):
     """
-    Decorator to verify a valid JWT token is present in the request
-    Also injects the user object into Flask's g object
+    A decorator to check if user is logged in
     """
     @wraps(f)
-    def decorated(*args, **kwargs):
-        verify_jwt_in_request()
+    @jwt_required()
+    def decorated_function(*args, **kwargs):
         user_id = get_jwt_identity()
-        
-        # Get user from database and add to request context
         user = User.query.get(user_id)
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-            
-        # Add user to Flask's g object for use in the route
-        g.user = user
         
+        if not user:
+            return jsonify({'message': 'Authentication required'}), 401
         return f(*args, **kwargs)
-    return decorated
+    return decorated_function
 
 def admin_required(f):
-    """
-    Decorator to verify the JWT has an admin role claim
-    Also injects the user object into Flask's g object
-    """
     @wraps(f)
-    def decorated(*args, **kwargs):
-        verify_jwt_in_request()
-        claims = get_jwt()
-        
-        if claims.get("role") != "admin":
-            return jsonify({"error": "Admin privileges required"}), 403
-            
-        # Get user from database and add to request context
+    def decorated_function(*args, **kwargs):
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         
-        if not user or user.role != "admin":
-            return jsonify({"error": "Admin privileges required"}), 403
-            
-        # Add user to Flask's g object for use in the route
-        g.user = user
-        
+        if not user or not user.is_admin():
+            return jsonify({'message': 'Admin privileges required'}), 403
         return f(*args, **kwargs)
-    return decorated 
+    return decorated_function
+
+def author_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user or not user.is_author():
+            return jsonify({'message': 'Author privileges required'}), 403
+        return f(*args, **kwargs)
+    return decorated_function

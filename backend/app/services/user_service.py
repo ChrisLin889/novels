@@ -533,12 +533,18 @@ class UserService:
             if admin:
                 db.session.delete(admin)
         
+        # 更新用户角色
+        target_user.role = new_role
+        target_user.updated_at = datetime.utcnow()
         db.session.commit()
+        
+        # 重新查询用户以获取更新后的信息
+        target_user = User.query.get(target_user_id)
         
         return {
             'success': True,
             'message': f'User role updated to {new_role}',
-            'user_id': target_user.id
+            'user': target_user.to_dict()
         }
     
     @staticmethod

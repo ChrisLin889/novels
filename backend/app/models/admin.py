@@ -1,6 +1,32 @@
 from app import db
 from datetime import datetime
 
+class Admin(db.Model):
+    __tablename__ = 'admin'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    admin_level = db.Column(db.Integer, default=1)  # 1=普通管理员, 2=高级管理员, 3=超级管理员
+    permissions = db.Column(db.JSON)
+    department = db.Column(db.String(50))
+    last_login_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = db.relationship('User', back_populates='admin')
+    content_audits = db.relationship('ContentAudit', backref='admin', lazy='dynamic')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'admin_level': self.admin_level,
+            'permissions': self.permissions,
+            'department': self.department,
+            'created_at': self.created_at.isoformat()
+        }
+
+# 保留其他管理员相关模型
 class SensitiveWord(db.Model):
     """
     Model for storing sensitive words for content filtering
@@ -35,7 +61,7 @@ class ContentAudit(db.Model):
     content_id = db.Column(db.Integer, nullable=False)  # ID of the content
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     reason = db.Column(db.String(255), nullable=True)  # Reason for rejection
-    audited_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    admin_id = db.Column(db.Integer, db.ForeignKey('admin.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -46,7 +72,7 @@ class ContentAudit(db.Model):
             'content_id': self.content_id,
             'status': self.status,
             'reason': self.reason,
-            'audited_by': self.audited_by,
+            'admin_id': self.admin_id,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
@@ -58,12 +84,16 @@ class UserAction(db.Model):
     __tablename__ = 'user_action'
     
     id = db.Column(db.Integer, primary_key=True)
-    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Admin who took action
+    admin_id = db.Column(db.Integer, db.ForeignKey('admin.id'), nullable=False)  # Admin who took action
     target_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # User affected
     action_type = db.Column(db.String(20), nullable=False)  # ban, unban, warn, etc.
     reason = db.Column(db.String(255), nullable=True)
     duration = db.Column(db.Integer, nullable=True)  # Ban duration in days (null for permanent)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 关系
+    admin = db.relationship('Admin', backref=db.backref('actions', lazy='dynamic'))
+    target_user = db.relationship('User', backref=db.backref('admin_actions', lazy='dynamic'))
     
     def to_dict(self):
         return {
@@ -138,4 +168,4 @@ class CrawledChapter(db.Model):
         if include_content:
             result['content'] = self.content
             
-        return result 
+        return result

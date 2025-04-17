@@ -2,9 +2,10 @@ from typing import List, Dict, Optional, Tuple
 from app import db
 from app.models.admin import SensitiveWord, ContentAudit, UserAction, CrawledNovel, CrawledChapter
 from app.models.user import User
+from app.models.author import Author
 from app.models.novel import Novel, Chapter
 from app.models.interaction import Comment
-from sqlalchemy import desc, func, and_
+from sqlalchemy import desc, func, and_, or_
 from datetime import datetime, timedelta
 
 class AdminDAO:
@@ -30,7 +31,17 @@ class AdminDAO:
         query = User.query
         
         if role:
-            query = query.filter(User.role == role)
+            if role == 'admin':
+                # 查询有管理员记录的用户
+                query = query.join(User.admin)
+            elif role == 'author':
+                # 查询有作者记录的用户
+                query = query.join(User.author)
+            elif role == 'user':
+                # 普通用户 - 既不是管理员也不是作者
+                query = query.outerjoin(User.admin).outerjoin(User.author).filter(
+                    and_(User.admin == None, User.author == None)
+                )
             
         total = query.count()
         users = query.order_by(desc(User.created_at)) \
@@ -54,6 +65,11 @@ class AdminDAO:
         Returns:
             Created UserAction
         """
+        # 首先获取管理员记录
+        admin = db.session.query(Admin).filter(Admin.user_id == admin_id).first()
+        if not admin:
+            raise ValueError(f"Admin with user ID {admin_id} not found")
+        
         # Update user status
         user = User.query.get(user_id)
         if not user:
@@ -65,7 +81,7 @@ class AdminDAO:
         
         # Create action record
         action = UserAction(
-            admin_id=admin_id,
+            admin_id=admin.id,  # 使用admin表的ID而不是user_id
             target_user_id=user_id,
             action_type='ban',
             reason=reason,
@@ -91,6 +107,11 @@ class AdminDAO:
         Returns:
             Created UserAction
         """
+        # 首先获取管理员记录
+        admin = db.session.query(Admin).filter(Admin.user_id == admin_id).first()
+        if not admin:
+            raise ValueError(f"Admin with user ID {admin_id} not found")
+        
         # Update user status
         user = User.query.get(user_id)
         if not user:
@@ -101,7 +122,7 @@ class AdminDAO:
         
         # Create action record
         action = UserAction(
-            admin_id=admin_id,
+            admin_id=admin.id,  # 使用admin表的ID而不是user_id
             target_user_id=user_id,
             action_type='unban',
             reason=reason

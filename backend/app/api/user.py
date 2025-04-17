@@ -22,40 +22,65 @@ def register():
     print(f"Extracted data - username: {username}, phone: {phone}, email: {email}, password length: {len(password) if password else 0}")
     
     # Use service to handle registration
-    result = UserService.register(username, password, phone, email)
+    result = UserService.register(username, password, email, phone)
     
     if not result['success']:
-        print(f"Registration failed: {result['error']}")
-        return jsonify({'error': result['error']}), 400
+        print(f"Registration failed: {result['message']}")
+        return jsonify({'error': result['message']}), 400
+    
+    # Get basic user information
+    user = User.query.get(result['user_id'])
+    user_data = {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'phone': user.phone,
+        'created_at': user.created_at.isoformat() if user.created_at else None
+    }
     
     return jsonify({
+        'success': True,
         'message': result['message'],
-        'user': result['user']
+        'user': user_data
     }), 201
 
 @user_bp.route('/login', methods=['POST'])
 def login():
+    """Login user"""
     data = request.get_json()
     
-    # Check login method
-    is_email = False
+    # Validate input
     identifier = None
+    is_email = False
     
-    if 'phone' in data:
-        identifier = data.get('phone')
-    elif 'email' in data:
+    if 'email' in data and data['email']:
         identifier = data.get('email')
         is_email = True
+    elif 'phone' in data and data['phone']:
+        identifier = data.get('phone')
+    elif 'username' in data and data['username']:
+        identifier = data.get('username')
     else:
-        return jsonify({'error': 'Either phone or email is required'}), 400
+        return jsonify({
+            'success': False,
+            'error': 'At least one of email, phone, or username is required'
+        }), 400
     
     password = data.get('password')
+    if not password:
+        return jsonify({
+            'success': False,
+            'error': 'Password is required'
+        }), 400
     
-    # Use service to handle login
+    # Call service to handle login
     result = UserService.login(identifier, password, is_email)
     
     if not result['success']:
-        return jsonify({'error': result['error']}), 401
+        return jsonify({
+            'success': False,
+            'error': result['error']
+        }), 401
     
     # Create access token
     expires = datetime.timedelta(days=7)
@@ -65,7 +90,9 @@ def login():
         expires_delta=expires
     )
     
+    # Return response with token and user info
     return jsonify({
+        'success': True,
         'access_token': access_token,
         'user': result['user']
     }), 200
@@ -93,9 +120,10 @@ def update_profile():
     result = UserService.update_profile(user_id, data)
     
     if not result['success']:
-        return jsonify({'error': result['error']}), 404
+        return jsonify({'error': result['error']}), 400
     
     return jsonify({
+        'success': True,
         'message': result['message'],
         'user': result['user']
     }), 200

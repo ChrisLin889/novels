@@ -1,0 +1,21 @@
+1. 普通用户账户
+用户名: testuser
+密码: password123
+邮箱: user@test.com
+电话: 12345678901
+角色: user (普通用户)
+2. 作者账户
+用户名: testauthor
+密码: password123
+邮箱: author@test.com
+电话: 12345678902
+角色: author (作者)
+笔名: testauthor
+3. 管理员账户
+用户名: testadmin
+密码: password123
+邮箱: admin@test.com
+电话: 12345678903
+角色: admin (管理员)
+管理级别: 1
+权限: {"content": true, "user": true}
