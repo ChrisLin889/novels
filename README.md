@@ -212,3 +212,67 @@ project/
 项目维护者 - admin@example.com
 
 项目链接：https://github.com/ChrisLin889/novels 
+
+# 小说平台测试工具
+
+这个项目包含了用于测试小说平台后端服务的自动化脚本集合。通过这些工具，您可以验证API状态、检查已知问题是否已修复，以及运行其他测试场景。
+
+## 测试脚本清单
+
+目前包含以下测试脚本：
+
+- `check_api_status.py`: 检查后端API服务是否正常运行
+- `verify_backend_fixes.py`: 验证之前发现的问题是否已被修复
+- `run_platform_tests.py`: 统一测试启动工具（可以运行所有测试）
+
+## 环境要求
+
+- Python 3.6+
+- 安装必要的依赖包: `pip install requests`
+- 后端服务必须正在运行（默认地址: http://localhost:5000）
+
+## 使用方法
+
+### 运行所有测试
+
+```bash
+python test/run_platform_tests.py
+```
+
+### 运行特定测试
+
+```bash
+# 仅运行API状态检查
+python test/run_platform_tests.py --test api_status
+
+# 仅验证后端问题修复
+python test/run_platform_tests.py --test verify_fixes
+```
+
+### 直接运行单个测试脚本
+
+您也可以直接运行单个测试脚本：
+
+```bash
+# 检查API状态
+python test/check_api_status.py
+
+# 验证后端修复
+python test/verify_backend_fixes.py
+```
+
+## 测试报告
+
+- API状态检查将直接输出到控制台
+- 问题修复验证会生成一个名为`fix_verification_report.md`的Markdown报告文件
+
+## 自定义配置
+
+在各个测试脚本中可以修改如下配置参数：
+
+- `BASE_URL`: 后端服务的基础URL（默认为http://localhost:5000）
+- `TIMEOUT`: 请求超时时间（默认为5秒）
+
+## 问题反馈
+
+如果您在使用测试工具时发现任何问题，或者有功能改进建议，请提交问题报告或联系开发团队。 

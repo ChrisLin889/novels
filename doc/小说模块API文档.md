@@ -27,13 +27,16 @@
 
 ```json
 {
-  "title": "string",     // 小说标题
-  "category": "string",  // 小说分类
-  "intro": "string"      // 小说简介
+  "title": "string",     // 小说标题（必填）
+  "author": "string",    // 显示的作者名称（必填）
+  "category": "string",  // 小说分类（必填）
+  "intro": "string",     // 小说简介（必填）
+  "cover": "string",     // 封面图片路径（可选，默认为default_cover.jpg）
+  "status": "string"     // 小说状态（可选，默认为ongoing）
 }
 ```
 
-> **重要**：系统会使用当前登录用户关联的author.id作为小说的author_id，必须确保当前用户已有author记录，否则会出现外键约束错误。由于数据库设计，novel表的author_id必须关联到author表的id。
+> **重要**：系统会使用当前登录用户关联的author.id作为小说的author_id，必须确保当前用户已有author记录，否则会出现外键约束错误。由于数据库设计，novel表的author_id必须关联到author表的id。author字段是显示给用户的作者名称，可以与用户的笔名不同。
 
 - **成功响应** (201 Created):
 

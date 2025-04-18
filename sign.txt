@@ -3,7 +3,9 @@
 密码: password123
 邮箱: user@test.com
 电话: 12345678901
-角色: user (普通用户)
+角色: user (普通用户，已注销作者身份)
+用户ID: 5
+状态: active (已激活)
 2. 作者账户
 用户名: testauthor
 密码: password123
@@ -11,6 +13,8 @@
 电话: 12345678902
 角色: author (作者)
 笔名: testauthor
+用户ID: 2
+状态: active (已激活)
 3. 管理员账户
 用户名: testadmin
 密码: password123
@@ -19,3 +23,10 @@
 角色: admin (管理员)
 管理级别: 1
 权限: {"content": true, "user": true}
+用户ID: 3
+状态: active (已激活)
+4. 账户修复记录
+- 密码重置时间: 2025年4月18日
+- 重置方法: 使用bcrypt生成的低成本密码哈希($2b$04$...)
+- 重置原因: 原测试账户密码无法验证通过，导致API测试失败
+- 配置脚本: reset_test_users.sql

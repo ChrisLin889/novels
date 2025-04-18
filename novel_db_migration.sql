@@ -19,6 +19,9 @@ DROP TABLE IF EXISTS `user_following`;
 DROP TABLE IF EXISTS `user_action`;
 DROP TABLE IF EXISTS `private_messages`;
 DROP TABLE IF EXISTS `novel`;
+DROP TABLE IF EXISTS `author`;
+DROP TABLE IF EXISTS `admin`;
+DROP TABLE IF EXISTS `user_backup`;
 DROP TABLE IF EXISTS `user`;
 DROP TABLE IF EXISTS `sensitive_word`;
 
@@ -33,6 +36,22 @@ CREATE TABLE `user` (
   `phone` varchar(20) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
   `password_hash` varchar(128) NOT NULL,
+  `avatar` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  `status` tinyint(1) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `phone` (`phone`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Table structure for table `user_backup`
+CREATE TABLE `user_backup` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `password_hash` varchar(128) NOT NULL,
   `role` varchar(20) DEFAULT NULL,
   `avatar` varchar(255) DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
@@ -41,6 +60,38 @@ CREATE TABLE `user` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `phone` (`phone`),
   UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Table structure for table `author`
+CREATE TABLE `author` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `pen_name` varchar(50) DEFAULT NULL,
+  `bio` text,
+  `verified` tinyint(1) DEFAULT '0',
+  `income_account` varchar(100) DEFAULT NULL,
+  `works_count` int DEFAULT '0',
+  `fans_count` int DEFAULT '0',
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  CONSTRAINT `author_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Table structure for table `admin`
+CREATE TABLE `admin` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `admin_level` tinyint DEFAULT '1',
+  `permissions` json DEFAULT NULL,
+  `department` varchar(50) DEFAULT NULL,
+  `last_login_at` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  CONSTRAINT `admin_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `novel`
@@ -61,7 +112,7 @@ CREATE TABLE `novel` (
   KEY `ix_novel_category` (`category`),
   KEY `ix_novel_title` (`title`),
   KEY `author_id` (`author_id`),
-  CONSTRAINT `novel_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `user` (`id`)
+  CONSTRAINT `novel_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `chapter`
@@ -75,7 +126,7 @@ CREATE TABLE `chapter` (
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `ix_chapter_novel_id` (`novel_id`),
+  KEY `novel_id` (`novel_id`),
   CONSTRAINT `chapter_ibfk_1` FOREIGN KEY (`novel_id`) REFERENCES `novel` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -86,17 +137,15 @@ CREATE TABLE `comments` (
   `novel_id` int DEFAULT NULL,
   `chapter_id` int DEFAULT NULL,
   `content` text NOT NULL,
-  `parent_id` int DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
+  `likes` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   KEY `novel_id` (`novel_id`),
   KEY `chapter_id` (`chapter_id`),
-  KEY `parent_id` (`parent_id`),
   CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
   CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`novel_id`) REFERENCES `novel` (`id`),
-  CONSTRAINT `comments_ibfk_3` FOREIGN KEY (`chapter_id`) REFERENCES `chapter` (`id`),
-  CONSTRAINT `comments_ibfk_4` FOREIGN KEY (`parent_id`) REFERENCES `comments` (`id`)
+  CONSTRAINT `comments_ibfk_3` FOREIGN KEY (`chapter_id`) REFERENCES `chapter` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `user_collection`
@@ -106,7 +155,7 @@ CREATE TABLE `user_collection` (
   `novel_id` int NOT NULL,
   `created_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `user_novel_unique` (`user_id`,`novel_id`),
+  KEY `user_id` (`user_id`),
   KEY `novel_id` (`novel_id`),
   CONSTRAINT `user_collection_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
   CONSTRAINT `user_collection_ibfk_2` FOREIGN KEY (`novel_id`) REFERENCES `novel` (`id`)
@@ -118,9 +167,9 @@ CREATE TABLE `user_history` (
   `user_id` int NOT NULL,
   `novel_id` int NOT NULL,
   `chapter_id` int NOT NULL,
-  `last_read_at` datetime DEFAULT NULL,
+  `last_read_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `user_novel_unique` (`user_id`,`novel_id`),
+  KEY `user_id` (`user_id`),
   KEY `novel_id` (`novel_id`),
   KEY `chapter_id` (`chapter_id`),
   CONSTRAINT `user_history_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
@@ -135,7 +184,7 @@ CREATE TABLE `user_following` (
   `followed_id` int NOT NULL,
   `created_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `follower_followed_unique` (`follower_id`,`followed_id`),
+  KEY `follower_id` (`follower_id`),
   KEY `followed_id` (`followed_id`),
   CONSTRAINT `user_following_ibfk_1` FOREIGN KEY (`follower_id`) REFERENCES `user` (`id`),
   CONSTRAINT `user_following_ibfk_2` FOREIGN KEY (`followed_id`) REFERENCES `user` (`id`)
@@ -145,38 +194,45 @@ CREATE TABLE `user_following` (
 CREATE TABLE `private_messages` (
   `id` int NOT NULL AUTO_INCREMENT,
   `sender_id` int NOT NULL,
-  `receiver_id` int NOT NULL,
+  `recipient_id` int NOT NULL,
   `content` text NOT NULL,
-  `is_read` tinyint(1) DEFAULT '0',
   `created_at` datetime DEFAULT NULL,
+  `read_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `sender_id` (`sender_id`),
-  KEY `receiver_id` (`receiver_id`),
+  KEY `recipient_id` (`recipient_id`),
   CONSTRAINT `private_messages_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `user` (`id`),
-  CONSTRAINT `private_messages_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `user` (`id`)
+  CONSTRAINT `private_messages_ibfk_2` FOREIGN KEY (`recipient_id`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `user_action`
 CREATE TABLE `user_action` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int NOT NULL,
+  `admin_id` int NOT NULL,
+  `target_user_id` int NOT NULL,
   `action_type` varchar(20) NOT NULL,
-  `target_id` int NOT NULL,
-  `target_type` varchar(20) NOT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `duration` int DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  CONSTRAINT `user_action_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+  KEY `admin_id` (`admin_id`),
+  KEY `target_user_id` (`target_user_id`),
+  CONSTRAINT `user_action_ibfk_1` FOREIGN KEY (`admin_id`) REFERENCES `admin` (`id`),
+  CONSTRAINT `user_action_ibfk_2` FOREIGN KEY (`target_user_id`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `sensitive_word`
 CREATE TABLE `sensitive_word` (
   `id` int NOT NULL AUTO_INCREMENT,
   `word` varchar(50) NOT NULL,
+  `level` int DEFAULT NULL,
   `category` varchar(20) DEFAULT NULL,
+  `added_by` int DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `word` (`word`)
+  UNIQUE KEY `word` (`word`),
+  KEY `added_by` (`added_by`),
+  CONSTRAINT `sensitive_word_ibfk_1` FOREIGN KEY (`added_by`) REFERENCES `admin` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `content_audit`
@@ -184,67 +240,76 @@ CREATE TABLE `content_audit` (
   `id` int NOT NULL AUTO_INCREMENT,
   `content_type` varchar(20) NOT NULL,
   `content_id` int NOT NULL,
-  `status` varchar(20) NOT NULL,
-  `reviewer_id` int DEFAULT NULL,
-  `reason` text,
+  `status` varchar(20) DEFAULT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `admin_id` int DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `reviewer_id` (`reviewer_id`),
-  CONSTRAINT `content_audit_ibfk_1` FOREIGN KEY (`reviewer_id`) REFERENCES `user` (`id`)
+  KEY `admin_id` (`admin_id`),
+  CONSTRAINT `content_audit_ibfk_1` FOREIGN KEY (`admin_id`) REFERENCES `admin` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `user_tips`
 CREATE TABLE `user_tips` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `sender_id` int NOT NULL,
-  `receiver_id` int NOT NULL,
-  `amount` decimal(10,2) NOT NULL,
-  `message` text,
+  `tipper_id` int NOT NULL,
+  `author_id` int NOT NULL,
+  `novel_id` int NOT NULL,
+  `chapter_id` int DEFAULT NULL,
+  `amount` int NOT NULL,
+  `message` varchar(200) DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `sender_id` (`sender_id`),
-  KEY `receiver_id` (`receiver_id`),
-  CONSTRAINT `user_tips_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `user` (`id`),
-  CONSTRAINT `user_tips_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `user` (`id`)
+  KEY `tipper_id` (`tipper_id`),
+  KEY `author_id` (`author_id`),
+  KEY `novel_id` (`novel_id`),
+  KEY `chapter_id` (`chapter_id`),
+  CONSTRAINT `user_tips_ibfk_1` FOREIGN KEY (`tipper_id`) REFERENCES `user` (`id`),
+  CONSTRAINT `user_tips_ibfk_2` FOREIGN KEY (`author_id`) REFERENCES `author` (`id`),
+  CONSTRAINT `user_tips_ibfk_3` FOREIGN KEY (`novel_id`) REFERENCES `novel` (`id`),
+  CONSTRAINT `user_tips_ibfk_4` FOREIGN KEY (`chapter_id`) REFERENCES `chapter` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `crawl_task`
 CREATE TABLE `crawl_task` (
   `id` int NOT NULL AUTO_INCREMENT,
   `source_url` varchar(255) NOT NULL,
-  `status` varchar(20) NOT NULL,
+  `task_type` varchar(50) NOT NULL,
+  `status` varchar(20) DEFAULT NULL,
+  `started_at` datetime DEFAULT NULL,
+  `completed_at` datetime DEFAULT NULL,
+  `success_count` int DEFAULT NULL,
+  `error_count` int DEFAULT NULL,
+  `error_message` text DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `crawled_novel`
 CREATE TABLE `crawled_novel` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `source_url` varchar(255) NOT NULL,
-  `task_id` int DEFAULT NULL,
   `title` varchar(100) NOT NULL,
-  `author` varchar(50) NOT NULL,
-  `category` varchar(30) DEFAULT NULL,
+  `author` varchar(50) NOT NULL, 
+  `category` varchar(30) NOT NULL,
   `cover` varchar(255) DEFAULT NULL,
   `intro` text,
   `status` varchar(20) DEFAULT NULL,
+  `source_url` varchar(255) DEFAULT NULL,
+  `source_site` varchar(50) DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `task_id` (`task_id`),
-  CONSTRAINT `crawled_novel_ibfk_1` FOREIGN KEY (`task_id`) REFERENCES `crawl_task` (`id`)
+  KEY `title` (`title`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `crawled_chapter`
 CREATE TABLE `crawled_chapter` (
   `id` int NOT NULL AUTO_INCREMENT,
   `novel_id` int NOT NULL,
-  `source_url` varchar(255) NOT NULL,
   `chapter_number` int NOT NULL,
   `title` varchar(100) NOT NULL,
-  `content` text,
+  `content` text NOT NULL,
+  `source_url` varchar(255) DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `novel_id` (`novel_id`),
@@ -255,9 +320,19 @@ CREATE TABLE `crawled_chapter` (
 CREATE TABLE `crawl_temp` (
   `id` int NOT NULL AUTO_INCREMENT,
   `task_id` int NOT NULL,
-  `data_type` varchar(20) NOT NULL,
-  `data_json` json NOT NULL,
+  `novel_title` varchar(100) DEFAULT NULL,
+  `novel_author` varchar(50) DEFAULT NULL,
+  `novel_category` varchar(30) DEFAULT NULL,
+  `novel_intro` text DEFAULT NULL,
+  `novel_cover_url` varchar(255) DEFAULT NULL,
+  `chapter_title` varchar(100) DEFAULT NULL,
+  `chapter_number` int DEFAULT NULL,
+  `chapter_content` text DEFAULT NULL,
+  `source_url` varchar(255) NOT NULL,
+  `is_approved` tinyint(1) DEFAULT NULL,
+  `is_rejected` tinyint(1) DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
+  `approved_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `task_id` (`task_id`),
   CONSTRAINT `crawl_temp_ibfk_1` FOREIGN KEY (`task_id`) REFERENCES `crawl_task` (`id`)
