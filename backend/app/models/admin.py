@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime
+from typing import Dict, Any
 
 class Admin(db.Model):
     __tablename__ = 'admin'
@@ -23,7 +24,9 @@ class Admin(db.Model):
             'admin_level': self.admin_level,
             'permissions': self.permissions,
             'department': self.department,
-            'created_at': self.created_at.isoformat()
+            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
         }
 
 # 保留其他管理员相关模型
@@ -99,73 +102,11 @@ class UserAction(db.Model):
         return {
             'id': self.id,
             'admin_id': self.admin_id,
+            'admin_name': self.admin.user.username if self.admin and self.admin.user else None,
             'target_user_id': self.target_user_id,
+            'target_user_name': self.target_user.username if self.target_user else None,
             'action_type': self.action_type,
             'reason': self.reason,
             'duration': self.duration,
             'created_at': self.created_at.isoformat()
         }
-
-class CrawledNovel(db.Model):
-    """
-    Temporary model for storing crawled novels before approval
-    """
-    __tablename__ = 'crawled_novel'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False, index=True)
-    author = db.Column(db.String(50), nullable=False)
-    category = db.Column(db.String(30), nullable=False)
-    cover = db.Column(db.String(255), nullable=True)
-    intro = db.Column(db.Text, nullable=True)
-    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
-    source_url = db.Column(db.String(255), nullable=True)
-    source_site = db.Column(db.String(50), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    chapters = db.relationship('CrawledChapter', backref='novel', lazy='dynamic', cascade='all, delete-orphan')
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'title': self.title,
-            'author': self.author,
-            'category': self.category,
-            'cover': self.cover,
-            'intro': self.intro,
-            'status': self.status,
-            'source_url': self.source_url,
-            'source_site': self.source_site,
-            'created_at': self.created_at.isoformat(),
-            'chapter_count': self.chapters.count()
-        }
-
-class CrawledChapter(db.Model):
-    """
-    Temporary model for storing crawled chapters before approval
-    """
-    __tablename__ = 'crawled_chapter'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    novel_id = db.Column(db.Integer, db.ForeignKey('crawled_novel.id'), nullable=False, index=True)
-    chapter_number = db.Column(db.Integer, nullable=False)
-    title = db.Column(db.String(100), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    source_url = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def to_dict(self, include_content=False):
-        result = {
-            'id': self.id,
-            'novel_id': self.novel_id,
-            'chapter_number': self.chapter_number,
-            'title': self.title,
-            'source_url': self.source_url,
-            'created_at': self.created_at.isoformat()
-        }
-        
-        if include_content:
-            result['content'] = self.content
-            
-        return result

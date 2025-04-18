@@ -1,12 +1,11 @@
 from typing import List, Dict, Optional, Tuple
 from app import db
-from app.models.admin import SensitiveWord, ContentAudit, UserAction, CrawledNovel, CrawledChapter
+from app.models.admin import SensitiveWord, ContentAudit, UserAction
 from app.models.user import User
-from app.models.author import Author
 from app.models.novel import Novel, Chapter
 from app.models.interaction import Comment
-from sqlalchemy import desc, func, and_, or_
-from datetime import datetime, timedelta
+from sqlalchemy import desc, func
+from datetime import datetime
 
 class AdminDAO:
     """
@@ -23,7 +22,7 @@ class AdminDAO:
         Args:
             page: Page number
             per_page: Items per page
-            role: Filter by user role
+            role: Optional role filter
             
         Returns:
             Tuple of (users, total_count)
@@ -31,17 +30,7 @@ class AdminDAO:
         query = User.query
         
         if role:
-            if role == 'admin':
-                # 查询有管理员记录的用户
-                query = query.join(User.admin)
-            elif role == 'author':
-                # 查询有作者记录的用户
-                query = query.join(User.author)
-            elif role == 'user':
-                # 普通用户 - 既不是管理员也不是作者
-                query = query.outerjoin(User.admin).outerjoin(User.author).filter(
-                    and_(User.admin == None, User.author == None)
-                )
+            query = query.filter(User.role == role)
             
         total = query.count()
         users = query.order_by(desc(User.created_at)) \
@@ -63,35 +52,29 @@ class AdminDAO:
             duration: Ban duration in days (None for permanent)
             
         Returns:
-            Created UserAction
+            UserAction record
         """
-        # 首先获取管理员记录
-        admin = db.session.query(Admin).filter(Admin.user_id == admin_id).first()
-        if not admin:
-            raise ValueError(f"Admin with user ID {admin_id} not found")
-        
-        # Update user status
         user = User.query.get(user_id)
         if not user:
-            raise ValueError(f"User with ID {user_id} not found")
+            raise ValueError(f"User {user_id} not found")
             
-        user.status = 1  # 1 = banned
-        if duration:
-            user.ban_until = datetime.utcnow() + timedelta(days=duration)
+        # Update user status
+        user.status = 1  # Banned
+        user.banned_until = datetime.utcnow().replace(
+            hour=23, minute=59, second=59
+        ) + datetime.timedelta(days=duration) if duration else None
         
         # Create action record
         action = UserAction(
-            admin_id=admin.id,  # 使用admin表的ID而不是user_id
+            admin_id=admin_id,
             target_user_id=user_id,
             action_type='ban',
             reason=reason,
             duration=duration
         )
         
-        # Save changes
         db.session.add(action)
         db.session.commit()
-        
         return action
     
     @staticmethod
@@ -105,33 +88,29 @@ class AdminDAO:
             reason: Reason for unban
             
         Returns:
-            Created UserAction
+            UserAction record
         """
-        # 首先获取管理员记录
-        admin = db.session.query(Admin).filter(Admin.user_id == admin_id).first()
-        if not admin:
-            raise ValueError(f"Admin with user ID {admin_id} not found")
-        
-        # Update user status
         user = User.query.get(user_id)
         if not user:
-            raise ValueError(f"User with ID {user_id} not found")
+            raise ValueError(f"User {user_id} not found")
             
-        user.status = 0  # 0 = active
-        user.ban_until = None
+        if user.status != 1:  # Not banned
+            raise ValueError(f"User {user_id} is not banned")
+            
+        # Update user status
+        user.status = 0  # Active
+        user.banned_until = None
         
         # Create action record
         action = UserAction(
-            admin_id=admin.id,  # 使用admin表的ID而不是user_id
+            admin_id=admin_id,
             target_user_id=user_id,
             action_type='unban',
             reason=reason
         )
         
-        # Save changes
         db.session.add(action)
         db.session.commit()
-        
         return action
     
     @staticmethod
@@ -139,10 +118,10 @@ class AdminDAO:
                          page: int = 1, 
                          per_page: int = 20) -> Tuple[List[UserAction], int]:
         """
-        Get user management actions with pagination
+        Get user actions history
         
         Args:
-            user_id: Filter by target user ID
+            user_id: Optional user ID to filter by
             page: Page number
             per_page: Items per page
             
@@ -170,47 +149,54 @@ class AdminDAO:
         Get pending content for moderation
         
         Args:
-            content_type: Type of content ("novel", "chapter", "comment")
+            content_type: Type of content (novel, chapter, comment)
             page: Page number
             per_page: Items per page
             
         Returns:
-            Tuple of (content_list, total_count)
+            Tuple of (content_items, total_count)
         """
-        query = ContentAudit.query.filter(
-            and_(
-                ContentAudit.content_type == content_type,
-                ContentAudit.status == 'pending'
-            )
-        )
+        # First get all pending audit records for this content type
+        audits = ContentAudit.query.filter(
+            ContentAudit.content_type == content_type,
+            ContentAudit.status == 'pending'
+        ).order_by(
+            desc(ContentAudit.created_at)
+        ).offset((page - 1) * per_page) \
+         .limit(per_page) \
+         .all()
         
-        total = query.count()
-        audits = query.order_by(ContentAudit.created_at) \
-                     .offset((page - 1) * per_page) \
-                     .limit(per_page) \
-                     .all()
+        # Now fetch the actual content based on content type and IDs
+        result = []
+        if content_type == 'novel':
+            for audit in audits:
+                novel = Novel.query.get(audit.content_id)
+                if novel:
+                    item = novel.to_dict()
+                    item['audit_id'] = audit.id
+                    result.append(item)
+        elif content_type == 'chapter':
+            for audit in audits:
+                chapter = Chapter.query.get(audit.content_id)
+                if chapter:
+                    item = chapter.to_dict()
+                    item['audit_id'] = audit.id
+                    result.append(item)
+        elif content_type == 'comment':
+            for audit in audits:
+                comment = Comment.query.get(audit.content_id)
+                if comment:
+                    item = comment.to_dict()
+                    item['audit_id'] = audit.id
+                    result.append(item)
         
-        # Fetch the actual content objects
-        content_list = []
-        for audit in audits:
-            content_obj = None
-            
-            if content_type == 'novel':
-                content_obj = Novel.query.get(audit.content_id)
-            elif content_type == 'chapter':
-                content_obj = Chapter.query.get(audit.content_id)
-            elif content_type == 'comment':
-                content_obj = Comment.query.get(audit.content_id)
-                
-            if content_obj:
-                # Combine audit info with content info
-                content_data = content_obj.to_dict()
-                content_data['audit_id'] = audit.id
-                content_data['audit_status'] = audit.status
-                content_data['audit_created_at'] = audit.created_at.isoformat()
-                content_list.append(content_data)
+        # Count total pending items for this content type
+        total = ContentAudit.query.filter(
+            ContentAudit.content_type == content_type,
+            ContentAudit.status == 'pending'
+        ).count()
         
-        return content_list, total
+        return result, total
     
     @staticmethod
     def audit_content(audit_id: int, admin_id: int, status: str, reason: Optional[str] = None) -> ContentAudit:
@@ -220,35 +206,36 @@ class AdminDAO:
         Args:
             audit_id: ID of the audit record
             admin_id: ID of admin performing the action
-            status: New status ("approved" or "rejected")
-            reason: Reason for rejection
+            status: New status (approved or rejected)
+            reason: Optional reason for rejection
             
         Returns:
-            Updated ContentAudit
+            Updated ContentAudit record
         """
         audit = ContentAudit.query.get(audit_id)
-        if not audit:
-            raise ValueError(f"Audit with ID {audit_id} not found")
+        if not audit or audit.status != 'pending':
+            raise ValueError(f"Audit record {audit_id} not found or not pending")
             
-        # Update audit status
+        # Update audit record
         audit.status = status
-        audit.audited_by = admin_id
-        audit.reason = reason
+        audit.admin_id = admin_id
+        audit.reason = reason if status == 'rejected' else None
+        audit.updated_at = datetime.utcnow()
         
-        # If rejected, we may need to hide the content
+        # If rejected, update the content status
         if status == 'rejected':
             if audit.content_type == 'novel':
                 novel = Novel.query.get(audit.content_id)
                 if novel:
-                    novel.status = 'hidden'
+                    novel.status = 'rejected'
             elif audit.content_type == 'chapter':
                 chapter = Chapter.query.get(audit.content_id)
                 if chapter:
-                    chapter.status = 'hidden'
+                    chapter.status = 'rejected'
             elif audit.content_type == 'comment':
                 comment = Comment.query.get(audit.content_id)
                 if comment:
-                    comment.status = 'hidden'
+                    comment.status = 'rejected'
         
         db.session.commit()
         return audit
@@ -277,10 +264,10 @@ class AdminDAO:
             
         total = query.count()
         words = query.order_by(SensitiveWord.word) \
-                    .offset((page - 1) * per_page) \
-                    .limit(per_page) \
-                    .all()
-                    
+                     .offset((page - 1) * per_page) \
+                     .limit(per_page) \
+                     .all()
+                     
         return words, total
     
     @staticmethod
@@ -289,24 +276,14 @@ class AdminDAO:
         Add a new sensitive word
         
         Args:
-            word: The sensitive word
+            word: The word to add
             level: Sensitivity level (1=warn, 2=block, 3=ban)
-            category: Category of the word
+            category: Category (political, violence, sex, etc.)
             admin_id: ID of admin adding the word
             
         Returns:
             Created SensitiveWord
         """
-        # Check if word already exists
-        existing = SensitiveWord.query.filter(SensitiveWord.word == word).first()
-        if existing:
-            # Update existing
-            existing.level = level
-            existing.category = category
-            db.session.commit()
-            return existing
-            
-        # Create new entry
         sensitive_word = SensitiveWord(
             word=word,
             level=level,
@@ -334,137 +311,5 @@ class AdminDAO:
             return False
             
         db.session.delete(word)
-        db.session.commit()
-        return True
-    
-    # ====== Crawler Management ======
-    
-    @staticmethod
-    def get_crawled_novels(status: Optional[str] = None, 
-                           page: int = 1, 
-                           per_page: int = 20) -> Tuple[List[CrawledNovel], int]:
-        """
-        Get crawled novels with pagination
-        
-        Args:
-            status: Filter by status (pending, approved, rejected)
-            page: Page number
-            per_page: Items per page
-            
-        Returns:
-            Tuple of (novels, total_count)
-        """
-        query = CrawledNovel.query
-        
-        if status:
-            query = query.filter(CrawledNovel.status == status)
-            
-        total = query.count()
-        novels = query.order_by(desc(CrawledNovel.created_at)) \
-                     .offset((page - 1) * per_page) \
-                     .limit(per_page) \
-                     .all()
-                     
-        return novels, total
-    
-    @staticmethod
-    def get_crawled_chapters(novel_id: int) -> List[CrawledChapter]:
-        """
-        Get chapters for a crawled novel
-        
-        Args:
-            novel_id: ID of the crawled novel
-            
-        Returns:
-            List of CrawledChapter
-        """
-        chapters = CrawledChapter.query.filter(
-            CrawledChapter.novel_id == novel_id
-        ).order_by(
-            CrawledChapter.chapter_number
-        ).all()
-        
-        return chapters
-    
-    @staticmethod
-    def approve_crawled_novel(novel_id: int) -> bool:
-        """
-        Approve a crawled novel and move it to production
-        
-        Args:
-            novel_id: ID of the crawled novel
-            
-        Returns:
-            True if successful
-        """
-        crawled_novel = CrawledNovel.query.get(novel_id)
-        if not crawled_novel or crawled_novel.status != 'pending':
-            return False
-            
-        # Create a new novel in production table
-        novel = Novel(
-            title=crawled_novel.title,
-            author=crawled_novel.author,
-            category=crawled_novel.category,
-            cover=crawled_novel.cover,
-            intro=crawled_novel.intro,
-            status='ongoing'
-        )
-        
-        db.session.add(novel)
-        db.session.flush()  # Get the new novel ID
-        
-        # Get all chapters for this novel
-        crawled_chapters = CrawledChapter.query.filter(
-            CrawledChapter.novel_id == novel_id
-        ).order_by(
-            CrawledChapter.chapter_number
-        ).all()
-        
-        # Create production chapters
-        for crawled_chapter in crawled_chapters:
-            chapter = Chapter(
-                novel_id=novel.id,
-                chapter_number=crawled_chapter.chapter_number,
-                title=crawled_chapter.title,
-                content=crawled_chapter.content,
-                word_count=len(crawled_chapter.content)
-            )
-            db.session.add(chapter)
-        
-        # Update crawled novel status
-        crawled_novel.status = 'approved'
-        
-        db.session.commit()
-        return True
-    
-    @staticmethod
-    def reject_crawled_novel(novel_id: int, reason: str) -> bool:
-        """
-        Reject a crawled novel
-        
-        Args:
-            novel_id: ID of the crawled novel
-            reason: Reason for rejection
-            
-        Returns:
-            True if successful
-        """
-        crawled_novel = CrawledNovel.query.get(novel_id)
-        if not crawled_novel or crawled_novel.status != 'pending':
-            return False
-            
-        # Update status
-        crawled_novel.status = 'rejected'
-        
-        # Create an audit record
-        audit = ContentAudit(
-            content_type='crawled_novel',
-            content_id=novel_id,
-            status='rejected',
-            reason=reason
-        )
-        
-        db.session.add(audit)
         db.session.commit()
         return True 

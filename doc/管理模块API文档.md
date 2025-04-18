@@ -15,11 +15,7 @@
 4. [内容管理](#4-内容管理)
    - [4.1 获取待审核内容](#41-获取待审核内容)
    - [4.2 审核内容](#42-审核内容)
-5. [爬虫内容管理](#5-爬虫内容管理)
-   - [5.1 获取爬取的小说列表](#51-获取爬取的小说列表)
-   - [5.2 获取爬取的小说章节](#52-获取爬取的小说章节)
-   - [5.3 管理爬取的小说](#53-管理爬取的小说)
-6. [附录：敏感词级别说明](#6-附录敏感词级别说明)
+5. [附录：敏感词级别说明](#5-附录敏感词级别说明)
 
 ## 1. 仪表盘统计
 
@@ -368,109 +364,7 @@
 }
 ```
 
-## 5. 爬虫内容管理
-
-### 5.1 获取爬取的小说列表
-
-- **URL**: `/api/admin/crawled-novels`
-- **方法**: `GET`
-- **权限**: 管理员
-- **请求头**: `Authorization: Bearer {token}`
-- **查询参数**:
-  - `status`: 状态筛选（可选，如：pending, approved, rejected）
-  - `page`: 页码 (默认: 1)
-  - `per_page`: 每页数量 (默认: 20)
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "total": 10,
-  "total_pages": 1,
-  "page": 1,
-  "per_page": 20,
-  "novels": [
-    {
-      "id": 1,
-      "title": "小说标题",
-      "author": "作者名",
-      "category": "科幻",
-      "status": "pending",
-      "chapter_count": 20,
-      "source_site": "来源网站",
-      "created_at": "2023-01-01T00:00:00"
-    }
-  ]
-}
-```
-
-### 5.2 获取爬取的小说章节
-
-- **URL**: `/api/admin/crawled-novels/{novel_id}/chapters`
-- **方法**: `GET`
-- **权限**: 管理员
-- **请求头**: `Authorization: Bearer {token}`
-- **路径参数**:
-  - `novel_id`: 爬取的小说ID
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "total": 20,
-  "novel": {
-    "id": 1,
-    "title": "小说标题",
-    "status": "pending"
-  },
-  "chapters": [
-    {
-      "id": 1,
-      "novel_id": 1,
-      "chapter_number": 1,
-      "title": "第一章 标题",
-      "content_length": 2500,
-      "source_url": "http://example.com/chapter1"
-    }
-  ]
-}
-```
-
-### 5.3 管理爬取的小说
-
-- **URL**: `/api/admin/crawled-novels/{novel_id}`
-- **方法**: `POST`
-- **权限**: 管理员
-- **请求头**: `Authorization: Bearer {token}`
-- **路径参数**:
-  - `novel_id`: 爬取的小说ID
-- **请求参数**:
-
-```json
-{
-  "action": "approve",  // "approve" 或 "reject"
-  "reason": "string"    // 拒绝原因（action为reject时必填）
-}
-```
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "success": true,
-  "message": "Novel approved and moved to production" // 或 "Novel rejected"
-}
-```
-
-- **错误响应** (400 Bad Request):
-
-```json
-{
-  "error": "无效的操作" // 或 "拒绝时必须提供原因"
-}
-```
-
-## 6. 附录：敏感词级别说明
+## 5. 附录：敏感词级别说明
 
 | 级别 | 说明                                               | 处理方式                                             |
 |------|----------------------------------------------------|----------------------------------------------------|

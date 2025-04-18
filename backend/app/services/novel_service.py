@@ -3,7 +3,6 @@ from app.models.interaction import UserCollection, UserHistory, Comment
 from app import db
 from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy import desc, func
-from app.services.cache_service import CacheService, cached
 
 class NovelDAO:
     """
@@ -246,19 +245,15 @@ class NovelDAO:
 
 class NovelService:
     """
-    Service layer for novel-related operations
-    Implements business logic and interacts with DAO
+    Service for accessing and manipulating novel data
+    Handles business logic related to novels
     """
     
     @staticmethod
     def get_novel_list(category: Optional[str] = None, page: int = 1, 
                       per_page: int = 10, sort_by: str = 'updated_at') -> Dict[str, Any]:
         """Get paginated list of novels with optional filtering"""
-        if not category and not sort_by:
-            return {'success': False, 'error': 'At least one filter is required'}
-            
-        result = NovelDAO.get_novel_list(category, page, per_page, sort_by)
-        return {'success': True, **result}
+        return NovelDAO.get_novel_list(category, page, per_page, sort_by)
     
     @staticmethod
     def search_novels(keyword: str, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
@@ -304,17 +299,7 @@ class NovelService:
     @staticmethod
     def get_categories() -> Dict[str, Any]:
         """Get list of categories with novel counts"""
-        # Try to get from cache
-        cached_data = CacheService.get("novel_categories")
-        if cached_data:
-            return {'success': True, 'categories': cached_data}
-        
-        # Query database
         categories = NovelDAO.get_categories()
-        
-        # Cache result
-        CacheService.set("novel_categories", categories, 86400)  # Cache for 24 hours
-        
         return {'success': True, 'categories': categories}
     
     @staticmethod
@@ -422,9 +407,6 @@ class NovelService:
         try:
             chapter = NovelDAO.add_chapter(novel_id, title, content, chapter_number)
             
-            # Invalidate cache for novel detail
-            CacheService.delete(f"novel_detail:{novel_id}")
-            
             return {
                 'success': True,
                 'message': 'Chapter added successfully',
@@ -444,9 +426,6 @@ class NovelService:
         
         try:
             updated_chapter = NovelDAO.update_chapter(chapter_id, data)
-            
-            # Invalidate cache for chapter
-            CacheService.delete(f"chapter:{chapter_id}")
             
             return {
                 'success': True,
@@ -471,12 +450,6 @@ class NovelService:
         try:
             NovelDAO.delete_novel(novel_id)
             
-            # Invalidate relevant caches
-            CacheService.delete(f"novel_detail:{novel_id}")
-            CacheService.delete(f"novel_list:all:1:10:updated_at")
-            CacheService.delete(f"novel_list:{category}:1:10:updated_at")
-            CacheService.delete("novel_categories")
-            
             return {
                 'success': True,
                 'message': 'Novel deleted successfully'
@@ -498,10 +471,6 @@ class NovelService:
         try:
             NovelDAO.delete_chapter(chapter_id)
             
-            # Invalidate relevant caches
-            CacheService.delete(f"chapter:{chapter_id}")
-            CacheService.delete(f"novel_detail:{novel_id}")
-            
             return {
                 'success': True,
                 'message': 'Chapter deleted successfully'
@@ -512,18 +481,11 @@ class NovelService:
     
     @staticmethod
     def refresh_cache() -> Dict[str, Any]:
-        """Force refresh of all novel-related caches"""
-        try:
-            result = CacheService.refresh_novel_cache()
-            if result:
-                return {
-                    'success': True,
-                    'message': 'Cache refreshed successfully'
-                }
-            else:
-                return {'success': False, 'error': 'Failed to refresh cache'}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
+        """
+        This method previously refreshed Redis cache, now just returns success
+        This method is kept for backwards compatibility
+        """
+        return {'success': True, 'message': 'No cache to refresh'}
     
     @staticmethod
     def get_chapter(chapter_id: int, include_content: bool = True, user_id: Optional[int] = None) -> Dict[str, Any]:

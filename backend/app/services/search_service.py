@@ -2,26 +2,11 @@ from typing import List, Dict, Optional
 from sqlalchemy import or_, and_, func
 from app import db
 from app.models.novel import Novel
-from app.services.cache_service import CacheService, cached, MockRedis
 from datetime import datetime, timedelta
 import logging
 import os
 
 logger = logging.getLogger(__name__)
-
-# Initialize Redis client
-try:
-    import redis
-    redis_client = redis.Redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'))
-    redis_client.ping()  # Test connection
-except (redis.ConnectionError, ImportError):
-    logger.warning("Redis connection failed, using in-memory mock Redis instead")
-    redis_client = MockRedis()
-
-# Cache prefixes
-SEARCH_RESULT_PREFIX = "search_result:"
-SEARCH_TRENDING_PREFIX = "search_trending:"
-HOT_KEYWORDS_PREFIX = "hot_keywords"
 
 class SearchService:
     """
@@ -29,7 +14,6 @@ class SearchService:
     """
     
     @staticmethod
-    @cached(SEARCH_RESULT_PREFIX, ttl=600)  # Cache search results for 10 minutes
     def search_novels(
         q: str, 
         page: int = 1, 
@@ -46,9 +30,6 @@ class SearchService:
         Returns:
             Dict with search results and pagination info
         """
-        # Record this keyword in trending searches (non-blocking)
-        SearchService.record_search_keyword(q)
-        
         # Build the query
         query = Novel.query
         
@@ -81,63 +62,40 @@ class SearchService:
     def record_search_keyword(keyword: str) -> None:
         """
         Record search keyword for trending analysis
+        This method is kept for compatibility but no longer stores data in Redis
         
         Args:
             keyword: The search keyword
         """
-        # Use a Redis sorted set to track keyword frequency
-        try:
-            # Increment the keyword count in the sorted set
-            # This is non-blocking and won't affect search performance
-            
-            # Increment score for this keyword
-            redis_client.zincrby(HOT_KEYWORDS_PREFIX, 1, keyword.lower())
-            
-            # Trim to keep only top 100 keywords
-            redis_client.zremrangebyrank(HOT_KEYWORDS_PREFIX, 0, -101)
-        except Exception as e:
-            # Log but don't fail the search
-            print(f"Failed to record search keyword: {str(e)}")
+        # No longer tracking search keywords after Redis removal
+        pass
     
     @staticmethod
     def track_search_keyword(keyword):
         """
         Track search keywords for trending
+        This method is kept for compatibility but no longer stores data in Redis
         
         Args:
             keyword: Keyword to track
         """
-        try:
-            # Increment score for the keyword
-            redis_client.zincrby("trending_searches", 1, keyword)
-            
-            # Trim the set to keep only top 100 keywords
-            redis_client.zremrangebyrank("trending_searches", 0, -101)
-        except Exception as e:
-            print(f"Failed to record search keyword: {e}")
+        # No longer tracking search keywords after Redis removal
+        pass
     
     @staticmethod
-    @cached(SEARCH_TRENDING_PREFIX, ttl=3600)  # Cache for 1 hour
     def get_trending_keywords(limit=10):
         """
         Get trending search keywords
+        Now returns empty list since Redis tracking is removed
         
         Args:
             limit: Number of keywords to return
             
         Returns:
-            List of trending keywords
+            Empty list (Redis functionality removed)
         """
-        try:
-            # Get top keywords with scores
-            keywords = redis_client.zrevrange("trending_searches", 0, limit-1, withscores=True)
-            
-            # Format results
-            return [{"keyword": kw.decode('utf-8'), "count": int(score)} for kw, score in keywords]
-        except Exception as e:
-            print(f"Failed to get trending keywords: {e}")
-            # Return empty list if Redis not available
-            return []
+        # No longer have trending keywords after Redis removal
+        return []
     
     @staticmethod
     def search_by_tag(tag: str, page: int = 1, per_page: int = 20) -> Dict:
