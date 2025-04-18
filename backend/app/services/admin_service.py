@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional, Tuple
 from app.dao.admin_dao import AdminDAO
-from app.models.admin import SensitiveWord, ContentAudit, UserAction, CrawledNovel, CrawledChapter
+from app.models.admin import SensitiveWord, ContentAudit, UserAction
 from app.models.user import User
 from app.models.novel import Novel, Chapter
 from app.models.interaction import Comment, UserTip

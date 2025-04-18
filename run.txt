@@ -1,2 +1,2 @@
 cd backend && python3 run.py
-ca frontend && npm install && npm run serve
+cd frontend && npm install && npm run serve

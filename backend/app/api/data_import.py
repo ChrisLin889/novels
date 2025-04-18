@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from app.models.crawler import CrawlTask, CrawlTemp
 from app.models.novel import Novel, Chapter
 from app import db
 from datetime import datetime
