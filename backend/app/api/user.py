@@ -229,28 +229,4 @@ def deactivate_account():
     return jsonify({
         'success': True,
         'message': result['message']
-    }), 200
-
-@user_bp.route('/resign-author', methods=['POST'])
-@jwt_required()
-def resign_author():
-    """Resign author status (convert from author to regular user)"""
-    user_id = get_jwt_identity()
-    data = request.get_json()
-    
-    # Check password
-    password = data.get('password')
-    if not password:
-        return jsonify({'error': 'Password is required to resign author status'}), 400
-    
-    # Call service to handle author resignation
-    result = UserService.resign_author_status(user_id, password)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'success': True,
-        'message': result['message'],
-        'has_works': result.get('has_works', False)
     }), 200 

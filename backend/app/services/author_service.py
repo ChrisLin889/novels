@@ -123,20 +123,19 @@ class AuthorService:
             Dict with success status and applications list
         """
         try:
-            pagination = AuthorApplication.query.filter_by(status='pending').order_by(
-                AuthorApplication.created_at.asc()
-            ).paginate(page=page, per_page=per_page, error_out=False)
+            query = AuthorApplication.query.filter_by(status='pending')
+            applications = query.order_by(AuthorApplication.created_at.asc()).paginate(page=page, per_page=per_page)
             
             return {
                 'success': True,
-                'total': pagination.total,
-                'pages': pagination.pages,
+                'total': applications.total,
+                'pages': applications.pages,
                 'current_page': page,
-                'applications': [app.to_dict() for app in pagination.items]
+                'applications': [app.to_dict() for app in applications.items]
             }
             
         except Exception as e:
-            logger.error(f"获取待处理作者申请出错: {str(e)}")
+            logger.error(f"获取待处理申请出错: {str(e)}")
             return {
                 'success': False,
                 'message': f'获取待处理申请时出错: {str(e)}'
@@ -248,4 +247,66 @@ class AuthorService:
             return {
                 'success': False,
                 'message': f'处理申请时出错: {str(e)}'
+            }
+    
+    @staticmethod
+    def resign_author(user_id: int) -> Dict[str, Any]:
+        """
+        注销作者身份
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            Dict with success status and message
+        """
+        try:
+            # 验证用户是否存在
+            user = User.query.get(user_id)
+            if not user:
+                return {
+                    'success': False,
+                    'message': '用户不存在'
+                }
+                
+            # 检查用户是否是作者
+            if not user.is_author():
+                return {
+                    'success': False,
+                    'message': '您不是作者，无需注销作者身份'
+                }
+                
+            # 获取作者记录
+            author = Author.query.filter_by(user_id=user_id).first()
+            if not author:
+                return {
+                    'success': False,
+                    'message': '作者记录不存在'
+                }
+            
+            # 检查作者是否有作品
+            from app.models.novel import Novel
+            novel_count = Novel.query.filter_by(author_id=author.id).count()
+            
+            # 删除作者记录
+            db.session.delete(author)
+            
+            # 更改用户角色为普通用户
+            user.role = 'user'
+            user.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            
+            return {
+                'success': True,
+                'message': '您已成功注销作者身份，恢复为普通用户',
+                'has_works': novel_count > 0
+            }
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"注销作者身份出错: {str(e)}")
+            return {
+                'success': False,
+                'message': f'注销作者身份时出错: {str(e)}'
             } 

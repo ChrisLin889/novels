@@ -656,11 +656,14 @@ class UserService:
                 'error': 'Admin accounts cannot be deactivated through this method'
             }
             
-        # Handle author account, remove author-specific data
-        author = Author.query.filter_by(user_id=user_id).first()
-        if author:
-            # Clear author relationship but keep the novels
-            db.session.delete(author)
+        # Check if user is an author
+        if user.role == 'author':
+            # 注意：如果只想注销作者身份但保留用户账户，应使用作者模块的 /api/author/resign API
+            # 这里的操作会完全删除用户账户
+            author = Author.query.filter_by(user_id=user_id).first()
+            if author:
+                # Clear author relationship but keep the novels
+                db.session.delete(author)
         
         # Delete user interactions (collections, history, following)
         UserCollection.query.filter_by(user_id=user_id).delete()
@@ -676,68 +679,3 @@ class UserService:
             'success': True,
             'message': 'Account successfully deactivated'
         }
-    
-    @staticmethod
-    def resign_author_status(user_id: int, password: str) -> Dict:
-        """
-        Resign author status (convert from author to regular user)
-        
-        Args:
-            user_id: User ID
-            password: Password for verification
-            
-        Returns:
-            Dict with success status and message
-        """
-        user = User.query.get(user_id)
-        if not user:
-            return {
-                'success': False,
-                'error': 'User not found'
-            }
-        
-        # Verify password
-        if not user.check_password(password):
-            return {
-                'success': False,
-                'error': 'Password is incorrect'
-            }
-        
-        # Check if user is an author
-        if user.role != 'author':
-            return {
-                'success': False,
-                'error': 'User is not an author'
-            }
-        
-        # Get author record
-        author = Author.query.filter_by(user_id=user_id).first()
-        if not author:
-            return {
-                'success': False,
-                'error': 'Author record not found'
-            }
-        
-        # Check if author has published works
-        novels = Novel.query.filter_by(author_id=author.id).count()
-        if novels > 0:
-            # If author has published works, keep the author record but change user role
-            user.role = 'user'
-            db.session.commit()
-            
-            return {
-                'success': True,
-                'message': 'Author status resigned, but published works remain available',
-                'has_works': True
-            }
-        else:
-            # If author has no published works, remove the author record
-            db.session.delete(author)
-            user.role = 'user'
-            db.session.commit()
-            
-            return {
-                'success': True,
-                'message': 'Author status completely removed',
-                'has_works': False
-            }

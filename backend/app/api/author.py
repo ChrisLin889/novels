@@ -93,4 +93,22 @@ def process_application(application_id):
     return jsonify({
         'message': result['message'],
         'application': result['application']
+    }), 200
+
+@author_bp.route('/resign', methods=['POST'])
+@jwt_required()
+def resign_author():
+    """注销作者身份"""
+    user_id = get_jwt_identity()
+    
+    # 调用服务处理注销
+    result = AuthorService.resign_author(user_id)
+    
+    if not result['success']:
+        return jsonify({'error': result['message']}), 400
+        
+    return jsonify({
+        'success': True,
+        'message': result['message'],
+        'has_works': result.get('has_works', False)
     }), 200 
