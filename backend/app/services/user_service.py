@@ -593,25 +593,151 @@ class UserService:
         Returns:
             Dict with success status and message
         """
-        # Get user
         user = User.query.get(user_id)
         if not user:
-            return {'success': False, 'error': 'User not found'}
+            return {
+                'success': False,
+                'error': 'User not found'
+            }
         
         # Verify current password
         if not user.check_password(current_password):
-            return {'success': False, 'error': 'Current password is incorrect'}
+            return {
+                'success': False,
+                'error': 'Current password is incorrect'
+            }
         
         # Validate new password
         if len(new_password) < 6:
-            return {'success': False, 'error': 'Password must be at least 6 characters long'}
-            
-        # Set new password
+            return {
+                'success': False,
+                'error': 'New password must be at least 6 characters long'
+            }
+        
+        # Update password
         user.set_password(new_password)
-        user.updated_at = datetime.utcnow()
         db.session.commit()
         
         return {
             'success': True,
             'message': 'Password changed successfully'
         }
+    
+    @staticmethod
+    def deactivate_account(user_id: int, password: str) -> Dict:
+        """
+        Deactivate (delete) a user account
+        
+        Args:
+            user_id: User ID
+            password: Password for verification
+            
+        Returns:
+            Dict with success status and message
+        """
+        user = User.query.get(user_id)
+        if not user:
+            return {
+                'success': False,
+                'error': 'User not found'
+            }
+        
+        # Verify password
+        if not user.check_password(password):
+            return {
+                'success': False,
+                'error': 'Password is incorrect'
+            }
+        
+        # Check if user is an admin (cannot deactivate admin accounts through this method)
+        if user.role == 'admin':
+            return {
+                'success': False,
+                'error': 'Admin accounts cannot be deactivated through this method'
+            }
+            
+        # Handle author account, remove author-specific data
+        author = Author.query.filter_by(user_id=user_id).first()
+        if author:
+            # Clear author relationship but keep the novels
+            db.session.delete(author)
+        
+        # Delete user interactions (collections, history, following)
+        UserCollection.query.filter_by(user_id=user_id).delete()
+        UserHistory.query.filter_by(user_id=user_id).delete()
+        UserFollowing.query.filter_by(follower_id=user_id).delete()
+        UserFollowing.query.filter_by(author_id=user_id).delete()
+        
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        return {
+            'success': True,
+            'message': 'Account successfully deactivated'
+        }
+    
+    @staticmethod
+    def resign_author_status(user_id: int, password: str) -> Dict:
+        """
+        Resign author status (convert from author to regular user)
+        
+        Args:
+            user_id: User ID
+            password: Password for verification
+            
+        Returns:
+            Dict with success status and message
+        """
+        user = User.query.get(user_id)
+        if not user:
+            return {
+                'success': False,
+                'error': 'User not found'
+            }
+        
+        # Verify password
+        if not user.check_password(password):
+            return {
+                'success': False,
+                'error': 'Password is incorrect'
+            }
+        
+        # Check if user is an author
+        if user.role != 'author':
+            return {
+                'success': False,
+                'error': 'User is not an author'
+            }
+        
+        # Get author record
+        author = Author.query.filter_by(user_id=user_id).first()
+        if not author:
+            return {
+                'success': False,
+                'error': 'Author record not found'
+            }
+        
+        # Check if author has published works
+        novels = Novel.query.filter_by(author_id=author.id).count()
+        if novels > 0:
+            # If author has published works, keep the author record but change user role
+            user.role = 'user'
+            db.session.commit()
+            
+            return {
+                'success': True,
+                'message': 'Author status resigned, but published works remain available',
+                'has_works': True
+            }
+        else:
+            # If author has no published works, remove the author record
+            db.session.delete(author)
+            user.role = 'user'
+            db.session.commit()
+            
+            return {
+                'success': True,
+                'message': 'Author status completely removed',
+                'has_works': False
+            }

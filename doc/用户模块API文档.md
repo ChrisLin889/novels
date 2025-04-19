@@ -9,10 +9,12 @@
 3. [获取个人信息](#3-获取个人信息)
 4. [修改个人信息](#4-修改个人信息)
 5. [修改密码](#5-修改密码)
-6. [管理员功能](#6-管理员功能)
-   - [6.1 查看用户列表](#61-查看用户列表)
-   - [6.2 修改用户状态](#62-修改用户状态)
-   - [6.3 修改用户角色](#63-修改用户角色)
+6. [注销账户](#6-注销账户)
+7. [注销作者身份](#7-注销作者身份)
+8. [管理员功能](#8-管理员功能)
+   - [8.1 查看用户列表](#81-查看用户列表)
+   - [8.2 修改用户状态](#82-修改用户状态)
+   - [8.3 修改用户角色](#83-修改用户角色)
 
 ## 1. 用户注册
 
@@ -188,8 +190,6 @@
 
 ## 5. 修改密码
 
-> **注意: 此接口目前尚未实现，后端缺少 UserService.change_password 方法**
-
 - **URL**: `/api/user/change-password`
 - **方法**: `POST`
 - **权限**: 用户登录
@@ -219,18 +219,81 @@
 }
 ```
 
-- **错误响应** (500 Internal Server Error):
+## 6. 注销账户
+
+- **URL**: `/api/user/deactivate`
+- **方法**: `POST`
+- **权限**: 用户登录
+- **请求头**: `Authorization: Bearer {token}`
+- **请求参数**:
 
 ```json
 {
-  // 当前会返回服务器错误，因为此方法尚未实现
-  "error": "AttributeError: type object 'UserService' has no attribute 'change_password'"
+  "password": "string"  // 当前密码，用于验证身份
 }
 ```
 
-## 6. 管理员功能
+- **成功响应** (200 OK):
 
-### 6.1 查看用户列表
+```json
+{
+  "success": true,
+  "message": "Account successfully deactivated"
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "错误信息" // 如：Password is incorrect, Admin accounts cannot be deactivated through this method
+}
+```
+
+> **注意**：
+> 1. 账户注销后，用户的所有数据将被删除，包括收藏、历史记录、关注关系等
+> 2. 如果用户是作者，其作者信息将被删除，但已发布的作品将保留
+> 3. 管理员账户不能通过此接口注销
+
+## 7. 注销作者身份
+
+- **URL**: `/api/user/resign-author`
+- **方法**: `POST`
+- **权限**: 作者登录
+- **请求头**: `Authorization: Bearer {token}`
+- **请求参数**:
+
+```json
+{
+  "password": "string"  // 当前密码，用于验证身份
+}
+```
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "Author status resigned, but published works remain available", // 或 "Author status completely removed"
+  "has_works": true // 如果作者有已发布作品为true，否则为false
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "错误信息" // 如：Password is incorrect, User is not an author
+}
+```
+
+> **注意**：
+> 1. 如果作者有已发布作品，则会保留作者记录但将用户角色改为普通用户
+> 2. 如果作者没有已发布作品，则会完全删除作者记录并将用户角色改为普通用户
+
+## 8. 管理员功能
+
+### 8.1 查看用户列表
 
 - **URL**: `/api/user/admin/users`
 - **方法**: `GET`
@@ -263,7 +326,7 @@
 }
 ```
 
-### 6.2 修改用户状态
+### 8.2 修改用户状态
 
 - **URL**: `/api/user/admin/users/{target_user_id}/status`
 - **方法**: `PUT`
@@ -298,7 +361,7 @@
 }
 ```
 
-### 6.3 修改用户角色
+### 8.3 修改用户角色
 
 - **URL**: `/api/user/admin/users/{target_user_id}/role`
 - **方法**: `PUT`
