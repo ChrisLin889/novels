@@ -148,66 +148,6 @@ def change_password():
     
     return jsonify({'message': result['message']}), 200
 
-@user_bp.route('/admin/users', methods=['GET'])
-@jwt_required()
-def list_users():
-    admin_id = get_jwt_identity()
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    
-    # Use service to list users (admin only)
-    result = UserService.list_users(admin_id, page, per_page)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 403
-    
-    return jsonify({
-        'total': result['total'],
-        'pages': result['pages'],
-        'current_page': result['current_page'],
-        'users': result['users']
-    }), 200
-
-@user_bp.route('/admin/users/<int:target_user_id>/status', methods=['PUT'])
-@jwt_required()
-def toggle_user_status(target_user_id):
-    admin_id = get_jwt_identity()
-    data = request.get_json()
-    status = data.get('status', False)
-    
-    # Use service to change user status (admin only)
-    result = UserService.manage_user_status(admin_id, target_user_id, status)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 403 if 'Admin privileges' in result['error'] else 404
-    
-    return jsonify({
-        'message': result['message'],
-        'user': result['user']
-    }), 200
-
-@user_bp.route('/admin/users/<int:target_user_id>/role', methods=['PUT'])
-@jwt_required()
-def update_user_role(target_user_id):
-    """Update a user's role (admin only)"""
-    admin_id = get_jwt_identity()
-    data = request.get_json()
-    new_role = data.get('role')
-    
-    if not new_role or new_role not in ['user', 'author', 'admin']:
-        return jsonify({'error': 'Invalid role'}), 400
-    
-    # Use service to update role
-    result = UserService.update_user_role(admin_id, target_user_id, new_role)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'message': result['message'],
-        'user': result['user']
-    }), 200
-
 @user_bp.route('/deactivate', methods=['POST'])
 @jwt_required()
 def deactivate_account():

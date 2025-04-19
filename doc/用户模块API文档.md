@@ -10,10 +10,6 @@
 4. [修改个人信息](#4-修改个人信息)
 5. [修改密码](#5-修改密码)
 6. [注销账户](#6-注销账户)
-7. [管理员功能](#7-管理员功能)
-   - [7.1 查看用户列表](#71-查看用户列表)
-   - [7.2 修改用户状态](#72-修改用户状态)
-   - [7.3 修改用户角色](#73-修改用户角色)
 
 ## 1. 用户注册
 
@@ -254,111 +250,6 @@
 > 2. 如果用户是作者，其作者信息将被删除，但已发布的作品将保留
 > 3. 管理员账户不能通过此接口注销
 > 4. 若要注销作者身份但保留用户账户，请使用作者模块中的 `/api/author/resign` 接口
-
-## 7. 管理员功能
-
-### 7.1 查看用户列表
-
-- **URL**: `/api/user/admin/users`
-- **方法**: `GET`
-- **权限**: 管理员
-- **请求头**: `Authorization: Bearer {token}`
-- **查询参数**:
-  - `page`: 页码 (默认: 1)
-  - `per_page`: 每页数量 (默认: 20)
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "total": 100,
-  "pages": 5,
-  "current_page": 1,
-  "users": [
-    {
-      // 用户信息
-    }
-  ]
-}
-```
-
-- **错误响应** (403 Forbidden):
-
-```json
-{
-  "error": "Admin privileges required"
-}
-```
-
-### 7.2 修改用户状态
-
-- **URL**: `/api/user/admin/users/{target_user_id}/status`
-- **方法**: `PUT`
-- **权限**: 管理员
-- **请求头**: `Authorization: Bearer {token}`
-- **路径参数**:
-  - `target_user_id`: 目标用户ID
-- **请求参数**:
-
-```json
-{
-  "status": true  // true为启用账户，false为禁用账户
-}
-```
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "message": "User account enabled successfully", // 或 "User account disabled successfully"
-  "user": {
-    // 用户信息
-  }
-}
-```
-
-- **错误响应** (403 Forbidden):
-
-```json
-{
-  "error": "Admin privileges required"
-}
-```
-
-### 7.3 修改用户角色
-
-- **URL**: `/api/user/admin/users/{target_user_id}/role`
-- **方法**: `PUT`
-- **权限**: 管理员
-- **请求头**: `Authorization: Bearer {token}`
-- **路径参数**:
-  - `target_user_id`: 目标用户ID
-- **请求参数**:
-
-```json
-{
-  "role": "string"  // 可选值: "user", "author", "admin"
-}
-```
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "message": "User role updated successfully",
-  "user": {
-    // 用户信息
-  }
-}
-```
-
-- **错误响应** (400 Bad Request):
-
-```json
-{
-  "error": "Invalid role" // 角色必须是 user, author 或 admin
-}
-```
 
 ## 附录: 错误代码及说明
 
