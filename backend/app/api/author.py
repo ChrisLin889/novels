@@ -98,7 +98,7 @@ def process_application(application_id):
 @author_bp.route('/resign', methods=['POST'])
 @jwt_required()
 def resign_author():
-    """注销作者身份"""
+    """放弃作者身份"""
     user_id = get_jwt_identity()
     
     # 调用服务处理注销
@@ -109,6 +109,24 @@ def resign_author():
         
     return jsonify({
         'success': True,
+        'message': result['message']
+    }), 200
+
+@author_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """更新作者资料"""
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    
+    # 调用服务更新资料
+    result = AuthorService.update_author_profile(user_id, data)
+    
+    if not result['success']:
+        return jsonify({'error': result['message']}), 400
+        
+    return jsonify({
+        'success': True,
         'message': result['message'],
-        'has_works': result.get('has_works', False)
+        'author': result['author']
     }), 200 

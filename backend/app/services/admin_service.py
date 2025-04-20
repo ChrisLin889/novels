@@ -4,6 +4,7 @@ from app.models.admin import SensitiveWord, ContentAudit, UserAction
 from app.models.user import User
 from app.models.novel import Novel, Chapter
 from app.models.interaction import Comment, UserTip
+from app.services.permission_service import PermissionService
 from datetime import datetime
 import re
 from sqlalchemy import func
@@ -100,25 +101,24 @@ class AdminService:
     @staticmethod
     def update_user_role(admin_id: int, user_id: int, role: str) -> Dict:
         """
-        Update a user's role
+        更新用户角色
         
         Args:
-            admin_id: ID of admin performing the action
-            user_id: ID of user to update
-            role: New role for the user
+            admin_id: 执行操作的管理员ID
+            user_id: 目标用户ID
+            role: 新角色
             
         Returns:
-            Dict with result
+            操作结果
         """
-        # Verify admin permissions
-        admin = User.query.get(admin_id)
-        if not admin or admin.role != 'admin':
+        # 验证管理员权限
+        if not PermissionService.has_role(admin_id, 'admin'):
             return {
                 'success': False,
                 'message': 'Admin privileges required'
             }
         
-        # Verify target user exists
+        # 验证目标用户存在
         user = User.query.get(user_id)
         if not user:
             return {
@@ -126,7 +126,7 @@ class AdminService:
                 'message': f'User with ID {user_id} not found'
             }
         
-        # Verify role is valid
+        # 验证角色有效
         valid_roles = ['user', 'author', 'admin']
         if role not in valid_roles:
             return {
@@ -134,25 +134,62 @@ class AdminService:
                 'message': f'Invalid role: {role}'
             }
         
-        # Update user role
-        user.role = role
-        db.session.commit()
-        
-        # Create action record
-        action = UserAction(
-            admin_id=admin_id,
-            target_user_id=user_id,
-            action_type='update_role',
-            reason=f'Role updated to {role}'
-        )
-        db.session.add(action)
-        db.session.commit()
-        
-        return {
-            'success': True,
-            'message': f'User role updated to {role}',
-            'user': user.to_dict()
-        }
+        try:
+            # 根据角色更新相应的关联记录
+            if role == 'admin':
+                # 检查是否已经是管理员
+                if not PermissionService.has_role(user_id, 'admin'):
+                    # 创建管理员记录
+                    admin = Admin(
+                        user_id=user_id,
+                        admin_level=1,
+                        permissions={'content': True, 'user': True}
+                    )
+                    db.session.add(admin)
+            elif role == 'author':
+                # 检查是否已经是作者
+                if not PermissionService.has_role(user_id, 'author'):
+                    # 创建作者记录
+                    from app.models.author import Author
+                    author = Author(
+                        user_id=user_id,
+                        pen_name=user.username
+                    )
+                    db.session.add(author)
+            elif role == 'user':
+                # 如果是管理员，删除管理员记录
+                if PermissionService.has_role(user_id, 'admin'):
+                    Admin.query.filter_by(user_id=user_id).delete()
+                
+                # 如果是作者，删除作者记录
+                if PermissionService.has_role(user_id, 'author'):
+                    from app.models.author import Author
+                    Author.query.filter_by(user_id=user_id).delete()
+            
+            # 创建操作记录
+            action = UserAction(
+                admin_id=admin_id,
+                target_user_id=user_id,
+                action_type='update_role',
+                reason=f'Role updated to {role}'
+            )
+            db.session.add(action)
+            db.session.commit()
+            
+            # 获取最新的用户信息
+            updated_user = User.query.get(user_id)
+            
+            return {
+                'success': True,
+                'message': f'User role updated to {role}',
+                'user': updated_user.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {
+                'success': False,
+                'message': f'Error updating role: {str(e)}'
+            }
     
     # ====== Content Management ======
     

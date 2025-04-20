@@ -11,6 +11,7 @@ from datetime import datetime
 import re
 import random
 import string
+from app.services.permission_service import PermissionService
 
 class UserDAO:
     """
@@ -230,7 +231,7 @@ class UserService:
         }
         
         # Get the user's role
-        role = user.get_role()
+        role = PermissionService.get_user_role(user.id)
         user_data['role'] = role
         
         # Add role-specific data
@@ -296,7 +297,7 @@ class UserService:
             'username': user.username,
             'email': user.email,
             'phone': user.phone,
-            'role': user.get_role(),
+            'role': PermissionService.get_user_role(user.id),
             'avatar': user.avatar,
             'created_at': user.created_at.isoformat(),
             'status': 'active' if user.status == 0 else 'banned',
@@ -424,46 +425,27 @@ class UserService:
     @staticmethod
     def check_permission(user_id: int, required_role: str = None, resource_id: int = None, resource_type: str = None) -> bool:
         """
-        Check if user has permission
+        检查用户是否拥有特定权限
         
         Args:
-            user_id: User ID
-            required_role: Required role (if any)
-            resource_id: Resource ID (if any)
-            resource_type: Resource type (if any)
+            user_id: 用户ID
+            required_role: 所需角色 (admin, author)
+            resource_id: 资源ID (可选)
+            resource_type: 资源类型 (可选)
             
         Returns:
-            Boolean indicating if user has permission
+            是否拥有权限
         """
-        user = User.query.get(user_id)
-        if not user:
-            return False
-        
-        # Admin has all permissions
-        if user.is_admin():
-            return True
-        
-        # Role-specific checks
-        if required_role == 'author' and user.is_author():
-            # If resource is specified, check if user is the author
-            if resource_type == 'novel' and resource_id:
-                novel = Novel.query.get(resource_id)
-                if novel and novel.author_id:
-                    # 检查小说的作者ID是否匹配用户的作者ID
-                    author = Author.query.filter_by(user_id=user.id).first()
-                    return author and novel.author_id == author.id
-                
-            # Just checking for author role
-            return True
-        
-        # Regular user permissions
-        # Check if user owns the resource
-        if resource_type and resource_id:
-            # Novel ownership check is already covered by author check
-            pass
-                
-        # No specific permission required
-        return required_role is None
+        # 如果只检查角色
+        if required_role and not resource_id:
+            return PermissionService.has_role(user_id, required_role)
+            
+        # 如果需要检查资源权限
+        if resource_id and resource_type:
+            return PermissionService.check_resource_permission(user_id, resource_id, resource_type)
+            
+        # 默认为拥有权限，但要求登录
+        return User.query.get(user_id) is not None
     
     @staticmethod
     def change_password(user_id: int, current_password: str, new_password: str) -> Dict:
@@ -511,7 +493,7 @@ class UserService:
     @staticmethod
     def deactivate_account(user_id: int, password: str) -> Dict:
         """
-        Deactivate (delete) a user account
+        Deactivate a user account. This will completely delete the user record.
         
         Args:
             user_id: User ID
@@ -534,15 +516,18 @@ class UserService:
                 'error': 'Password is incorrect'
             }
         
+        # 使用 PermissionService 获取用户角色，而不是直接访问 user.role
+        user_role = PermissionService.get_user_role(user_id)
+        
         # Check if user is an admin (cannot deactivate admin accounts through this method)
-        if user.role == 'admin':
+        if user_role == 'admin':
             return {
                 'success': False,
                 'error': 'Admin accounts cannot be deactivated through this method'
             }
             
         # Check if user is an author
-        if user.role == 'author':
+        if user_role == 'author':
             # 注意：如果只想注销作者身份但保留用户账户，应使用作者模块的 /api/author/resign API
             # 这里的操作会完全删除用户账户
             author = Author.query.filter_by(user_id=user_id).first()
@@ -554,7 +539,7 @@ class UserService:
         UserCollection.query.filter_by(user_id=user_id).delete()
         UserHistory.query.filter_by(user_id=user_id).delete()
         UserFollowing.query.filter_by(follower_id=user_id).delete()
-        UserFollowing.query.filter_by(author_id=user_id).delete()
+        UserFollowing.query.filter_by(followed_id=user_id).delete()
         
         # Delete the user
         db.session.delete(user)

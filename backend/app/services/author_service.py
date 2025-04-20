@@ -2,6 +2,7 @@ from app import db
 from app.models.user import User
 from app.models.author import Author, AuthorApplication
 from app.models.admin import Admin
+from app.services.permission_service import PermissionService
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 import logging
@@ -37,7 +38,7 @@ class AuthorService:
                 }
                 
             # 检查用户是否已经是作者
-            if user.is_author():
+            if PermissionService.has_role(user_id, 'author'):
                 return {
                     'success': False, 
                     'message': '您已经是作者，无需再次申请'
@@ -157,8 +158,7 @@ class AuthorService:
         """
         try:
             # 验证管理员权限
-            admin = User.query.get(admin_id)
-            if not admin or not admin.is_admin():
+            if not PermissionService.has_role(admin_id, 'admin'):
                 return {
                     'success': False,
                     'message': '需要管理员权限'
@@ -200,7 +200,7 @@ class AuthorService:
                     }
                 
                 # 检查用户是否已经是作者
-                if user.is_author():
+                if PermissionService.has_role(application.user_id, 'author'):
                     return {
                         'success': False,
                         'message': '该用户已经是作者'
@@ -250,30 +250,23 @@ class AuthorService:
             }
     
     @staticmethod
-    def resign_author(user_id: int) -> Dict[str, Any]:
+    def update_author_profile(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        注销作者身份
+        更新作者资料
         
         Args:
             user_id: 用户ID
+            data: 更新数据
             
         Returns:
             Dict with success status and message
         """
         try:
-            # 验证用户是否存在
-            user = User.query.get(user_id)
-            if not user:
+            # 检查用户是否为作者
+            if not PermissionService.has_role(user_id, 'author'):
                 return {
                     'success': False,
-                    'message': '用户不存在'
-                }
-                
-            # 检查用户是否是作者
-            if not user.is_author():
-                return {
-                    'success': False,
-                    'message': '您不是作者，无需注销作者身份'
+                    'message': '只有作者才能更新作者资料'
                 }
                 
             # 获取作者记录
@@ -283,30 +276,86 @@ class AuthorService:
                     'success': False,
                     'message': '作者记录不存在'
                 }
+                
+            # 更新资料
+            updated = False
+            allowed_fields = ['pen_name', 'bio', 'contact_email']
             
+            for field in allowed_fields:
+                if field in data and data[field] is not None:
+                    setattr(author, field, data[field])
+                    updated = True
+            
+            if updated:
+                author.updated_at = datetime.utcnow()
+                db.session.commit()
+                return {
+                    'success': True,
+                    'message': '作者资料更新成功',
+                    'author': author.to_dict()
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': '没有提供有效的更新数据'
+                }
+                
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"更新作者资料出错: {str(e)}")
+            return {
+                'success': False,
+                'message': f'更新作者资料时出错: {str(e)}'
+            }
+    
+    @staticmethod
+    def resign_author(user_id: int) -> Dict[str, Any]:
+        """
+        放弃作者身份
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            Dict with success status and message
+        """
+        try:
+            # 检查用户是否为作者
+            if not PermissionService.has_role(user_id, 'author'):
+                return {
+                    'success': False,
+                    'message': '您不是作者，无法放弃作者身份'
+                }
+                
+            # 获取作者记录
+            author = Author.query.filter_by(user_id=user_id).first()
+            if not author:
+                return {
+                    'success': False,
+                    'message': '作者记录不存在'
+                }
+                
             # 检查作者是否有作品
-            from app.models.novel import Novel
-            novel_count = Novel.query.filter_by(author_id=author.id).count()
-            
+            novel_count = author.novels.count()
+            if novel_count > 0:
+                return {
+                    'success': False,
+                    'message': '您有正在连载的作品，请先处理您的作品'
+                }
+                
             # 删除作者记录
             db.session.delete(author)
-            
-            # 更改用户角色为普通用户
-            user.role = 'user'
-            user.updated_at = datetime.utcnow()
-            
             db.session.commit()
             
             return {
                 'success': True,
-                'message': '您已成功注销作者身份，恢复为普通用户',
-                'has_works': novel_count > 0
+                'message': '您已成功放弃作者身份'
             }
-            
+                
         except Exception as e:
             db.session.rollback()
-            logger.error(f"注销作者身份出错: {str(e)}")
+            logger.error(f"放弃作者身份出错: {str(e)}")
             return {
                 'success': False,
-                'message': f'注销作者身份时出错: {str(e)}'
+                'message': f'放弃作者身份时出错: {str(e)}'
             } 

@@ -1,9 +1,11 @@
 from typing import List, Dict, Optional, Tuple
 from app import db
-from app.models.admin import SensitiveWord, ContentAudit, UserAction
+from app.models.admin import SensitiveWord, ContentAudit, UserAction, Admin
 from app.models.user import User
 from app.models.novel import Novel, Chapter
 from app.models.interaction import Comment
+from app.models.author import Author
+from app.services.permission_service import PermissionService
 from sqlalchemy import desc, func
 from datetime import datetime
 
@@ -30,7 +32,24 @@ class AdminDAO:
         query = User.query
         
         if role:
-            query = query.filter(User.role == role)
+            if role == 'admin':
+                # 获取所有管理员ID
+                admin_user_ids = db.session.query(Admin.user_id).all()
+                admin_user_ids = [id[0] for id in admin_user_ids]
+                query = query.filter(User.id.in_(admin_user_ids))
+            elif role == 'author':
+                # 获取所有作者ID
+                author_user_ids = db.session.query(Author.user_id).all()
+                author_user_ids = [id[0] for id in author_user_ids]
+                query = query.filter(User.id.in_(author_user_ids))
+            elif role == 'user':
+                # 普通用户 = 既不是管理员也不是作者
+                admin_user_ids = db.session.query(Admin.user_id).all()
+                admin_user_ids = [id[0] for id in admin_user_ids]
+                author_user_ids = db.session.query(Author.user_id).all()
+                author_user_ids = [id[0] for id in author_user_ids]
+                special_user_ids = admin_user_ids + author_user_ids
+                query = query.filter(~User.id.in_(special_user_ids))
             
         total = query.count()
         users = query.order_by(desc(User.created_at)) \

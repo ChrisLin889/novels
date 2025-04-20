@@ -171,7 +171,7 @@
   - 基础架构问题已解决
   - 需要继续测试API文档中描述的功能和接口一致性 
 
-## 添加小说功能错误 ❌
+## 添加小说功能错误 ✅
 - 添加小说API (`/api/novel/add`) 出现错误:
   - 错误消息: `(pymysql.err.IntegrityError) (1048, "Column 'author' cannot be null")`
   - 问题分析:
@@ -190,24 +190,15 @@
     ```
   - 期望结果: 成功创建小说，返回novel_id
   - 实际结果: 返回数据库错误，author字段不能为null
-  - 修复建议:
-    1. 在`NovelDAO.create_novel`方法中增加author参数，或通过author_id从数据库获取作者名称
-    2. 修改`NovelService.add_novel`方法，在创建小说之前获取作者的名称
-    3. 可能的修复代码:
-       ```python
-       # 在NovelService.add_novel方法中:
-       author_name = author.pen_name or User.query.get(user_id).username
-       
-       # 然后传递给NovelDAO.create_novel:
-       novel = NovelDAO.create_novel(
-           title=title,
-           author_id=author.id,
-           author=author_name,  # 添加作者名称
-           category=category,
-           # ...其他参数...
-       )
-       ```
-  - 错误级别: 严重 (Critical) - 阻止核心功能使用 
+  - **解决方案**:
+    1. 修改了`NovelDAO.create_novel`方法，添加了`author`参数
+    2. 更新了`NovelService.add_novel`方法，在创建小说前获取作者名称
+    3. 增加了使用作者笔名或用户名的逻辑：`author_name = author.pen_name or user.username`
+    4. 在创建小说时将作者名称传递给DAO层
+  - **修复状态**: 
+    - 已修复 ✅ (已测试通过)
+    - 问题原因：数据库模型要求author字段不为空，但API调用时没有提供该值
+    - 本次修复遵循API文档中的说明："作者名称不再需要前端提供，系统会自动使用当前用户的笔名或用户名。"
 
 ## 获取分类功能错误 ❌
 - 获取分类API (`/api/novel/categories`) 返回空数组:

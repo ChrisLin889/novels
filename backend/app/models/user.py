@@ -14,8 +14,9 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     status = db.Column(db.Integer, default=0)  # 0 = active, 1 = banned
+    banned_until = db.Column(db.DateTime, nullable=True)  # 封禁截止日期
     
-    # 新的关系
+    # 关系定义
     author = db.relationship('Author', uselist=False, back_populates='user')
     admin = db.relationship('Admin', uselist=False, back_populates='user')
     
@@ -46,30 +47,19 @@ class User(db.Model):
         except Exception as e:
             print(f"Password check error: {str(e)}")
             return False
-    
-    # 新增方法判断用户角色
-    def is_author(self):
-        return self.author is not None
-        
-    def is_admin(self):
-        return self.admin is not None
-        
-    def get_role(self):
-        if self.is_admin():
-            return 'admin'
-        elif self.is_author():
-            return 'author'
-        else:
-            return 'user'
             
     def to_dict(self):
+        # 导入 PermissionService 防止循环导入
+        from app.services.permission_service import PermissionService
+        
         return {
             'id': self.id,
             'username': self.username,
             'phone': self.phone,
             'email': self.email,
-            'role': self.get_role(),
+            'role': PermissionService.get_user_role(self.id),
             'avatar': self.avatar,
             'created_at': self.created_at.isoformat(),
-            'status': 'active' if self.status == 0 else 'banned'
+            'status': 'active' if self.status == 0 else 'banned',
+            'banned_until': self.banned_until.isoformat() if self.banned_until else None
         }

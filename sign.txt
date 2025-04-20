@@ -3,7 +3,7 @@
 密码: newpassword456
 邮箱: updated.user@test.com
 电话: 12345678901
-角色: author (已修改为作者)
+角色: user
 用户ID: 4
 状态: active (已激活)
 2. 作者账户

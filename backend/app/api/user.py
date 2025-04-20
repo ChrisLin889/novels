@@ -97,6 +97,23 @@ def login():
         'user': result['user']
     }), 200
 
+@user_bp.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    """Log out user (mostly for logging purposes as JWT cannot be invalidated)"""
+    user_id = get_jwt_identity()
+    
+    # Log the logout event
+    print(f"User {user_id} logged out")
+    
+    # In a stateful authentication system, you would invalidate the token here
+    # For JWT, the token remains valid until it expires, but client will remove it
+    
+    return jsonify({
+        'success': True,
+        'message': 'Successfully logged out'
+    }), 200
+
 @user_bp.route('/profile', methods=['GET'])
 @jwt_required()
 def get_profile():
@@ -169,4 +186,4 @@ def deactivate_account():
     return jsonify({
         'success': True,
         'message': result['message']
-    }), 200 
+    }), 200

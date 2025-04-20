@@ -21,7 +21,7 @@ logger = logging.getLogger('alembic.env')
 # target_metadata = mymodel.Base.metadata
 config.set_main_option(
     'sqlalchemy.url',
-    os.getenv('DATABASE_URI', 'sqlite:///novels.db')
+    os.getenv('DATABASE_URI', 'mysql+pymysql://root:ok123456@localhost/novel_db')
 )
 
 def get_metadata():

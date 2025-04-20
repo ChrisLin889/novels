@@ -2,44 +2,92 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.services.novel_service import NovelService
 from app.utils.security import author_required, admin_required
+from app.models.author import Author
 
 novel_bp = Blueprint('novel', __name__)
 
+# 辅助函数，用于统一响应格式
+def success_response(data, status_code=200):
+    response = {'success': True}
+    response.update(data)
+    return jsonify(response), status_code
+
+def error_response(message, status_code=400):
+    return jsonify({'success': False, 'error': message}), status_code
+
+@novel_bp.route('/<int:novel_id>', methods=['GET'])
+def get_novel(novel_id):
+    try:
+        # 获取小说详情
+        result = NovelService.get_novel_by_id(novel_id)
+        
+        if not result['success']:
+            if 'not found' in result['error'].lower():
+                return error_response(result['error'], 404)
+            return error_response(result['error'], 400)
+        
+        return success_response({'novel': result['novel']})
+    except Exception as e:
+        return error_response(str(e))
+
 @novel_bp.route('/list', methods=['GET'])
 def get_novel_list():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    category = request.args.get('category')
-    sort_by = request.args.get('sort_by', 'updated_at')
-    
-    # Use service to get novel list
-    result = NovelService.get_novel_list(category, page, per_page, sort_by)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'total': result['total'],
-        'pages': result['pages'],
-        'current_page': result['current_page'],
-        'novels': result['novels']
-    }), 200
+    """Get paginated list of novels with optional filtering"""
+    try:
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        category = request.args.get('category')
+        status = request.args.get('status')
+        sort_by = request.args.get('sort_by', 'updated_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Get novel list from service
+        result = NovelService.get_novel_list(
+            page=page,
+            per_page=per_page,
+            category=category,
+            status=status,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        
+        # Handle error response
+        if not result['success']:
+            return error_response(result['error'], 400)
+        
+        # Return success response
+        return success_response({
+            'novels': result['novels'],
+            'total': result['total'],
+            'pages': result['pages'],
+            'current_page': page
+        })
+    except Exception as e:
+        return error_response(str(e), 500)
 
 @novel_bp.route('/detail/<int:novel_id>', methods=['GET'])
 def get_novel_detail(novel_id):
-    # Use service to get novel detail
-    result = NovelService.get_novel_detail(novel_id)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 404
-    
-    return jsonify({
-        'novel': result['novel'],
-        'chapters': result.get('chapters', [])
-    }), 200
+    """Get detailed information about a novel including its chapters"""
+    try:
+        # Use service to get novel detail
+        result = NovelService.get_novel_detail(novel_id)
+        
+        # Handle error response
+        if not result['success']:
+            return error_response(result['error'], 404)
+        
+        # Return success response
+        return success_response({
+            'novel': result['novel'],
+            'chapters': result.get('chapters', [])
+        })
+    except Exception as e:
+        return error_response(str(e), 500)
 
-@novel_bp.route('/chapter/<int:chapter_id>', methods=['GET'])
+@novel_bp.route('/chapters/<int:chapter_id>', methods=['GET'])
 def get_chapter(chapter_id):
+    """获取章节内容"""
     # Get user ID if logged in
     user_id = None
     if request.headers.get('Authorization'):
@@ -52,266 +100,487 @@ def get_chapter(chapter_id):
     result = NovelService.get_chapter(chapter_id, True, user_id)
     
     if not result['success']:
-        return jsonify({'error': result['error']}), 404
+        return error_response(result['error'], 404)
     
-    return jsonify({
+    return success_response({
         'chapter': result['chapter'],
         'prev_chapter': result['prev_chapter'],
         'next_chapter': result['next_chapter']
-    }), 200
+    })
 
 @novel_bp.route('/search', methods=['GET'])
 def search_novels():
-    keyword = request.args.get('keyword')
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    
-    if not keyword:
-        return jsonify({'error': 'Search keyword is required'}), 400
-    
-    # Use service to search novels
-    result = NovelService.search_novels(keyword, page, per_page)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'total': result['total'],
-        'pages': result['pages'],
-        'current_page': result['current_page'],
-        'novels': result['novels']
-    }), 200
+    try:
+        # Get search parameters
+        keyword = request.args.get('keyword', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        category = request.args.get('category', type=str)
+        
+        if not keyword:
+            return error_response('Search keyword is required', 400)
+        
+        # Search novels
+        result = NovelService.search_novels(
+            keyword=keyword,
+            page=page,
+            per_page=per_page,
+            category=category
+        )
+        
+        if not result['success']:
+            return error_response(result['error'], 400)
+        
+        return success_response({
+            'novels': result['novels'],
+            'total': result['total'],
+            'pages': result['pages'],
+            'current_page': page
+        })
+    except Exception as e:
+        return error_response(str(e))
 
 @novel_bp.route('/categories', methods=['GET'])
 def get_categories():
-    # Use service to get categories
-    result = NovelService.get_categories()
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({'categories': result['categories']}), 200
+    """Get list of novel categories with counts"""
+    try:
+        # Use service to get categories
+        result = NovelService.get_categories()
+        
+        # Handle error response
+        if not result['success']:
+            return error_response(result['error'], 400)
+        
+        # Return success response
+        return success_response({'categories': result['categories']})
+    except Exception as e:
+        return error_response(str(e), 500)
 
 @novel_bp.route('/popular', methods=['GET'])
 def get_popular_novels():
-    limit = request.args.get('limit', 10, type=int)
-    
-    # Use service to get popular novels
-    result = NovelService.get_popular_novels(limit)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({'novels': result['novels']}), 200
+    """Get popular novels with pagination and category filtering"""
+    try:
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        category = request.args.get('category', None, type=str)
+        
+        # Get popular novels from service
+        result = NovelService.get_popular_novels(page=page, per_page=per_page, category=category)
+        
+        # Handle error response
+        if not result['success']:
+            return error_response(result['error'], 400)
+        
+        # Return success response
+        return success_response({
+            'novels': result['novels'],
+            'total': result['total'],
+            'pages': result['pages'],
+            'current_page': page
+        })
+    except Exception as e:
+        return error_response(str(e), 500)
 
 @novel_bp.route('/latest', methods=['GET'])
 def get_latest_novels():
-    limit = request.args.get('limit', 10, type=int)
-    
-    # Use service to get latest novels
-    result = NovelService.get_latest_novels(limit)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({'novels': result['novels']}), 200
+    """Get latest novels"""
+    try:
+        # Get query parameters
+        limit = request.args.get('limit', 10, type=int)
+        
+        # Use service to get latest novels
+        result = NovelService.get_latest_novels(limit)
+        
+        # Handle error response
+        if not result['success']:
+            return error_response(result['error'], 400)
+        
+        # Return success response
+        return success_response({'novels': result['novels']})
+    except Exception as e:
+        return error_response(str(e), 500)
 
 @novel_bp.route('/add', methods=['POST'])
 @jwt_required()
-@author_required()
 def add_novel():
     """Add a new novel (author only)"""
-    data = request.get_json()
-    
-    # 获取必要字段
-    title = data.get('title')
-    author_name = data.get('author')  # 可以使用自定义作者名
-    category = data.get('category')
-    intro = data.get('intro')
-    cover = data.get('cover', 'default_cover.jpg')
-    status = data.get('status', 'ongoing')
-    
-    # 验证必要字段
-    if not all([title, author_name, category, intro]):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    # 获取当前用户ID作为内部作者ID
-    author_id = get_jwt_identity()
-    
-    # 使用服务添加小说
-    result = NovelService.add_novel(
-        title=title,
-        author_name=author_name,
-        category=category,
-        intro=intro,
-        author_id=author_id,
-        cover=cover,
-        status=status
-    )
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'message': result['message'],
-        'novel': result['novel']
-    }), 201
-
-@novel_bp.route('/<int:novel_id>/chapter/add', methods=['POST'])
-@jwt_required()
-@author_required()
-def add_chapter(novel_id):
-    author_id = get_jwt_identity()
-    data = request.get_json()
-    
-    # Extract chapter data
-    title = data.get('title')
-    content = data.get('content')
-    chapter_number = data.get('chapter_number')
-    
-    # Use service to add chapter
-    result = NovelService.add_chapter(author_id, novel_id, title, content, chapter_number)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'message': result['message'],
-        'chapter': result['chapter']
-    }), 201
-
-@novel_bp.route('/<int:novel_id>', methods=['PUT'])
-@jwt_required()
-def update_novel(novel_id):
-    """Update novel information (author or admin only)"""
-    data = request.get_json()
-    user_id = get_jwt_identity()
-    
-    # 使用服务更新小说
-    result = NovelService.update_novel(novel_id, data, user_id)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'message': result['message'],
-        'novel': result['novel']
-    }), 200
-
-@novel_bp.route('/chapter/<int:chapter_id>/update', methods=['PUT'])
-@jwt_required()
-@author_required()
-def update_chapter(chapter_id):
-    author_id = get_jwt_identity()
-    data = request.get_json()
-    
-    # Use service to update chapter
-    result = NovelService.update_chapter(author_id, chapter_id, data)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'message': result['message'],
-        'chapter': result['chapter']
-    }), 200
-
-@novel_bp.route('/<int:novel_id>/delete', methods=['DELETE'])
-@jwt_required()
-@admin_required()
-def delete_novel(novel_id):
-    admin_id = get_jwt_identity()
-    
-    # Use service to delete novel
-    result = NovelService.delete_novel(admin_id, novel_id)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({'message': result['message']}), 200
-
-@novel_bp.route('/chapter/<int:chapter_id>/delete', methods=['DELETE'])
-@jwt_required()
-@author_required()
-def delete_chapter(chapter_id):
-    author_id = get_jwt_identity()
-    
-    # Use service to delete chapter
-    result = NovelService.delete_chapter(author_id, chapter_id)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({'message': result['message']}), 200
-
-@novel_bp.route('/refresh-cache', methods=['POST'])
-@jwt_required()
-@admin_required()
-def refresh_cache():
-    # Use service to refresh cache
-    result = NovelService.refresh_cache()
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 500
-    
-    return jsonify({'message': result['message']}), 200
-
-@novel_bp.route('/my', methods=['GET'])
-@jwt_required()
-@author_required()
-def get_my_novels():
-    """Get novels created by the current author"""
     try:
-        author_id = get_jwt_identity()
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
+        # Get user ID from JWT
+        user_id = get_jwt_identity()
         
-        # 使用服务获取作者的小说
-        result = NovelService.get_author_novels(author_id, page, per_page)
+        # Get request data
+        data = request.get_json()
         
+        # Required fields validation
+        required_fields = ['title', 'category', 'intro']
+        if not all(key in data for key in required_fields):
+            return error_response(f'Missing required fields: {", ".join(required_fields)}', 400)
+            
+        # Use service to add novel
+        result = NovelService.add_novel(
+            title=data.get('title'),
+            category=data.get('category'),
+            intro=data.get('intro'),
+            cover=data.get('cover', 'default_cover.jpg'),
+            tags=data.get('tags', []),
+            user_id=user_id
+        )
+        
+        # Handle error response
         if not result['success']:
-            return jsonify({'error': result['error']}), 400
+            error_msg = result['error']
+            status_code = 403 if 'permission' in error_msg.lower() else 400
+            return error_response(error_msg, status_code)
         
-        return jsonify({
-            'novels': result['novels'],
-            'total': result['total'],
-            'total_pages': result['total_pages'],
-            'current_page': result['current_page']
-        }), 200
+        # Return success response
+        return success_response({
+            'message': 'Novel added successfully', 
+            'novel_id': result.get('novel_id', result.get('novel', {}).get('id'))
+        }, 201)
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-@novel_bp.route('/author/stats', methods=['GET'])
-@jwt_required()
-@author_required()
-def get_author_stats():
-    """Get author statistics"""
-    try:
-        author_id = get_jwt_identity()
-        
-        # 使用服务获取作者统计信息
-        result = NovelService.get_author_stats(author_id)
-        
-        if not result['success']:
-            return jsonify({'error': result['error']}), 400
-        
-        return jsonify(result['stats']), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return error_response(str(e), 500)
 
 @novel_bp.route('/<int:novel_id>/chapters', methods=['GET'])
 def get_novel_chapters(novel_id):
     """Get all chapters for a novel"""
     try:
-        # Use service to get chapters
-        result = NovelService.get_novel_detail(novel_id)
+        # Use service to get novel chapters
+        result = NovelService.get_novel_chapters(novel_id)
+        
+        # Handle error response
+        if not result['success']:
+            error_msg = result['error']
+            status_code = 404 if 'not found' in error_msg.lower() else 400
+            return error_response(error_msg, status_code)
+        
+        # Return success response
+        return success_response({'chapters': result['chapters']})
+    except Exception as e:
+        return error_response(str(e), 500)
+
+@novel_bp.route('/<int:novel_id>/chapters/all', methods=['GET'])
+def get_all_chapters(novel_id):
+    """获取小说的所有章节"""
+    # Use service to get all chapters
+    result = NovelService.get_all_chapters(novel_id)
+    
+    if not result['success']:
+        # 判断错误类型并返回适当的状态码
+        error_msg = result['error']
+        if 'not found' in error_msg.lower():
+            return error_response(error_msg, 404)
+        else:
+            return error_response(error_msg)
+    
+    return success_response({'chapters': result['chapters']})
+
+# 标签管理API
+@novel_bp.route('/<int:novel_id>/tags', methods=['GET'])
+def get_novel_tags(novel_id):
+    """获取小说的所有标签"""
+    result = NovelService.get_novel_tags(novel_id)
+    
+    if not result['success']:
+        error_msg = result['error']
+        if 'not found' in error_msg.lower():
+            return error_response(error_msg, 404)
+        else:
+            return error_response(error_msg)
+    
+    return success_response({'tags': result['tags']})
+
+@novel_bp.route('/<int:novel_id>/tags', methods=['POST'])
+@jwt_required()
+@author_required()
+def add_tags_to_novel(novel_id):
+    """为小说添加标签"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # 验证必要参数
+        if not data or 'tags' not in data or not isinstance(data['tags'], list):
+            return error_response('Tags list is required', 400)
+        
+        # 获取小说详情
+        novel = NovelService.get_novel_by_id(novel_id)
+        if not novel['success']:
+            return error_response(novel['error'], 404)
+        
+        # 验证权限：只有小说作者可以添加标签
+        if novel['novel']['author_id'] != user_id:
+            return error_response('Permission denied - only the novel author can add tags', 403)
+        
+        # 添加标签
+        result = NovelService.add_tags_to_novel(novel_id, data['tags'])
         
         if not result['success']:
-            return jsonify({'error': result['error']}), 404
+            return error_response(result['error'])
         
-        return jsonify({
-            'novel': result['novel'],
-            'chapters': result.get('chapters', [])
-        }), 200
+        return success_response({
+            'message': result['message'],
+            'added_tags': result.get('added_tags', [])
+        })
     except Exception as e:
-        return jsonify({'error': str(e)}), 400 
+        return error_response(str(e))
+
+@novel_bp.route('/<int:novel_id>/tags/<int:tag_id>', methods=['DELETE'])
+@jwt_required()
+@author_required()
+def remove_tag_from_novel(novel_id, tag_id):
+    """从小说中移除标签"""
+    try:
+        user_id = get_jwt_identity()
+        
+        # 获取小说详情
+        novel = NovelService.get_novel_by_id(novel_id)
+        if not novel['success']:
+            return error_response(novel['error'], 404)
+        
+        # 验证权限：只有小说作者可以移除标签
+        if novel['novel']['author_id'] != user_id:
+            return error_response('Permission denied - only the novel author can remove tags', 403)
+        
+        # 移除标签
+        result = NovelService.remove_tag_from_novel(novel_id, tag_id)
+        
+        if not result['success']:
+            error_msg = result['error']
+            if 'not found' in error_msg.lower():
+                return error_response(error_msg, 404)
+            else:
+                return error_response(error_msg)
+        
+        return success_response({'message': result['message']})
+    except Exception as e:
+        return error_response(str(e))
+
+@novel_bp.route('/tags', methods=['GET'])
+def get_all_tags():
+    """获取所有标签列表"""
+    result = NovelService.get_all_tags()
+    
+    if not result['success']:
+        return error_response(result['error'])
+    
+    return success_response({'tags': result['tags']})
+
+@novel_bp.route('/my', methods=['GET'])
+@jwt_required()
+def get_my_novel_list():
+    """Get novels created by the logged-in user"""
+    try:
+        # Get user ID from JWT
+        user_id = get_jwt_identity()
+        
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # Use service to get user's novel list
+        result = NovelService.get_user_novel_list(user_id, page, per_page)
+        
+        # Handle error response
+        if not result['success']:
+            return error_response(result['error'], 400)
+            
+        # Return success response
+        return success_response({
+            'novels': result['novels'],
+            'total': result['total'],
+            'pages': result.get('pages', 1)
+        })
+    except Exception as e:
+        return error_response(str(e), 500)
+
+@novel_bp.route('/author/novels', methods=['GET'])
+@jwt_required()
+@author_required()
+def get_author_novels():
+    """作者获取自己的所有小说"""
+    user_id = get_jwt_identity()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    # Use service to get author novels
+    result = NovelService.get_author_novels(user_id, page, per_page)
+    
+    if not result['success']:
+        return error_response(result['error'])
+    
+    return success_response({
+        'novels': result['novels'],
+        'total': result['total']
+    })
+
+@novel_bp.route('/author/stats', methods=['GET'])
+@jwt_required()
+@author_required()
+def get_author_stats():
+    """获取作者统计数据"""
+    user_id = get_jwt_identity()
+    
+    # Use service to get author stats
+    result = NovelService.get_author_stats(user_id)
+    
+    if not result['success']:
+        # 判断错误类型并返回适当的状态码
+        error_msg = result['error']
+        if 'not found' in error_msg.lower():
+            return error_response(error_msg, 404)
+        else:
+            return error_response(error_msg)
+    
+    return success_response(result['stats'])
+
+@novel_bp.route('/<int:novel_id>/chapters', methods=['POST'])
+@jwt_required()
+@author_required()
+def add_chapter(novel_id):
+    """Add a new chapter to a novel (author only)"""
+    try:
+        # Get user ID from JWT
+        user_id = get_jwt_identity()
+        
+        # Get author record
+        author = Author.query.filter_by(user_id=user_id).first()
+        if not author:
+            return error_response('Author not found', 404)
+        
+        # Get request data
+        data = request.get_json()
+        
+        # Required fields validation
+        required_fields = ['title', 'content']
+        if not all(key in data for key in required_fields):
+            return error_response(f'Missing required fields: {", ".join(required_fields)}', 400)
+        
+        # Use service to add chapter
+        result = NovelService.add_chapter(
+            author_id=author.id,
+            novel_id=novel_id,
+            title=data.get('title'),
+            content=data.get('content'),
+            chapter_number=data.get('chapter_number')
+        )
+        
+        # Handle error response
+        if not result['success']:
+            error_msg = result['error']
+            status_code = 404 if 'not found' in error_msg.lower() else 400
+            return error_response(error_msg, status_code)
+        
+        # Return success response
+        return success_response({
+            'message': 'Chapter added successfully',
+            'chapter': result['chapter']
+        }, 201)
+    except Exception as e:
+        return error_response(str(e), 500)
+
+@novel_bp.route('/<int:novel_id>', methods=['PUT'])
+@jwt_required()
+def update_novel(novel_id):
+    """Update novel information (author only)"""
+    try:
+        # Get user ID from JWT
+        user_id = get_jwt_identity()
+        
+        # Get request data
+        data = request.get_json()
+        
+        # Use service to update novel
+        result = NovelService.update_novel(
+            novel_id=novel_id,
+            user_id=user_id,
+            title=data.get('title'),
+            category=data.get('category'),
+            intro=data.get('intro'),
+            cover=data.get('cover'),
+            status=data.get('status'),
+            tags=data.get('tags')
+        )
+        
+        # Handle error response
+        if not result['success']:
+            error_msg = result['error']
+            if 'permission' in error_msg.lower():
+                status_code = 403
+            elif 'not found' in error_msg.lower():
+                status_code = 404
+            else:
+                status_code = 400
+            return error_response(error_msg, status_code)
+        
+        # Return success response
+        return success_response({'message': 'Novel updated successfully'})
+    except Exception as e:
+        return error_response(str(e), 500)
+
+@novel_bp.route('/<int:novel_id>/delete', methods=['DELETE'])
+@jwt_required()
+def delete_novel(novel_id):
+    """Delete a novel (author or admin only)"""
+    try:
+        # Get user ID from JWT
+        user_id = get_jwt_identity()
+        
+        # Use service to delete novel
+        result = NovelService.delete_novel(user_id, novel_id)
+        
+        # Handle error response
+        if not result['success']:
+            error_msg = result['error']
+            if 'permission' in error_msg.lower():
+                status_code = 403
+            elif 'not found' in error_msg.lower():
+                status_code = 404
+            else:
+                status_code = 400
+            return error_response(error_msg, status_code)
+        
+        # Return success response
+        return success_response({'message': 'Novel deleted successfully'})
+    except Exception as e:
+        return error_response(str(e), 500)
+
+@novel_bp.route('/chapters/<int:chapter_id>', methods=['DELETE'])
+@jwt_required()
+def delete_chapter(chapter_id):
+    try:
+        user_id = get_jwt_identity()
+        
+        # Use service to delete chapter
+        result = NovelService.delete_chapter(author_id=user_id, chapter_id=chapter_id)
+        
+        if not result['success']:
+            error_msg = result['error']
+            if 'permission' in error_msg.lower():
+                return error_response(error_msg, 403)
+            elif 'not found' in error_msg.lower():
+                return error_response(error_msg, 404)
+            else:
+                return error_response(error_msg, 400)
+        
+        return success_response({'message': 'Chapter deleted successfully'})
+    except Exception as e:
+        return error_response(str(e))
+
+@novel_bp.route('/refresh-cache', methods=['POST'])
+@jwt_required()
+def refresh_cache():
+    user_id = get_jwt_identity()
+    
+    # Use service to refresh cache
+    result = NovelService.refresh_cache(user_id)
+    
+    if not result['success']:
+        # 判断错误类型并返回适当的状态码
+        error_msg = result['error']
+        if 'permission denied' in error_msg.lower():
+            return error_response(error_msg, 403)
+        else:
+            return error_response(error_msg)
+    
+    return success_response({'message': result['message']}) 

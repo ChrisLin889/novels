@@ -1,13 +1,18 @@
-from app.models.novel import Novel, Chapter
+from app.models.novel import Novel, Chapter, novel_tag
 from app.models.interaction import UserCollection, UserHistory, Comment
+from app.models.user import User
+from app.models.author import Author
+from app.models.tag import Tag
 from app import db
 from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy import desc, func
+from app.services.permission_service import PermissionService
+from datetime import datetime
 
 class NovelDAO:
     """
     Data Access Object for Novel and Chapter models
-    Only handles interactions with the novel-related tables
+    Only handles direct database interactions with no business logic
     """
     
     @staticmethod
@@ -16,54 +21,67 @@ class NovelDAO:
         return Novel.query.get(novel_id)
     
     @staticmethod
-    def get_novel_list(category: Optional[str] = None, page: int = 1, 
-                      per_page: int = 10, sort_by: str = 'updated_at') -> Dict[str, Any]:
-        """Get paginated list of novels with optional filtering"""
+    def get_novel_list_query(category: Optional[str] = None, status: Optional[str] = None):
+        """Get base query for novels with optional filtering"""
         query = Novel.query
+        
+        # Apply filters if provided
+        if category:
+            query = query.filter_by(category=category)
+        
+        if status:
+            query = query.filter_by(status=status)
+            
+        return query
+    
+    @staticmethod
+    def apply_sorting(query, sort_by: str = 'updated_at', sort_order: str = 'desc'):
+        """Apply sorting to a novel query"""
+        if sort_by in ['view_count', 'collection_count', 'updated_at', 'created_at']:
+            # Get the sort column
+            sort_column = getattr(Novel, sort_by)
+            
+            # Apply sort direction
+            if sort_order.lower() == 'asc':
+                return query.order_by(sort_column)
+            else:
+                return query.order_by(desc(sort_column))
+        else:
+            # Default sort
+            return query.order_by(desc(Novel.updated_at))
+    
+    @staticmethod
+    def search_novels_query(keyword: str, category: Optional[str] = None):
+        """Create query for searching novels"""
+        query = Novel.query.filter(
+            db.or_(
+                Novel.title.ilike(f'%{keyword}%'),
+                Novel.author.ilike(f'%{keyword}%'),
+                Novel.intro.ilike(f'%{keyword}%')
+            )
+        )
         
         # Apply category filter if provided
         if category:
             query = query.filter_by(category=category)
-        
-        # Apply sorting
-        if sort_by == 'view_count':
-            query = query.order_by(desc(Novel.view_count))
-        elif sort_by == 'collection_count':
-            query = query.order_by(desc(Novel.collection_count))
-        else:  # Default to updated_at
-            query = query.order_by(desc(Novel.updated_at))
-        
-        # Execute paginated query
-        novels = query.paginate(page=page, per_page=per_page)
-        
-        return {
-            'total': novels.total,
-            'pages': novels.pages,
-            'current_page': page,
-            'novels': [novel.to_dict() for novel in novels.items]
-        }
+            
+        return query
     
     @staticmethod
-    def search_novels(keyword: str, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
-        """Search novels by title or author"""
-        query = Novel.query.filter(
-            (Novel.title.ilike(f'%{keyword}%')) | 
-            (Novel.author.ilike(f'%{keyword}%'))
-        )
-        
-        novels = query.order_by(desc(Novel.updated_at)).paginate(page=page, per_page=per_page)
-        
-        return {
-            'total': novels.total,
-            'pages': novels.pages,
-            'current_page': page,
-            'novels': [novel.to_dict() for novel in novels.items]
-        }
+    def get_novel_by_author_query(author_id: int):
+        """Get query for novels by author ID"""
+        return Novel.query.filter_by(author_id=author_id)
     
     @staticmethod
-    def get_popular_novels(limit: int = 10) -> List[Novel]:
-        """Get popular novels sorted by view count"""
-        return Novel.query.order_by(desc(Novel.view_count)).limit(limit).all()
+    def get_popular_novels_query(category: Optional[str] = None):
+        """Get query for popular novels with optional category filter"""
+        query = Novel.query.order_by(desc(Novel.view_count))
+        
+        # Apply category filter if provided
+        if category:
+            query = query.filter_by(category=category)
+            
+        return query
     
     @staticmethod
     def get_latest_novels(limit: int = 10) -> List[Novel]:
@@ -95,11 +113,11 @@ class NovelDAO:
         ).first()
     
     @staticmethod
-    def get_novel_chapters(novel_id: int, offset: int = 0, limit: int = 20) -> List[Chapter]:
-        """Get chapters for a novel with pagination"""
+    def get_novel_chapters(novel_id: int) -> List[Chapter]:
+        """Get all chapters for a novel ordered by chapter number"""
         return Chapter.query.filter_by(novel_id=novel_id).order_by(
             Chapter.chapter_number
-        ).offset(offset).limit(limit).all()
+        ).all()
     
     @staticmethod
     def get_adjacent_chapters(chapter: Chapter) -> Tuple[Optional[Chapter], Optional[Chapter]]:
@@ -119,11 +137,12 @@ class NovelDAO:
         return prev_chapter, next_chapter
     
     @staticmethod
-    def add_novel(title: str, author: str, category: str, intro: str, 
-                 cover: str = 'default_cover.jpg', status: str = 'ongoing') -> Novel:
-        """Add a new novel to the database"""
+    def create_novel(title: str, author_id: int, author: str, category: str, intro: str, 
+                   cover: str = 'default_cover.jpg', status: str = 'ongoing') -> Novel:
+        """Create a new novel in the database"""
         novel = Novel(
             title=title,
+            author_id=author_id,
             author=author,
             category=category,
             intro=intro,
@@ -136,9 +155,9 @@ class NovelDAO:
         return novel
     
     @staticmethod
-    def add_chapter(novel_id: int, title: str, content: str, 
-                   chapter_number: Optional[int] = None) -> Chapter:
-        """Add a new chapter to a novel"""
+    def create_chapter(novel_id: int, title: str, content: str, 
+                     chapter_number: Optional[int] = None) -> Chapter:
+        """Create a new chapter in the database"""
         # If chapter number not provided, calculate next chapter number
         if chapter_number is None:
             last_chapter = Chapter.query.filter_by(novel_id=novel_id).order_by(
@@ -170,33 +189,25 @@ class NovelDAO:
         return chapter
     
     @staticmethod
-    def update_novel(novel_id: int, data: Dict[str, Any]) -> Optional[Novel]:
-        """Update novel information"""
-        novel = Novel.query.get(novel_id)
-        if not novel:
-            return None
-        
+    def update_novel_fields(novel: Novel, data: Dict[str, Any]) -> Novel:
+        """Update novel fields with provided data"""
         # Update novel attributes
         allowed_fields = ['title', 'author', 'category', 'cover', 'intro', 'status']
         for key, value in data.items():
-            if key in allowed_fields:
+            if key in allowed_fields and value is not None:
                 setattr(novel, key, value)
         
         db.session.commit()
         return novel
     
     @staticmethod
-    def update_chapter(chapter_id: int, data: Dict[str, Any]) -> Optional[Chapter]:
-        """Update chapter information"""
-        chapter = Chapter.query.get(chapter_id)
-        if not chapter:
-            return None
-        
+    def update_chapter_fields(chapter: Chapter, data: Dict[str, Any]) -> Chapter:
+        """Update chapter fields with provided data"""
         # Update chapter attributes
-        if 'title' in data:
+        if 'title' in data and data['title'] is not None:
             chapter.title = data['title']
         
-        if 'content' in data:
+        if 'content' in data and data['content'] is not None:
             chapter.content = data['content']
             chapter.word_count = len(data['content'])
         
@@ -228,8 +239,18 @@ class NovelDAO:
         if not chapter:
             return False
         
+        # Get the novel to update its timestamp
+        novel_id = chapter.novel_id
+        
         db.session.delete(chapter)
         db.session.commit()
+        
+        # Update novel's updated_at timestamp
+        novel = Novel.query.get(novel_id)
+        if novel:
+            novel.updated_at = func.now()
+            db.session.commit()
+            
         return True
     
     @staticmethod
@@ -246,69 +267,233 @@ class NovelDAO:
 class NovelService:
     """
     Service for accessing and manipulating novel data
-    Handles business logic related to novels
+    Handles business logic, error handling, and response formatting
     """
     
     @staticmethod
-    def get_novel_list(category: Optional[str] = None, page: int = 1, 
-                      per_page: int = 10, sort_by: str = 'updated_at') -> Dict[str, Any]:
-        """Get paginated list of novels with optional filtering"""
-        return NovelDAO.get_novel_list(category, page, per_page, sort_by)
+    def get_novel_by_id(novel_id: int) -> Dict[str, Any]:
+        """Get novel details by ID
+        
+        Args:
+            novel_id: Novel ID
+            
+        Returns:
+            Dictionary with novel info and success status
+        """
+        try:
+            novel = NovelDAO.get_novel_by_id(novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+                
+            return {
+                'success': True,
+                'novel': novel.to_dict()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def search_novels(keyword: str, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
-        """Search novels by title or author"""
+    def get_novel_list(category: Optional[str] = None, page: int = 1, 
+                      per_page: int = 10, sort_by: str = 'updated_at',
+                      status: Optional[str] = None, sort_order: str = 'desc') -> Dict[str, Any]:
+        """Get paginated list of novels with optional filtering
+        
+        Args:
+            category: Optional category filter
+            page: Page number
+            per_page: Items per page
+            sort_by: Sort field
+            status: Optional status filter
+            sort_order: Sort direction (asc or desc)
+            
+        Returns:
+            Dictionary with novel list and pagination info
+        """
+        try:
+            # Create base query with filters
+            query = NovelDAO.get_novel_list_query(category, status)
+            
+            # Apply sorting
+            query = NovelDAO.apply_sorting(query, sort_by, sort_order)
+            
+            # Execute paginated query
+            novels = query.paginate(page=page, per_page=per_page)
+            
+            return {
+                'success': True,
+                'total': novels.total,
+                'pages': novels.pages,
+                'current_page': page,
+                'novels': [novel.to_dict() for novel in novels.items]
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    @staticmethod
+    def search_novels(keyword: str, page: int = 1, per_page: int = 10, 
+                     category: Optional[str] = None) -> Dict[str, Any]:
+        """Search novels by keyword with optional filtering
+        
+        Args:
+            keyword: Search term
+            page: Page number
+            per_page: Items per page
+            category: Optional category filter
+            
+        Returns:
+            Dictionary with search results and pagination info
+        """
         if not keyword:
             return {'success': False, 'error': 'Search keyword is required'}
+        
+        try:
+            # Create search query
+            query = NovelDAO.search_novels_query(keyword, category)
             
-        result = NovelDAO.search_novels(keyword, page, per_page)
-        return {'success': True, **result}
+            # Get total count
+            total = query.count()
+            
+            # Apply pagination
+            novels = query.order_by(desc(Novel.updated_at))\
+                          .offset((page - 1) * per_page)\
+                          .limit(per_page)\
+                          .all()
+                          
+            return {
+                'success': True,
+                'novels': [novel.to_dict() for novel in novels],
+                'total': total,
+                'pages': (total + per_page - 1) // per_page,
+                'current_page': page
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
     def get_novel_detail(novel_id: int) -> Dict[str, Any]:
-        """Get novel details with chapters"""
-        novel = NovelDAO.get_novel_by_id(novel_id)
-        if not novel:
-            return {'success': False, 'error': 'Novel not found'}
+        """Get detailed information about a novel including its chapters
+        
+        Args:
+            novel_id: Novel ID
             
-        chapters = NovelDAO.get_novel_chapters(novel_id)
-        return {
-            'success': True,
-            'novel': novel.to_dict(),
-            'chapters': [chapter.to_dict() for chapter in chapters]
-        }
+        Returns:
+            Dictionary with novel details and chapters list
+        """
+        try:
+            # Get novel by ID
+            novel = NovelDAO.get_novel_by_id(novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+            
+            # Increment view count
+            NovelDAO.increment_view_count(novel_id)
+            
+            # Get chapters for the novel
+            chapters = NovelDAO.get_novel_chapters(novel_id)
+            
+            # Get novel data
+            novel_data = novel.to_dict()
+            
+            # Add chapter list without content
+            chapters_data = [
+                {
+                    'id': chapter.id,
+                    'novel_id': chapter.novel_id,
+                    'chapter_number': chapter.chapter_number,
+                    'title': chapter.title,
+                    'word_count': chapter.word_count,
+                    'created_at': chapter.created_at.isoformat() if chapter.created_at else None
+                }
+                for chapter in chapters
+            ]
+            
+            return {
+                'success': True,
+                'novel': novel_data,
+                'chapters': chapters_data
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def get_popular_novels(limit: int = 10) -> Dict[str, Any]:
-        """Get popular novels"""
-        novels = NovelDAO.get_popular_novels(limit)
-        return {
-            'success': True,
-            'novels': [novel.to_dict() for novel in novels]
-        }
+    def get_popular_novels(page: int = 1, per_page: int = 10, category: Optional[str] = None) -> Dict[str, Any]:
+        """Get popular novels with pagination and optional category filtering
+        
+        Args:
+            page: Page number
+            per_page: Items per page
+            category: Optional category filter
+            
+        Returns:
+            Dictionary with popular novels and pagination info
+        """
+        try:
+            # Create query for popular novels
+            query = NovelDAO.get_popular_novels_query(category)
+                
+            # Apply pagination
+            pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+            
+            return {
+                'success': True,
+                'novels': [novel.to_dict() for novel in pagination.items],
+                'total': pagination.total,
+                'pages': pagination.pages,
+                'current_page': page
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
     def get_latest_novels(limit: int = 10) -> Dict[str, Any]:
-        """Get latest novels"""
-        novels = NovelDAO.get_latest_novels(limit)
-        return {
-            'success': True,
-            'novels': [novel.to_dict() for novel in novels]
-        }
+        """Get latest novels
+        
+        Args:
+            limit: Number of novels to return
+            
+        Returns:
+            Dictionary with latest novels
+        """
+        try:
+            novels = NovelDAO.get_latest_novels(limit)
+            return {
+                'success': True,
+                'novels': [novel.to_dict() for novel in novels]
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
     def get_categories() -> Dict[str, Any]:
-        """Get list of categories with novel counts"""
-        categories = NovelDAO.get_categories()
-        return {'success': True, 'categories': categories}
+        """Get list of categories with novel counts
+        
+        Returns:
+            Dictionary with categories and their counts
+        """
+        try:
+            categories = NovelDAO.get_categories()
+            return {'success': True, 'categories': categories}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
     def get_author_novels(author_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
-        """Get novels created by a specific author"""
+        """Get novels created by a specific author
+        
+        Args:
+            author_id: Author ID
+            page: Page number
+            per_page: Items per page
+            
+        Returns:
+            Dictionary with author's novels and pagination info
+        """
         try:
-            # Get paginated results for internal author
-            pagination = Novel.query.filter_by(author_id=author_id)\
-                .order_by(Novel.updated_at.desc())\
+            # Get query for author novels
+            query = NovelDAO.get_novel_by_author_query(author_id)
+            
+            # Apply pagination
+            pagination = query.order_by(desc(Novel.updated_at))\
                 .paginate(page=page, per_page=per_page, error_out=False)
             
             # Convert novels to dict
@@ -318,66 +503,122 @@ class NovelService:
                 'success': True,
                 'novels': novels,
                 'total': pagination.total,
-                'total_pages': pagination.pages,
+                'pages': pagination.pages,
                 'current_page': page
             }
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def add_novel(title: str, author_name: str, category: str, intro: str, 
-                  author_id: Optional[int] = None, cover: str = 'default_cover.jpg',
-                  status: str = 'ongoing') -> Dict[str, Any]:
-        """Add a new novel"""
+    def add_novel(title: str, category: str, intro: str, 
+                 cover: str = 'default_cover.jpg', tags: list = None,
+                 user_id: int = None) -> Dict[str, Any]:
+        """Add a new novel
+        
+        Args:
+            title: Novel title
+            category: Novel category
+            intro: Novel introduction
+            cover: Cover image path
+            tags: List of tags
+            user_id: User ID of the author
+            
+        Returns:
+            Dictionary with created novel info
+        """
         try:
-            # 创建新小说
-            novel = Novel(
+            if not user_id:
+                return {'success': False, 'error': 'Authentication required'}
+            
+            # Find author by user_id
+            author = Author.query.filter_by(user_id=user_id).first()
+            if not author:
+                return {'success': False, 'error': 'Author privileges required'}
+            
+            # 获取作者名称 - 优先使用笔名，如果没有则使用用户名
+            user = User.query.get(user_id)
+            if not user:
+                return {'success': False, 'error': 'User not found'}
+                
+            author_name = author.pen_name or user.username
+            
+            # Create new novel using DAO
+            novel = NovelDAO.create_novel(
                 title=title,
-                author=author_name,  # 使用作者名称
-                author_id=author_id,  # 如果是内部作者，设置作者ID
+                author_id=author.id,
+                author=author_name,
                 category=category,
                 intro=intro,
                 cover=cover,
-                status=status
+                status='ongoing'
             )
             
-            db.session.add(novel)
-            db.session.commit()
+            # Add tags if provided
+            if tags and isinstance(tags, list):
+                NovelService.add_tags_to_novel(novel.id, tags)
             
             return {
                 'success': True,
-                'message': 'Novel added successfully',
+                'novel_id': novel.id,
                 'novel': novel.to_dict()
             }
         except Exception as e:
             db.session.rollback()
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def update_novel(novel_id: int, data: Dict[str, Any], user_id: Optional[int] = None) -> Dict[str, Any]:
-        """Update novel information"""
+    def update_novel(novel_id: int, user_id: Optional[int] = None, title: Optional[str] = None, 
+                    category: Optional[str] = None, intro: Optional[str] = None,
+                    cover: Optional[str] = None, status: Optional[str] = None,
+                    tags: Optional[list] = None) -> Dict[str, Any]:
+        """Update novel information
+        
+        Args:
+            novel_id: Novel ID
+            user_id: User ID performing the update
+            title: New title (optional)
+            category: New category (optional)
+            intro: New introduction (optional)
+            cover: New cover image (optional)
+            status: New status (optional)
+            tags: New tags list (optional)
+            
+        Returns:
+            Dictionary with update result
+        """
         try:
-            novel = Novel.query.get(novel_id)
+            # Get novel
+            novel = NovelDAO.get_novel_by_id(novel_id)
             if not novel:
                 return {'success': False, 'error': 'Novel not found'}
             
-            # 检查权限：只有内部作者可以修改自己的小说
-            if novel.author_id and novel.author_id != user_id:
-                return {'success': False, 'error': 'Permission denied'}
+            # Check permission: only the author can modify their novel
+            if novel.author_id and user_id:
+                author = Author.query.filter_by(user_id=user_id).first()
+                if not author or novel.author_id != author.id:
+                    return {'success': False, 'error': 'Permission denied'}
             
-            # 更新小说属性
-            allowed_fields = ['title', 'author', 'category', 'cover', 'intro', 'status']
-            for key, value in data.items():
-                if key in allowed_fields:
-                    setattr(novel, key, value)
+            # Create update data dictionary
+            update_data = {
+                'title': title,
+                'category': category,
+                'intro': intro,
+                'cover': cover,
+                'status': status
+            }
             
-            db.session.commit()
+            # Remove None values
+            update_data = {k: v for k, v in update_data.items() if v is not None}
+            
+            # Update novel using DAO
+            NovelDAO.update_novel_fields(novel, update_data)
+            
+            # Update tags if provided
+            if tags and isinstance(tags, list):
+                # Remove old tags and add new ones
+                novel.tags = []
+                db.session.commit()
+                NovelService.add_tags_to_novel(novel.id, tags)
             
             return {
                 'success': True,
@@ -386,15 +627,23 @@ class NovelService:
             }
         except Exception as e:
             db.session.rollback()
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
     def add_chapter(author_id: int, novel_id: int, title: str, 
                    content: str, chapter_number: Optional[int] = None) -> Dict[str, Any]:
-        """Add a new chapter to a novel (author only)"""
+        """Add a new chapter to a novel (author only)
+        
+        Args:
+            author_id: Author ID
+            novel_id: Novel ID
+            title: Chapter title
+            content: Chapter content
+            chapter_number: Optional chapter number
+            
+        Returns:
+            Dictionary with created chapter info
+        """
         # Check for missing required fields
         if not all([title, content]):
             return {'success': False, 'error': 'Missing required fields'}
@@ -405,7 +654,8 @@ class NovelService:
             return {'success': False, 'error': 'Novel not found'}
         
         try:
-            chapter = NovelDAO.add_chapter(novel_id, title, content, chapter_number)
+            # Create chapter using DAO
+            chapter = NovelDAO.create_chapter(novel_id, title, content, chapter_number)
             
             return {
                 'success': True,
@@ -424,8 +674,24 @@ class NovelService:
         if not chapter:
             return {'success': False, 'error': 'Chapter not found'}
         
+        # Get novel to check ownership
+        novel = NovelDAO.get_novel_by_id(chapter.novel_id)
+        if not novel:
+            return {'success': False, 'error': 'Novel not found'}
+        
+        # Check if user is admin
+        user = User.query.get(author_id)
+        if not user:
+            return {'success': False, 'error': 'User not found'}
+            
+        is_admin = PermissionService.get_user_role(author_id) == 'admin'
+        
+        # Verify ownership: only the novel author or admin can update chapter
+        if not is_admin and novel.author_id != author_id:
+            return {'success': False, 'error': 'Permission denied - only the novel author or admin can update chapters'}
+        
         try:
-            updated_chapter = NovelDAO.update_chapter(chapter_id, data)
+            updated_chapter = NovelDAO.update_chapter_fields(chapter, data)
             
             return {
                 'success': True,
@@ -437,15 +703,26 @@ class NovelService:
             return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def delete_novel(admin_id: int, novel_id: int) -> Dict[str, Any]:
-        """Delete a novel (admin only)"""
+    def delete_novel(user_id: int, novel_id: int) -> Dict[str, Any]:
+        """Delete a novel (author or admin only)"""
         # Verify novel exists
         novel = NovelDAO.get_novel_by_id(novel_id)
         if not novel:
             return {'success': False, 'error': 'Novel not found'}
         
-        # Get novel details for cache invalidation
-        category = novel.category
+        # Check if user is admin
+        user = User.query.get(user_id)
+        if not user:
+            return {'success': False, 'error': 'User not found'}
+            
+        is_admin = PermissionService.get_user_role(user_id) == 'admin'
+        
+        # Find author record for the user
+        author = Author.query.filter_by(user_id=user_id).first()
+        
+        # Verify ownership: only the novel author or admin can delete novel
+        if not is_admin and (not author or novel.author_id != author.id):
+            return {'success': False, 'error': 'Permission denied - only the novel author or admin can delete this novel'}
         
         try:
             NovelDAO.delete_novel(novel_id)
@@ -465,6 +742,22 @@ class NovelService:
         chapter = NovelDAO.get_chapter_by_id(chapter_id)
         if not chapter:
             return {'success': False, 'error': 'Chapter not found'}
+        
+        # Get novel to check ownership
+        novel = NovelDAO.get_novel_by_id(chapter.novel_id)
+        if not novel:
+            return {'success': False, 'error': 'Novel not found'}
+        
+        # Check if user is admin
+        user = User.query.get(author_id)
+        if not user:
+            return {'success': False, 'error': 'User not found'}
+            
+        is_admin = PermissionService.get_user_role(author_id) == 'admin'
+        
+        # Verify ownership: only the novel author or admin can delete chapter
+        if not is_admin and novel.author_id != author_id:
+            return {'success': False, 'error': 'Permission denied - only the novel author or admin can delete chapters'}
         
         novel_id = chapter.novel_id
         
@@ -525,7 +818,7 @@ class NovelService:
         """Get statistics for an author"""
         try:
             # 获取作者的小说列表
-            novels = Novel.query.filter_by(author_id=author_id).all()
+            novels = NovelDAO.get_novel_by_author_query(author_id).all()
             
             # 统计数据
             novel_count = len(novels)
@@ -565,4 +858,218 @@ class NovelService:
             return {
                 'success': False,
                 'error': str(e)
-            } 
+            }
+    
+    @staticmethod
+    def get_user_novel_list(user_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
+        """Get novels by user ID (for logged-in user)
+        
+        Args:
+            user_id: User ID
+            page: Page number
+            per_page: Items per page
+            
+        Returns:
+            Dictionary with user's novels and pagination info
+        """
+        try:
+            # Get author ID associated with this user
+            author = Author.query.filter_by(user_id=user_id).first()
+            if not author:
+                return {'success': False, 'error': 'User is not an author'}
+                
+            # Get novels by author ID
+            query = Novel.query.filter_by(author_id=author.id)
+            novels = query.order_by(desc(Novel.updated_at)).paginate(page=page, per_page=per_page)
+            
+            return {
+                'success': True,
+                'total': novels.total,
+                'pages': novels.pages,
+                'novels': [novel.to_dict() for novel in novels.items]
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    @staticmethod
+    def get_novel_chapters(novel_id: int) -> Dict[str, Any]:
+        """Get chapters for a specific novel
+        
+        Args:
+            novel_id: Novel ID
+            
+        Returns:
+            Dictionary with chapters list
+        """
+        try:
+            # Check if novel exists
+            novel = NovelDAO.get_novel_by_id(novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+            
+            # Get all chapters for the novel
+            chapters = NovelDAO.get_novel_chapters(novel_id)
+            
+            return {
+                'success': True,
+                'chapters': [chapter.to_dict(include_content=False) for chapter in chapters]
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    @staticmethod
+    def add_tags_to_novel(novel_id: int, tag_names: List[str]) -> Dict[str, Any]:
+        """添加标签到小说
+        
+        Args:
+            novel_id: 小说ID
+            tag_names: 标签名称列表
+            
+        Returns:
+            操作结果字典
+        """
+        try:
+            # 检查小说是否存在
+            novel = NovelDAO.get_novel_by_id(novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+            
+            # 处理标签
+            added_tags = []
+            for tag_name in tag_names:
+                # 检查标签是否已存在
+                tag = Tag.query.filter_by(name=tag_name).first()
+                if not tag:
+                    # 创建新标签
+                    tag = Tag(name=tag_name)
+                    db.session.add(tag)
+                    db.session.flush()  # 获取新标签ID
+                
+                # 检查小说是否已有此标签
+                if tag not in novel.tags:
+                    novel.tags.append(tag)
+                    added_tags.append(tag.to_dict())
+            
+            db.session.commit()
+            
+            return {
+                'success': True, 
+                'message': 'Tags added successfully',
+                'added_tags': added_tags
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': str(e)}
+            
+    @staticmethod
+    def remove_tag_from_novel(novel_id: int, tag_id: int) -> Dict[str, Any]:
+        """从小说中移除标签
+        
+        Args:
+            novel_id: 小说ID
+            tag_id: 标签ID
+            
+        Returns:
+            操作结果字典
+        """
+        try:
+            # 检查小说是否存在
+            novel = NovelDAO.get_novel_by_id(novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+                
+            # 检查标签是否存在
+            tag = Tag.query.get(tag_id)
+            if not tag:
+                return {'success': False, 'error': 'Tag not found'}
+                
+            # 检查小说是否有此标签
+            if tag not in novel.tags:
+                return {'success': False, 'error': 'Novel does not have this tag'}
+                
+            # 移除标签
+            novel.tags.remove(tag)
+            db.session.commit()
+            
+            return {'success': True, 'message': 'Tag removed successfully'}
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': str(e)}
+    
+    @staticmethod
+    def get_novel_tags(novel_id: int) -> Dict[str, Any]:
+        """获取小说的所有标签
+        
+        Args:
+            novel_id: 小说ID
+            
+        Returns:
+            包含标签列表的结果字典
+        """
+        try:
+            # 检查小说是否存在
+            novel = NovelDAO.get_novel_by_id(novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+            
+            # 获取小说的所有标签
+            tags = [tag.to_dict() for tag in novel.tags]
+            
+            return {
+                'success': True, 
+                'tags': tags
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+            
+    @staticmethod
+    def get_all_tags() -> Dict[str, Any]:
+        """获取所有标签列表
+        
+        Returns:
+            包含所有标签的结果字典
+        """
+        try:
+            tags = Tag.query.all()
+            
+            return {
+                'success': True,
+                'tags': [tag.to_dict() for tag in tags]
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+            
+    @staticmethod
+    def get_all_chapters(novel_id: int) -> Dict[str, Any]:
+        """获取小说的所有章节（不分页）
+        
+        与get_novel_chapters不同，此方法返回小说的所有章节，不进行分页处理，
+        适用于需要获取全部章节列表的场景，如下载或全文搜索。
+        
+        Args:
+            novel_id: 小说ID
+            
+        Returns:
+            包含所有章节列表的结果字典
+        """
+        try:
+            # 检查小说是否存在
+            novel = NovelDAO.get_novel_by_id(novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+            
+            # 获取所有章节，按章节号排序
+            chapters = NovelDAO.get_novel_chapters(novel_id)
+            
+            # 将章节信息转换为字典格式，不包含章节内容
+            chapters_data = [chapter.to_dict(include_content=False) for chapter in chapters]
+            
+            return {
+                'success': True,
+                'novel_id': novel_id,
+                'novel_title': novel.title,
+                'total_chapters': len(chapters_data),
+                'chapters': chapters_data
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)} 

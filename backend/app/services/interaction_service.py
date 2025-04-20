@@ -5,6 +5,7 @@ from app import db
 from typing import Dict, Any, List, Optional
 from sqlalchemy import desc
 import datetime
+from app.services.permission_service import PermissionService
 
 class InteractionDAO:
     """
@@ -711,7 +712,11 @@ class InteractionService:
         
         # Check permission (must be comment author)
         user = User.query.get(user_id)
-        if user.role != 'admin' and comment.user_id != user_id:
+        if not user:
+            return {'success': False, 'error': 'User not found'}
+            
+        user_role = PermissionService.get_user_role(user.id)
+        if user_role != 'admin' and comment.user_id != user_id:
             return {'success': False, 'error': 'Permission denied to delete this comment'}
         
         # Delete comment
@@ -817,7 +822,7 @@ class InteractionService:
             return {'success': False, 'error': 'User not found'}
             
         # Check if sender can message recipient (must be following or be admin)
-        if sender_id != recipient_id and sender.role != 'admin':
+        if sender_id != recipient_id and PermissionService.get_user_role(sender.id) != 'admin':
             is_following = InteractionDAO.check_following(recipient_id, sender_id)
             if not is_following:
                 return {'success': False, 'error': 'This user is not following you and cannot receive your messages'}

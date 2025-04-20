@@ -110,4 +110,57 @@ API接口文档位于 `/doc/API接口文档.md`，详细描述了所有已实现
 
 以下模块正在规划中：
 - 付费系统：实现充值和虚拟货币功能
-- 推荐系统：基于用户行为的个性化推荐 
+- 推荐系统：基于用户行为的个性化推荐
+
+# Novel API Field Naming Convention
+
+## Field Naming Standardization
+
+The Novel API has been updated to use standardized field names that match the database schema:
+
+1. `intro` - Used for novel introduction/description (previously `description` in some API endpoints)
+2. `cover` - Used for novel cover image path (previously `cover_image` in some API endpoints)
+
+These standardized field names are now used consistently across all API endpoints and match the database schema.
+
+## API Architecture
+
+The Novel API follows a layered architecture:
+
+1. **API Layer** - Handles HTTP requests/responses and input validation
+2. **Service Layer** - Contains business logic and coordinates operations
+3. **DAO Layer** - Handles direct database interactions
+
+All API endpoints only communicate with the Service layer, which in turn uses the DAO layer for database operations. This separation ensures:
+
+- Clear responsibility boundaries
+- Consistent error handling
+- Standardized response formats
+- Better testability
+
+## Error Handling
+
+All API endpoints now follow a standardized error handling approach:
+- Success responses include a `success: true` field
+- Error responses include `success: false` and an `error` message
+- Appropriate HTTP status codes are used (400, 403, 404, 500, etc.)
+
+## Response Format
+
+All API endpoints return responses in a consistent format:
+
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+or for errors:
+
+```json
+{
+  "success": false,
+  "error": "Error message"
+}
+``` 

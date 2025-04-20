@@ -1,6 +1,12 @@
 from app import db
 from datetime import datetime
 
+# 定义小说和标签的多对多关系表
+novel_tag = db.Table('novel_tag',
+    db.Column('novel_id', db.Integer, db.ForeignKey('novel.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), primary_key=True)
+)
+
 class Novel(db.Model):
     __tablename__ = 'novel'
     
@@ -19,6 +25,9 @@ class Novel(db.Model):
     
     # Relationships
     chapters = db.relationship('Chapter', backref='novel', lazy='dynamic', cascade='all, delete-orphan')
+    # 添加与标签的多对多关系
+    tags = db.relationship('Tag', secondary=novel_tag, lazy='dynamic',
+                         backref=db.backref('novels', lazy='dynamic'))
     
     def to_dict(self):
         return {
@@ -35,7 +44,8 @@ class Novel(db.Model):
             'collection_count': self.collection_count,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
-            'chapter_count': self.chapters.count()
+            'chapter_count': self.chapters.count(),
+            'tags': [tag.to_dict() for tag in self.tags]
         }
 
 class Chapter(db.Model):
