@@ -13,6 +13,8 @@
 > 作者名称不再需要前端提供，系统会自动使用当前用户的笔名或用户名。
 >
 > **重要**：本系统的登录接口是 `/api/user/login` 而不是 `/api/auth/login`。请使用正确的路径进行认证操作。
+>
+> **用户与作者身份说明**：系统中用户(User)和作者(Author)是两个不同的实体，有各自的ID。API接口使用JWT返回的用户ID(user_id)进行身份验证，系统会自动查找该用户对应的作者记录(author)，并使用author.id作为author_id。前端开发者只需使用JWT认证，不需要手动处理这种映射关系。
 
 ## 目录
 
@@ -23,7 +25,7 @@
    - [1.4 搜索小说](#14-搜索小说)
    - [1.5 获取分类列表](#15-获取分类列表)
    - [1.6 获取分类小说](#16-获取分类小说)
-   - [1.7 获取我的收藏小说列表](#17-获取我的收藏小说列表)
+   - [1.7 收藏小说功能](#17-收藏小说功能)
    - [1.8 获取作者创建的小说列表](#18-获取作者创建的小说列表)
    - [1.9 获取小说详情](#19-获取小说详情)
    - [1.10 获取热门小说](#110-获取热门小说)
@@ -187,25 +189,29 @@
   "categories": [
     {
       "name": "Fantasy",
-      "count": 12
+      "count": 12,
+      "description": "奇幻小说"
     },
     {
       "name": "Science Fiction",
-      "count": 8
+      "count": 8,
+      "description": "科幻小说"
     },
     {
       "name": "Romance",
-      "count": 15
+      "count": 15,
+      "description": "言情小说"
     },
     {
       "name": "Mystery",
-      "count": 10
+      "count": 10,
+      "description": "悬疑小说"
     }
   ]
 }
 ```
 
-> **说明**：每个分类对象包含分类名称(name)和该分类下的小说数量(count)。
+> **说明**：每个分类对象包含分类名称(name)、该分类下的小说数量(count)以及分类描述(description)。
 
 ### 1.6 获取分类小说
 
@@ -246,44 +252,14 @@
 }
 ```
 
-### 1.7 获取我的收藏小说列表
+### 1.7 收藏小说功能
 
-- **URL**: `/api/novel/my`
-- **方法**: `GET`
-- **权限**: 需要用户登录
-- **请求头**:
-  - `Authorization`: Bearer {token}
-- **查询参数**:
-  - `page`: 页码（默认：1）
-  - `per_page`: 每页数量（默认：10）
-
-> **说明**：此接口用于用户查看自己收藏的小说列表。
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "success": true,
-  "novels": [
-    {
-      "id": 6,
-      "title": "string",
-      "author": "string",
-      "category": "Fantasy",
-      "status": "ongoing",
-      "cover": "string",
-      "intro": "string",
-      "word_count": 100,
-      "view_count": 0,
-      "created_at": "2025-04-03T14:33:56",
-      "updated_at": "2025-04-03T14:41:49"
-    }
-  ],
-  "total": 1,
-  "pages": 1,
-  "current_page": 1
-}
-```
+> **重要说明**：收藏小说相关功能在交互模块中实现。请使用以下接口管理和访问收藏的小说：
+> - 收藏/取消收藏小说：POST `/api/interaction/collection`
+> - 获取收藏状态：GET `/api/interaction/collection/status/{novel_id}`
+> - 获取收藏列表：GET `/api/interaction/collection`
+>
+> 详细文档请参考 [互动模块API文档 - 收藏功能](互动模块API文档.md#3-收藏功能)
 
 ### 1.8 获取作者创建的小说列表
 
@@ -296,7 +272,7 @@
   - `page`: 页码（默认：1）
   - `per_page`: 每页数量（默认：10）
 
-> **说明**：此接口用于作者查看自己创建的所有小说。与收藏小说列表不同，此接口需要作者权限，且只返回作者本人创建的小说。
+> **说明**：此接口用于作者查看自己创建的所有小说。需要作者权限，只返回作者本人创建的小说。
 
 - **成功响应** (200 OK):
 
@@ -673,14 +649,41 @@
 }
 ```
 
-> **权限说明**：只有小说的原作者或管理员可以修改章节内容。系统会验证当前登录用户是否为章节所属小说的作者，管理员可以修改任何小说的章节内容。
+> **权限说明**：只有小说的原作者或管理员可以修改章节内容。系统会自动查找用户对应的作者记录并验证该用户是否为章节所属小说的作者，管理员可以修改任何小说的章节内容。
 
 - **成功响应** (200 OK):
 
 ```json
 {
   "success": true,
-  "message": "Chapter updated successfully"
+  "message": "Chapter updated successfully",
+  "chapter": {
+    "id": 16,
+    "novel_id": 6,
+    "chapter_number": 1,
+    "title": "更新后的章节标题",
+    "content": "更新后的章节内容",
+    "word_count": 120,
+    "created_at": "2025-04-03T14:34:49"
+  }
+}
+```
+
+- **错误响应** (403 Forbidden):
+
+```json
+{
+  "success": false,
+  "error": "Permission denied - only the novel author or admin can update chapters"
+}
+```
+
+- **错误响应** (404 Not Found):
+
+```json
+{
+  "success": false,
+  "error": "Chapter not found"
 }
 ```
 

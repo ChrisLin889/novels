@@ -46,11 +46,16 @@ def get_collections():
     # Use service to get collections
     result = InteractionService.get_user_collections(user_id, page, per_page)
     
+    if not result['success']:
+        return jsonify({'error': result.get('error', 'Failed to get collections')}), 400
+    
+    # 返回格式保持与API文档一致
     return jsonify({
+        'success': True,
         'total': result['total'],
         'pages': result['pages'],
         'current_page': result['current_page'],
-        'collections': result['collections']
+        'novels': result['collections']  # 重命名collections为novels以提供一致的响应格式
     }), 200
 
 @interaction_bp.route('/history', methods=['GET'])

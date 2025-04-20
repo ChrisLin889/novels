@@ -320,30 +320,31 @@
 
 ### 3.3 获取收藏列表
 
-- **URL**: `/api/interaction/collections`
+- **URL**: `/api/interaction/collection`
 - **方法**: `GET`
 - **权限**: 需要登录
 - **请求头**:
   - `Authorization`: Bearer {token}
 - **查询参数**:
   - `page`: 页码（默认：1）
-  - `per_page`: 每页数量（默认：20）
+  - `per_page`: 每页数量（默认：10）
 
 - **成功响应** (200 OK):
 
 ```json
 {
+  "success": true,
   "total": 8,
   "pages": 1,
   "current_page": 1,
-  "collections": [
+  "novels": [
     {
       "id": 6,
       "title": "string",
       "author": "string",
       "category": "string",
       "cover": "string", 
-      "collected_at": "2025-04-03T15:26:12"
+      "collection_time": "2025-04-03T15:26:12"
     }
   ]
 }

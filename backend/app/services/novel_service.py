@@ -8,261 +8,8 @@ from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy import desc, func
 from app.services.permission_service import PermissionService
 from datetime import datetime
-
-class NovelDAO:
-    """
-    Data Access Object for Novel and Chapter models
-    Only handles direct database interactions with no business logic
-    """
-    
-    @staticmethod
-    def get_novel_by_id(novel_id: int) -> Optional[Novel]:
-        """Retrieve novel by ID"""
-        return Novel.query.get(novel_id)
-    
-    @staticmethod
-    def get_novel_list_query(category: Optional[str] = None, status: Optional[str] = None):
-        """Get base query for novels with optional filtering"""
-        query = Novel.query
-        
-        # Apply filters if provided
-        if category:
-            query = query.filter_by(category=category)
-        
-        if status:
-            query = query.filter_by(status=status)
-            
-        return query
-    
-    @staticmethod
-    def apply_sorting(query, sort_by: str = 'updated_at', sort_order: str = 'desc'):
-        """Apply sorting to a novel query"""
-        if sort_by in ['view_count', 'collection_count', 'updated_at', 'created_at']:
-            # Get the sort column
-            sort_column = getattr(Novel, sort_by)
-            
-            # Apply sort direction
-            if sort_order.lower() == 'asc':
-                return query.order_by(sort_column)
-            else:
-                return query.order_by(desc(sort_column))
-        else:
-            # Default sort
-            return query.order_by(desc(Novel.updated_at))
-    
-    @staticmethod
-    def search_novels_query(keyword: str, category: Optional[str] = None):
-        """Create query for searching novels"""
-        query = Novel.query.filter(
-            db.or_(
-                Novel.title.ilike(f'%{keyword}%'),
-                Novel.author.ilike(f'%{keyword}%'),
-                Novel.intro.ilike(f'%{keyword}%')
-            )
-        )
-        
-        # Apply category filter if provided
-        if category:
-            query = query.filter_by(category=category)
-            
-        return query
-    
-    @staticmethod
-    def get_novel_by_author_query(author_id: int):
-        """Get query for novels by author ID"""
-        return Novel.query.filter_by(author_id=author_id)
-    
-    @staticmethod
-    def get_popular_novels_query(category: Optional[str] = None):
-        """Get query for popular novels with optional category filter"""
-        query = Novel.query.order_by(desc(Novel.view_count))
-        
-        # Apply category filter if provided
-        if category:
-            query = query.filter_by(category=category)
-            
-        return query
-    
-    @staticmethod
-    def get_latest_novels(limit: int = 10) -> List[Novel]:
-        """Get latest novels sorted by updated time"""
-        return Novel.query.order_by(desc(Novel.updated_at)).limit(limit).all()
-    
-    @staticmethod
-    def increment_view_count(novel_id: int) -> bool:
-        """Increment the view count of a novel"""
-        novel = Novel.query.get(novel_id)
-        if not novel:
-            return False
-        
-        novel.view_count += 1
-        db.session.commit()
-        return True
-    
-    @staticmethod
-    def get_chapter_by_id(chapter_id: int) -> Optional[Chapter]:
-        """Retrieve chapter by ID"""
-        return Chapter.query.get(chapter_id)
-    
-    @staticmethod
-    def get_chapter_by_number(novel_id: int, chapter_number: int) -> Optional[Chapter]:
-        """Retrieve chapter by novel ID and chapter number"""
-        return Chapter.query.filter_by(
-            novel_id=novel_id,
-            chapter_number=chapter_number
-        ).first()
-    
-    @staticmethod
-    def get_novel_chapters(novel_id: int) -> List[Chapter]:
-        """Get all chapters for a novel ordered by chapter number"""
-        return Chapter.query.filter_by(novel_id=novel_id).order_by(
-            Chapter.chapter_number
-        ).all()
-    
-    @staticmethod
-    def get_adjacent_chapters(chapter: Chapter) -> Tuple[Optional[Chapter], Optional[Chapter]]:
-        """Get previous and next chapters"""
-        prev_chapter = Chapter.query.filter_by(
-            novel_id=chapter.novel_id
-        ).filter(Chapter.chapter_number < chapter.chapter_number).order_by(
-            desc(Chapter.chapter_number)
-        ).first()
-        
-        next_chapter = Chapter.query.filter_by(
-            novel_id=chapter.novel_id
-        ).filter(Chapter.chapter_number > chapter.chapter_number).order_by(
-            Chapter.chapter_number
-        ).first()
-        
-        return prev_chapter, next_chapter
-    
-    @staticmethod
-    def create_novel(title: str, author_id: int, author: str, category: str, intro: str, 
-                   cover: str = 'default_cover.jpg', status: str = 'ongoing') -> Novel:
-        """Create a new novel in the database"""
-        novel = Novel(
-            title=title,
-            author_id=author_id,
-            author=author,
-            category=category,
-            intro=intro,
-            cover=cover,
-            status=status
-        )
-        
-        db.session.add(novel)
-        db.session.commit()
-        return novel
-    
-    @staticmethod
-    def create_chapter(novel_id: int, title: str, content: str, 
-                     chapter_number: Optional[int] = None) -> Chapter:
-        """Create a new chapter in the database"""
-        # If chapter number not provided, calculate next chapter number
-        if chapter_number is None:
-            last_chapter = Chapter.query.filter_by(novel_id=novel_id).order_by(
-                desc(Chapter.chapter_number)
-            ).first()
-            
-            chapter_number = 1 if not last_chapter else last_chapter.chapter_number + 1
-        
-        # Calculate word count
-        word_count = len(content)
-        
-        chapter = Chapter(
-            novel_id=novel_id,
-            title=title,
-            content=content,
-            chapter_number=chapter_number,
-            word_count=word_count
-        )
-        
-        db.session.add(chapter)
-        db.session.commit()
-        
-        # Update novel's updated_at timestamp
-        novel = Novel.query.get(novel_id)
-        if novel:
-            novel.updated_at = func.now()
-            db.session.commit()
-        
-        return chapter
-    
-    @staticmethod
-    def update_novel_fields(novel: Novel, data: Dict[str, Any]) -> Novel:
-        """Update novel fields with provided data"""
-        # Update novel attributes
-        allowed_fields = ['title', 'author', 'category', 'cover', 'intro', 'status']
-        for key, value in data.items():
-            if key in allowed_fields and value is not None:
-                setattr(novel, key, value)
-        
-        db.session.commit()
-        return novel
-    
-    @staticmethod
-    def update_chapter_fields(chapter: Chapter, data: Dict[str, Any]) -> Chapter:
-        """Update chapter fields with provided data"""
-        # Update chapter attributes
-        if 'title' in data and data['title'] is not None:
-            chapter.title = data['title']
-        
-        if 'content' in data and data['content'] is not None:
-            chapter.content = data['content']
-            chapter.word_count = len(data['content'])
-        
-        db.session.commit()
-        
-        # Update novel's updated_at timestamp
-        novel = Novel.query.get(chapter.novel_id)
-        if novel:
-            novel.updated_at = func.now()
-            db.session.commit()
-        
-        return chapter
-    
-    @staticmethod
-    def delete_novel(novel_id: int) -> bool:
-        """Delete a novel and all its chapters"""
-        novel = Novel.query.get(novel_id)
-        if not novel:
-            return False
-        
-        db.session.delete(novel)
-        db.session.commit()
-        return True
-    
-    @staticmethod
-    def delete_chapter(chapter_id: int) -> bool:
-        """Delete a chapter"""
-        chapter = Chapter.query.get(chapter_id)
-        if not chapter:
-            return False
-        
-        # Get the novel to update its timestamp
-        novel_id = chapter.novel_id
-        
-        db.session.delete(chapter)
-        db.session.commit()
-        
-        # Update novel's updated_at timestamp
-        novel = Novel.query.get(novel_id)
-        if novel:
-            novel.updated_at = func.now()
-            db.session.commit()
-            
-        return True
-    
-    @staticmethod
-    def get_categories() -> List[Dict[str, Any]]:
-        """Get list of categories with novel counts"""
-        categories = db.session.query(
-            Novel.category, 
-            func.count(Novel.id).label('count')
-        ).group_by(Novel.category).all()
-        
-        return [{'name': category, 'count': count} for category, count in categories]
-
+from app.dao.novel_dao import NovelDAO
+from app.dao.interaction_dao import InteractionDAO
 
 class NovelService:
     """
@@ -667,7 +414,7 @@ class NovelService:
             return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def update_chapter(author_id: int, chapter_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_chapter(user_id: int, chapter_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         """Update chapter information (author or admin only)"""
         # Verify chapter exists
         chapter = NovelDAO.get_chapter_by_id(chapter_id)
@@ -680,15 +427,17 @@ class NovelService:
             return {'success': False, 'error': 'Novel not found'}
         
         # Check if user is admin
-        user = User.query.get(author_id)
+        user = User.query.get(user_id)
         if not user:
             return {'success': False, 'error': 'User not found'}
             
-        is_admin = PermissionService.get_user_role(author_id) == 'admin'
+        is_admin = PermissionService.get_user_role(user_id) == 'admin'
         
-        # Verify ownership: only the novel author or admin can update chapter
-        if not is_admin and novel.author_id != author_id:
-            return {'success': False, 'error': 'Permission denied - only the novel author or admin can update chapters'}
+        # If not admin, verify user is the author of the novel
+        if not is_admin:
+            author = Author.query.filter_by(user_id=user_id).first()
+            if not author or novel.author_id != author.id:
+                return {'success': False, 'error': 'Permission denied - only the novel author or admin can update chapters'}
         
         try:
             updated_chapter = NovelDAO.update_chapter_fields(chapter, data)
@@ -736,8 +485,16 @@ class NovelService:
             return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def delete_chapter(author_id: int, chapter_id: int) -> Dict[str, Any]:
-        """Delete a chapter (author or admin only)"""
+    def delete_chapter(user_id: int, chapter_id: int) -> Dict[str, Any]:
+        """Delete a chapter (author or admin only)
+        
+        Args:
+            user_id: User ID of the requester
+            chapter_id: Chapter ID to delete
+            
+        Returns:
+            Dictionary with operation result
+        """
         # Verify chapter exists
         chapter = NovelDAO.get_chapter_by_id(chapter_id)
         if not chapter:
@@ -749,15 +506,17 @@ class NovelService:
             return {'success': False, 'error': 'Novel not found'}
         
         # Check if user is admin
-        user = User.query.get(author_id)
+        user = User.query.get(user_id)
         if not user:
             return {'success': False, 'error': 'User not found'}
             
-        is_admin = PermissionService.get_user_role(author_id) == 'admin'
+        is_admin = PermissionService.get_user_role(user_id) == 'admin'
         
-        # Verify ownership: only the novel author or admin can delete chapter
-        if not is_admin and novel.author_id != author_id:
-            return {'success': False, 'error': 'Permission denied - only the novel author or admin can delete chapters'}
+        # If not admin, verify user is the author of the novel
+        if not is_admin:
+            author = Author.query.filter_by(user_id=user_id).first()
+            if not author or novel.author_id != author.id:
+                return {'success': False, 'error': 'Permission denied - only the novel author or admin can delete chapters'}
         
         novel_id = chapter.novel_id
         
@@ -859,37 +618,6 @@ class NovelService:
                 'success': False,
                 'error': str(e)
             }
-    
-    @staticmethod
-    def get_user_novel_list(user_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
-        """Get novels by user ID (for logged-in user)
-        
-        Args:
-            user_id: User ID
-            page: Page number
-            per_page: Items per page
-            
-        Returns:
-            Dictionary with user's novels and pagination info
-        """
-        try:
-            # Get author ID associated with this user
-            author = Author.query.filter_by(user_id=user_id).first()
-            if not author:
-                return {'success': False, 'error': 'User is not an author'}
-                
-            # Get novels by author ID
-            query = Novel.query.filter_by(author_id=author.id)
-            novels = query.order_by(desc(Novel.updated_at)).paginate(page=page, per_page=per_page)
-            
-            return {
-                'success': True,
-                'total': novels.total,
-                'pages': novels.pages,
-                'novels': [novel.to_dict() for novel in novels.items]
-            }
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
     
     @staticmethod
     def get_novel_chapters(novel_id: int) -> Dict[str, Any]:

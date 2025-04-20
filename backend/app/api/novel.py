@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.services.novel_service import NovelService
 from app.utils.security import author_required, admin_required
 from app.models.author import Author
+from app.services.permission_service import PermissionService
 
 novel_bp = Blueprint('novel', __name__)
 
@@ -308,8 +309,13 @@ def add_tags_to_novel(novel_id):
         if not novel['success']:
             return error_response(novel['error'], 404)
         
+        # 获取用户的作者记录
+        author = Author.query.filter_by(user_id=user_id).first()
+        if not author:
+            return error_response('Author not found', 404)
+        
         # 验证权限：只有小说作者可以添加标签
-        if novel['novel']['author_id'] != user_id:
+        if novel['novel']['author_id'] != author.id:
             return error_response('Permission denied - only the novel author can add tags', 403)
         
         # 添加标签
@@ -338,8 +344,13 @@ def remove_tag_from_novel(novel_id, tag_id):
         if not novel['success']:
             return error_response(novel['error'], 404)
         
+        # 获取用户的作者记录
+        author = Author.query.filter_by(user_id=user_id).first()
+        if not author:
+            return error_response('Author not found', 404)
+        
         # 验证权限：只有小说作者可以移除标签
-        if novel['novel']['author_id'] != user_id:
+        if novel['novel']['author_id'] != author.id:
             return error_response('Permission denied - only the novel author can remove tags', 403)
         
         # 移除标签
@@ -366,34 +377,6 @@ def get_all_tags():
     
     return success_response({'tags': result['tags']})
 
-@novel_bp.route('/my', methods=['GET'])
-@jwt_required()
-def get_my_novel_list():
-    """Get novels created by the logged-in user"""
-    try:
-        # Get user ID from JWT
-        user_id = get_jwt_identity()
-        
-        # Get query parameters
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
-        
-        # Use service to get user's novel list
-        result = NovelService.get_user_novel_list(user_id, page, per_page)
-        
-        # Handle error response
-        if not result['success']:
-            return error_response(result['error'], 400)
-            
-        # Return success response
-        return success_response({
-            'novels': result['novels'],
-            'total': result['total'],
-            'pages': result.get('pages', 1)
-        })
-    except Exception as e:
-        return error_response(str(e), 500)
-
 @novel_bp.route('/author/novels', methods=['GET'])
 @jwt_required()
 @author_required()
@@ -411,7 +394,9 @@ def get_author_novels():
     
     return success_response({
         'novels': result['novels'],
-        'total': result['total']
+        'total': result['total'],
+        'pages': result.get('pages', 1),
+        'current_page': page
     })
 
 @novel_bp.route('/author/stats', methods=['GET'])
@@ -471,10 +456,11 @@ def add_chapter(novel_id):
             status_code = 404 if 'not found' in error_msg.lower() else 400
             return error_response(error_msg, status_code)
         
-        # Return success response
+        # Return success response with format matching the documentation
         return success_response({
+            'success': True,
             'message': 'Chapter added successfully',
-            'chapter': result['chapter']
+            'chapter_id': result['chapter']['id']
         }, 201)
     except Exception as e:
         return error_response(str(e), 500)
@@ -551,8 +537,8 @@ def delete_chapter(chapter_id):
     try:
         user_id = get_jwt_identity()
         
-        # Use service to delete chapter
-        result = NovelService.delete_chapter(author_id=user_id, chapter_id=chapter_id)
+        # Use service to delete chapter with user_id
+        result = NovelService.delete_chapter(user_id=user_id, chapter_id=chapter_id)
         
         if not result['success']:
             error_msg = result['error']
@@ -583,4 +569,31 @@ def refresh_cache():
         else:
             return error_response(error_msg)
     
-    return success_response({'message': result['message']}) 
+    return success_response({'message': result['message']})
+
+@novel_bp.route('/chapters/<int:chapter_id>', methods=['PUT'])
+@jwt_required()
+def update_chapter(chapter_id):
+    """更新章节内容（作者或管理员）"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # 使用服务更新章节 - 直接传递user_id
+        result = NovelService.update_chapter(user_id=user_id, chapter_id=chapter_id, data=data)
+        
+        if not result['success']:
+            error_msg = result['error']
+            if 'permission' in error_msg.lower():
+                return error_response(error_msg, 403)
+            elif 'not found' in error_msg.lower():
+                return error_response(error_msg, 404)
+            else:
+                return error_response(error_msg, 400)
+        
+        return success_response({
+            'message': 'Chapter updated successfully',
+            'chapter': result.get('chapter')
+        })
+    except Exception as e:
+        return error_response(str(e)) 

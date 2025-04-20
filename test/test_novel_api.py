@@ -27,6 +27,11 @@ from requests.exceptions import RequestException
 BASE_URL = "http://localhost:5000"
 API_PREFIX = "/api"
 
+# 测试账户信息 - 从sign.txt获取
+AUTHOR_USERNAME = "testauthor"
+AUTHOR_PASSWORD = "password123"
+AUTHOR_ID = 5
+
 # 辅助函数
 def random_string(length=8):
     """生成随机字符串"""
@@ -43,30 +48,12 @@ class TestNovelAPI(unittest.TestCase):
     def setUpClass(cls):
         """测试类开始前执行，登录并获取测试用户的token"""
         print("\n=== 准备测试环境 ===")
-        # 创建并登录作者账号
-        cls.author_username = f"author_{random_string()}_{get_timestamp()}"
-        cls.author_password = "Test@123"
-        cls.author_phone = f"1391234{random.randint(1000, 9999)}"
-        
-        # 创建作者账号
-        author_data = {
-            "username": cls.author_username,
-            "password": cls.author_password,
-            "confirm_password": cls.author_password,
-            "phone": cls.author_phone,
-            "email": f"{cls.author_username}@example.com"
-        }
         
         try:
-            response = requests.post(f"{BASE_URL}{API_PREFIX}/user/register", json=author_data)
-            if response.status_code != 200:
-                print(f"创建作者账号失败: {response.text}")
-                raise Exception("创建作者账号失败")
-                
-            # 登录作者账号
+            # 使用已有的作者账号登录
             login_response = requests.post(
                 f"{BASE_URL}{API_PREFIX}/user/login", 
-                json={"username": cls.author_username, "password": cls.author_password}
+                json={"username": AUTHOR_USERNAME, "password": AUTHOR_PASSWORD}
             )
             
             if login_response.status_code != 200:
@@ -74,34 +61,22 @@ class TestNovelAPI(unittest.TestCase):
                 raise Exception("作者登录失败")
                 
             login_data = login_response.json()
-            cls.author_token = login_data.get("token")
-            cls.author_id = login_data.get("user", {}).get("id")
-            
-            # 开通作者权限
-            author_upgrade_response = requests.post(
-                f"{BASE_URL}{API_PREFIX}/author/apply",
-                headers={"Authorization": f"Bearer {cls.author_token}"},
-                json={"pen_name": f"Test Author {random_string()}", "intro": "This is a test author for API testing"}
-            )
-            
-            if author_upgrade_response.status_code != 200:
-                print(f"开通作者权限失败: {author_upgrade_response.text}")
-                raise Exception("开通作者权限失败")
-            
-            # 再次登录以获取更新的权限
-            login_response = requests.post(
-                f"{BASE_URL}{API_PREFIX}/user/login", 
-                json={"username": cls.author_username, "password": cls.author_password}
-            )
-            
-            if login_response.status_code == 200:
-                login_data = login_response.json()
+            # 从返回中获取token，API文档显示应该是access_token而不是token
+            cls.author_token = login_data.get("access_token")
+            if not cls.author_token:
+                # 如果没有找到access_token，尝试使用token字段
                 cls.author_token = login_data.get("token")
             
-            # 创建测试小说
+            if not cls.author_token:
+                print(f"无法从登录响应中获取令牌: {login_data}")
+                raise Exception("无法获取登录令牌")
+                
+            cls.author_id = AUTHOR_ID
+                        
+            # 创建测试小说列表
             cls.test_novels = []
             
-            print(f"测试环境准备完成。作者用户ID: {cls.author_id}")
+            print(f"测试环境准备完成。使用作者用户ID: {cls.author_id}")
         except RequestException as e:
             print(f"测试环境准备失败: {str(e)}")
             raise
@@ -115,7 +90,7 @@ class TestNovelAPI(unittest.TestCase):
             try:
                 # 尝试删除小说
                 response = requests.delete(
-                    f"{BASE_URL}{API_PREFIX}/novel/{novel_id}",
+                    f"{BASE_URL}{API_PREFIX}/novel/{novel_id}/delete",
                     headers={"Authorization": f"Bearer {cls.author_token}"}
                 )
                 print(f"删除小说 {novel_id}: {'成功' if response.status_code == 200 else '失败'}")
@@ -137,11 +112,11 @@ class TestNovelAPI(unittest.TestCase):
         # 准备小说数据
         novel_data = {
             "title": f"测试小说 {random_string()} {get_timestamp()}",
-            "author": f"测试作者 {random_string()}",  # 显示的作者名称
             "category": "奇幻",
-            "intro": "这是一本用于API测试的小说",  # 修改 description 为 intro
+            "intro": "这是一本用于API测试的小说",  # 小说简介
             "cover": "https://example.com/default-cover.jpg",
-            "status": "ongoing"  # 添加状态字段
+            "status": "ongoing",  # 小说状态
+            "tags": ["测试", "奇幻"]  # 添加标签字段
         }
         
         # 发送添加小说请求
@@ -157,10 +132,10 @@ class TestNovelAPI(unittest.TestCase):
         # 验证响应内容
         response_data = response.json()
         self.assertIn("message", response_data, "响应中没有返回message字段")
-        self.assertIn("novel", response_data, "响应中没有返回novel对象")
+        self.assertIn("novel_id", response_data, "响应中没有返回novel_id字段")
         
         # 保存小说ID用于后续测试和清理
-        novel_id = response_data.get("novel", {}).get("id")
+        novel_id = response_data.get("novel_id")
         self.__class__.test_novels.append(novel_id)
         self.__class__.current_test_novel_id = novel_id
         
@@ -220,7 +195,7 @@ class TestNovelAPI(unittest.TestCase):
         # 验证响应内容
         response_data = response.json()
         self.assertIn("message", response_data, "响应中没有返回message字段")
-        self.assertIn("novel", response_data, "响应中没有返回novel对象")
+        self.assertTrue(response_data.get("success", False), "响应中success字段不为True")
         
         # 获取更新后的小说详情进行验证
         detail_response = requests.get(
@@ -264,10 +239,10 @@ class TestNovelAPI(unittest.TestCase):
         # 验证响应内容
         response_data = response.json()
         self.assertIn("message", response_data, "响应中没有返回message字段")
-        self.assertIn("chapter", response_data, "响应中没有返回chapter对象")
+        self.assertIn("chapter_id", response_data, "响应中没有返回chapter_id字段")
         
         # 保存章节ID用于后续测试
-        self.__class__.current_test_chapter_id = response_data.get("chapter", {}).get("id")
+        self.__class__.current_test_chapter_id = response_data.get("chapter_id")
         
         print(f"成功添加测试章节，ID: {self.__class__.current_test_chapter_id}")
     
@@ -322,7 +297,7 @@ class TestNovelAPI(unittest.TestCase):
         # 验证响应内容
         response_data = response.json()
         self.assertIn("message", response_data, "响应中没有返回message字段")
-        self.assertIn("chapter", response_data, "响应中没有返回chapter对象")
+        self.assertTrue(response_data.get("success", False), "响应中success字段不为True")
         
         # 获取更新后的章节详情进行验证
         detail_response = requests.get(
@@ -401,7 +376,7 @@ class TestNovelAPI(unittest.TestCase):
         
         # 发送搜索小说请求
         response = requests.get(
-            f"{BASE_URL}{API_PREFIX}/novel/search?keyword=测试小说",
+            f"{BASE_URL}{API_PREFIX}/search/novels?q=测试小说",
             headers={"Authorization": f"Bearer {self.__class__.author_token}"}
         )
         
@@ -410,11 +385,10 @@ class TestNovelAPI(unittest.TestCase):
         
         # 验证响应内容
         response_data = response.json()
-        self.assertEqual(response_data.get("code"), 0, "搜索小说失败，响应code不为0")
-        self.assertIn("novels", response_data, "响应中没有返回novels列表")
+        self.assertIn("results", response_data, "响应中没有返回results列表")
         
-        novels = response_data.get("novels")
-        self.assertIsInstance(novels, list, "novels不是一个列表")
+        novels = response_data.get("results")
+        self.assertIsInstance(novels, list, "results不是一个列表")
         
         print(f"成功搜索小说，找到 {len(novels)} 本相关小说")
     
@@ -424,7 +398,7 @@ class TestNovelAPI(unittest.TestCase):
         
         # 发送获取作者小说请求
         response = requests.get(
-            f"{BASE_URL}{API_PREFIX}/novel/my",  # 修改路径
+            f"{BASE_URL}{API_PREFIX}/novel/author/novels",  # 修改路径
             headers={"Authorization": f"Bearer {self.__class__.author_token}"}
         )
         
@@ -476,6 +450,256 @@ class TestNovelAPI(unittest.TestCase):
             self.__class__.test_novels.remove(self.__class__.current_test_novel_id)
             
         print(f"成功删除测试小说，ID: {self.__class__.current_test_novel_id}")
+    
+    def test_12_get_categories(self):
+        """测试获取小说分类列表功能"""
+        print("\n--- 测试获取小说分类列表 ---")
+        
+        # 发送获取分类列表请求
+        response = requests.get(
+            f"{BASE_URL}{API_PREFIX}/novel/categories"
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"获取小说分类列表失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("categories", response_data, "响应中没有返回categories列表")
+        
+        categories = response_data.get("categories")
+        self.assertIsInstance(categories, list, "categories不是一个列表")
+        
+        print(f"成功获取小说分类列表，共 {len(categories)} 个分类")
+    
+    def test_13_get_novels_by_category(self):
+        """测试获取分类小说列表功能"""
+        print("\n--- 测试获取分类小说列表 ---")
+        
+        # 发送获取分类小说请求
+        response = requests.get(
+            f"{BASE_URL}{API_PREFIX}/novel/list?category=奇幻&page=1&per_page=10"
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"获取分类小说列表失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("novels", response_data, "响应中没有返回novels列表")
+        self.assertIn("total", response_data, "响应中没有返回total字段")
+        self.assertIn("pages", response_data, "响应中没有返回pages字段")
+        self.assertIn("current_page", response_data, "响应中没有返回current_page字段")
+        
+        novels = response_data.get("novels")
+        self.assertIsInstance(novels, list, "novels不是一个列表")
+        
+        print(f"成功获取分类小说列表，共 {len(novels)} 本")
+        
+    def test_14_get_popular_novels(self):
+        """测试获取热门小说功能"""
+        print("\n--- 测试获取热门小说 ---")
+        
+        # 发送获取热门小说请求
+        response = requests.get(
+            f"{BASE_URL}{API_PREFIX}/novel/popular?limit=5"
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"获取热门小说失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("novels", response_data, "响应中没有返回novels列表")
+        
+        novels = response_data.get("novels")
+        self.assertIsInstance(novels, list, "novels不是一个列表")
+        
+        print(f"成功获取热门小说，共 {len(novels)} 本")
+        
+    def test_15_get_latest_novels(self):
+        """测试获取最新小说功能"""
+        print("\n--- 测试获取最新小说 ---")
+        
+        # 发送获取最新小说请求
+        response = requests.get(
+            f"{BASE_URL}{API_PREFIX}/novel/latest?limit=5"
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"获取最新小说失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("novels", response_data, "响应中没有返回novels列表")
+        
+        novels = response_data.get("novels")
+        self.assertIsInstance(novels, list, "novels不是一个列表")
+        
+        print(f"成功获取最新小说，共 {len(novels)} 本")
+
+    def test_16_get_all_tags(self):
+        """测试获取所有标签列表功能"""
+        print("\n--- 测试获取所有标签列表 ---")
+        
+        # 发送获取标签列表请求
+        response = requests.get(
+            f"{BASE_URL}{API_PREFIX}/novel/tags?sort_by=count&order=desc&limit=20"
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"获取标签列表失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("tags", response_data, "响应中没有返回tags列表")
+        
+        tags = response_data.get("tags")
+        self.assertIsInstance(tags, list, "tags不是一个列表")
+        
+        print(f"成功获取所有标签列表，共 {len(tags)} 个标签")
+    
+    def test_17_add_novel_with_tags(self):
+        """测试添加带标签的小说功能"""
+        print("\n--- 测试添加带标签的小说功能 ---")
+        
+        # 准备小说数据（包含标签）
+        novel_data = {
+            "title": f"带标签的测试小说 {random_string()} {get_timestamp()}",
+            "category": "奇幻",
+            "intro": "这是一本用于测试标签功能的小说",
+            "cover": "https://example.com/default-cover.jpg",
+            "status": "ongoing",
+            "tags": ["标签测试", "奇幻", "冒险"]
+        }
+        
+        # 发送添加小说请求
+        response = requests.post(
+            f"{BASE_URL}{API_PREFIX}/novel/add",
+            headers={"Authorization": f"Bearer {self.__class__.author_token}"},
+            json=novel_data
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 201, f"添加小说失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("novel_id", response_data, "响应中没有返回novel_id字段")
+        
+        # 保存小说ID用于后续测试和清理
+        novel_id = response_data.get("novel_id")
+        self.__class__.test_novels.append(novel_id)
+        self.__class__.tag_test_novel_id = novel_id
+        
+        print(f"成功创建带标签的测试小说，ID: {novel_id}")
+    
+    def test_18_get_novel_tags(self):
+        """测试获取小说标签功能"""
+        print("\n--- 测试获取小说标签 ---")
+        
+        # 确保有测试小说可用
+        self.assertTrue(hasattr(self.__class__, 'tag_test_novel_id'), "没有可用的带标签测试小说ID")
+        
+        # 发送获取小说标签请求
+        response = requests.get(
+            f"{BASE_URL}{API_PREFIX}/novel/{self.__class__.tag_test_novel_id}/tags"
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"获取小说标签失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("tags", response_data, "响应中没有返回tags列表")
+        
+        tags = response_data.get("tags")
+        self.assertIsInstance(tags, list, "tags不是一个列表")
+        self.assertGreater(len(tags), 0, "小说标签列表为空")
+        
+        # 保存第一个标签ID用于后续移除标签测试
+        if len(tags) > 0:
+            self.__class__.test_tag_id = tags[0].get('id')
+        
+        print(f"成功获取小说标签，共 {len(tags)} 个标签")
+    
+    def test_19_add_tags_to_novel(self):
+        """测试为小说添加标签功能"""
+        print("\n--- 测试为小说添加标签 ---")
+        
+        # 确保有测试小说可用
+        self.assertTrue(hasattr(self.__class__, 'tag_test_novel_id'), "没有可用的带标签测试小说ID")
+        
+        # 准备新标签数据
+        tag_data = {
+            "tags": [f"新标签{random_string(4)}", f"新标签{random_string(4)}"]
+        }
+        
+        # 发送添加标签请求
+        response = requests.post(
+            f"{BASE_URL}{API_PREFIX}/novel/{self.__class__.tag_test_novel_id}/tags",
+            headers={"Authorization": f"Bearer {self.__class__.author_token}"},
+            json=tag_data
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"添加标签失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("message", response_data, "响应中没有返回message字段")
+        self.assertIn("added_tags", response_data, "响应中没有返回added_tags字段")
+        
+        added_tags = response_data.get("added_tags")
+        self.assertIsInstance(added_tags, list, "added_tags不是一个列表")
+        self.assertEqual(len(added_tags), len(tag_data["tags"]), "添加的标签数量不匹配")
+        
+        print(f"成功为小说添加标签，添加了 {len(added_tags)} 个标签")
+    
+    def test_20_remove_tag_from_novel(self):
+        """测试从小说中移除标签功能"""
+        print("\n--- 测试从小说中移除标签 ---")
+        
+        # 确保有测试小说和标签可用
+        self.assertTrue(hasattr(self.__class__, 'tag_test_novel_id'), "没有可用的带标签测试小说ID")
+        self.assertTrue(hasattr(self.__class__, 'test_tag_id'), "没有可用的测试标签ID")
+        
+        # 发送移除标签请求
+        response = requests.delete(
+            f"{BASE_URL}{API_PREFIX}/novel/{self.__class__.tag_test_novel_id}/tags/{self.__class__.test_tag_id}",
+            headers={"Authorization": f"Bearer {self.__class__.author_token}"}
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"移除标签失败，响应: {response.text}")
+        
+        # 验证响应内容
+        response_data = response.json()
+        self.assertIn("message", response_data, "响应中没有返回message字段")
+        
+        print(f"成功从小说中移除标签，ID: {self.__class__.test_tag_id}")
+        
+    def test_21_delete_tag_test_novel(self):
+        """测试删除用于标签测试的小说"""
+        print("\n--- 测试删除用于标签测试的小说 ---")
+        
+        # 确保有测试小说可用
+        self.assertTrue(hasattr(self.__class__, 'tag_test_novel_id'), "没有可用的带标签测试小说ID")
+        
+        # 发送删除小说请求
+        response = requests.delete(
+            f"{BASE_URL}{API_PREFIX}/novel/{self.__class__.tag_test_novel_id}/delete",
+            headers={"Authorization": f"Bearer {self.__class__.author_token}"}
+        )
+        
+        # 验证响应状态码
+        self.assertEqual(response.status_code, 200, f"删除小说失败，响应: {response.text}")
+        
+        # 从待清理列表中移除已删除的小说
+        if self.__class__.tag_test_novel_id in self.__class__.test_novels:
+            self.__class__.test_novels.remove(self.__class__.tag_test_novel_id)
+            
+        print(f"成功删除用于标签测试的小说，ID: {self.__class__.tag_test_novel_id}")
 
 
 def main():
@@ -488,9 +712,32 @@ def main():
     suite = unittest.TestSuite()
     
     # 按顺序添加测试用例
-    for test_name in sorted(dir(TestNovelAPI)):
-        if test_name.startswith('test_'):
-            suite.addTest(TestNovelAPI(test_name))
+    test_methods = [
+        'test_01_add_novel',
+        'test_02_get_novel_detail',
+        'test_03_update_novel',
+        'test_04_add_chapter',
+        'test_05_get_chapter_detail',
+        'test_06_update_chapter',
+        'test_07_get_all_chapters',
+        'test_08_delete_chapter',
+        'test_09_search_novels',
+        'test_10_get_author_novels',
+        'test_11_delete_novel',
+        'test_12_get_categories',
+        'test_13_get_novels_by_category',
+        'test_14_get_popular_novels',
+        'test_15_get_latest_novels',
+        'test_16_get_all_tags',
+        'test_17_add_novel_with_tags',
+        'test_18_get_novel_tags',
+        'test_19_add_tags_to_novel',
+        'test_20_remove_tag_from_novel',
+        'test_21_delete_tag_test_novel'
+    ]
+    
+    for test_name in test_methods:
+        suite.addTest(TestNovelAPI(test_name))
     
     # 运行测试
     runner = unittest.TextTestRunner(verbosity=2)

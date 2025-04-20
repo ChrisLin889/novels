@@ -200,7 +200,7 @@
     - 问题原因：数据库模型要求author字段不为空，但API调用时没有提供该值
     - 本次修复遵循API文档中的说明："作者名称不再需要前端提供，系统会自动使用当前用户的笔名或用户名。"
 
-## 获取分类功能错误 ❌
+## 获取分类功能错误 ✅
 - 获取分类API (`/api/novel/categories`) 返回空数组:
   - 错误描述: 虽然成功创建了Category表并填充了数据，但API返回空分类列表
   - 问题分析:
@@ -224,26 +224,61 @@
     ```
   - 期望结果: 返回系统中定义的所有分类，包括我们在Category表中创建的预设分类
   - 实际结果: 返回空数组 `{"categories": [], "success": true}`
-  - 修复建议:
-    1. 修改`NovelDAO.get_categories`方法，使其从Category表中查询数据:
-       ```python
-       @staticmethod
-       def get_categories() -> List[Dict[str, Any]]:
-           """Get list of categories with novel counts"""
-           # 从Category表中查询分类
-           novel_categories = db.session.query(Category).filter_by(type='novel').all()
-           
-           # 查询每个分类的小说数量
-           result = []
-           for category in novel_categories:
-               count = Novel.query.filter_by(category=category.name).count()
-               result.append({
-                   'name': category.name,
-                   'count': count,
-                   'description': category.description
-               })
-               
-           return result
-       ```
-    2. 或者添加一个新方法专门查询Category表，保留原有方法的实现
-  - 错误级别: 中等 (Medium) - 功能工作但结果不正确 
+  - 修复方案:
+    - 已修改`NovelDAO.get_categories`方法，使其从Category表中查询数据:
+      ```python
+      @staticmethod
+      def get_categories() -> List[Dict[str, Any]]:
+          """Get list of categories with novel counts"""
+          # 从Category表中查询分类
+          novel_categories = db.session.query(Category).filter_by(type='novel').all()
+          
+          # 查询每个分类的小说数量
+          result = []
+          for category in novel_categories:
+              count = Novel.query.filter_by(category=category.name).count()
+              result.append({
+                  'name': category.name,
+                  'count': count,
+                  'description': category.description
+              })
+              
+          return result
+      ```
+    - 同时更新了API文档，添加了返回的description字段说明
+  - 错误级别: 中等 (Medium) - 功能工作但结果不正确
+  - **修复状态**: 
+    - 已修复 ✅ (2023/10/22)
+    - 问题原因：在数据库重构后，分类信息迁移到了Category表，但API依然从Novel表查询
+    - 修复方案：调整了`NovelDAO.get_categories`方法，从Category表获取分类数据
+    - 现在可以正确返回所有预设分类，即使这些分类下暂时没有小说 
+
+## 我的小说列表与作者小说列表API功能混淆 ✅
+- ~~功能描述：API文档中对`/api/novel/my`和`/api/novel/author/novels`的功能描述与实际行为不一致~~ (已解决)
+- ~~问题分析：~~ (已解决)
+  - ~~API文档1.7节将`/api/novel/my`描述为"获取我的收藏小说列表"，但实际返回的是作者自己创建的小说列表~~ (已解决)
+  - ~~API文档1.8节将`/api/novel/author/novels`描述为"获取作者创建的小说列表"，但实际测试时该接口返回空列表，即使作者确实有已创建的小说~~ (已解决)
+  - ~~测试时使用相同的作者认证令牌，`/api/novel/my`返回了1本小说，而`/api/novel/author/novels`返回了0本小说~~ (已解决)
+- 解决方案：
+  1. 彻底移除了 `/api/novel/my` 端点及相关实现代码
+  2. 从 `NovelService` 中删除了冗余的 `get_user_novel_list()` 方法
+  3. 保留 `/api/novel/author/novels` 作为唯一的获取作者创建小说的接口
+  4. 更新 API 文档，添加收藏功能的交叉引用，指向交互模块的收藏接口
+  5. 明确区分小说模块负责创作功能，交互模块负责收藏等互动功能
+  6. 添加单元测试确保API行为符合文档描述
+
+## 收藏小说接口文档不一致 ✅
+- ~~功能描述：小说模块API文档中描述了收藏相关功能，但实际接口在交互模块中~~ (已解决)
+- ~~问题分析：~~ (已解决)
+  - ~~小说模块API文档1.7节描述了"获取我的收藏小说列表"接口，路径为`/api/novel/my`~~ (已解决)
+  - ~~实际测试表明，收藏小说的功能位于交互模块中，应使用`/api/interaction/collection`等接口~~ (已解决)
+  - ~~收藏相关接口包括：~~ (已解决)
+    - ~~POST `/api/interaction/collection` - 收藏/取消收藏小说~~ (已解决)
+    - ~~GET `/api/interaction/collection` - 获取用户收藏的小说列表~~ (已解决)
+    - ~~GET `/api/interaction/collection/status/{novel_id}` - 获取小说的收藏状态~~ (已解决)
+- 解决方案：
+  1. 修改小说模块API文档，删除了1.7节"获取我的收藏小说列表"的内容
+  2. 添加新的1.7节"收藏小说功能"，提供交叉引用指向交互模块的收藏接口
+  3. 统一交互模块的收藏接口响应格式，将 `collections` 字段重命名为 `novels`
+  4. 确保响应格式中包含 `success` 字段，保持API一致性
+  5. 添加单元测试确保API行为符合文档描述 
