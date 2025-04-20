@@ -15,6 +15,7 @@ import random
 import string
 import time
 from datetime import datetime, timedelta
+import io
 
 # 将项目根目录添加到 Python 路径中，保证能够导入到 backend 包
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -31,6 +32,13 @@ API_PREFIX = "/api"
 AUTHOR_USERNAME = "testauthor"
 AUTHOR_PASSWORD = "password123"
 AUTHOR_ID = 5
+
+# 定义报告输出目录
+REPORT_DIR = "../doc/test_report"
+
+def ensure_report_dir():
+    """确保报告目录存在"""
+    os.makedirs(REPORT_DIR, exist_ok=True)
 
 # 辅助函数
 def random_string(length=8):
@@ -708,6 +716,17 @@ def main():
     print("      小说模块 API 测试脚本开始执行      ")
     print("=========================================\n")
     
+    # 确保报告目录存在
+    ensure_report_dir()
+    
+    # 生成报告文件名
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    report_filename = f"小说模块_api_test_report_{timestamp}.md"
+    report_path = os.path.join(REPORT_DIR, report_filename)
+    
+    # 创建输出缓冲区同时记录标准输出和报告文件
+    output_buffer = io.StringIO()
+    
     # 创建测试套件
     suite = unittest.TestSuite()
     
@@ -739,18 +758,48 @@ def main():
     for test_name in test_methods:
         suite.addTest(TestNovelAPI(test_name))
     
+    # 配置输出同时写入终端和缓冲区
+    class TeeTextTestRunner(unittest.TextTestRunner):
+        def __init__(self, out_buffer, **kwargs):
+            self.out_buffer = out_buffer
+            super().__init__(**kwargs)
+        
+        def _makeResult(self):
+            result = super()._makeResult()
+            orig_write = result.stream.write
+            def new_write(text):
+                self.out_buffer.write(text)
+                return orig_write(text)
+            result.stream.write = new_write
+            return result
+    
     # 运行测试
-    runner = unittest.TextTestRunner(verbosity=2)
+    runner = TeeTextTestRunner(output_buffer, verbosity=2)
     result = runner.run(suite)
     
     # 输出测试统计
-    print("\n=========================================")
-    print("           测试执行完成                 ")
-    print(f"总测试用例数: {result.testsRun}")
-    print(f"通过测试数: {result.testsRun - len(result.errors) - len(result.failures)}")
-    print(f"失败测试数: {len(result.failures)}")
-    print(f"错误测试数: {len(result.errors)}")
-    print("=========================================\n")
+    summary = f"\n=========================================\n"
+    summary += f"           测试执行完成                 \n"
+    summary += f"总测试用例数: {result.testsRun}\n"
+    summary += f"通过测试数: {result.testsRun - len(result.errors) - len(result.failures)}\n"
+    summary += f"失败测试数: {len(result.failures)}\n"
+    summary += f"错误测试数: {len(result.errors)}\n"
+    summary += f"=========================================\n"
+    print(summary)
+    output_buffer.write(summary)
+    
+    # 写入报告文件
+    with open(report_path, 'w', encoding='utf-8') as report_file:
+        report_file.write("# 小说模块 API 测试报告\n\n")
+        report_file.write(f"**测试时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        report_file.write(f"**测试脚本**: test_novel_api.py\n")
+        report_file.write(f"**描述**: 包括小说创建、查询、更新、章节管理、标签管理等功能测试\n\n")
+        report_file.write("---\n\n")
+        report_file.write("```\n")
+        report_file.write(output_buffer.getvalue())
+        report_file.write("```\n")
+    
+    print(f"\n测试报告已保存至: {report_path}")
     
     # 返回退出代码
     return 0 if result.wasSuccessful() else 1

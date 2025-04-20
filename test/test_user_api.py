@@ -22,6 +22,9 @@ import time
 import random
 import string
 import sys
+import os
+import io
+from datetime import datetime
 
 # 测试配置
 BASE_URL = "http://localhost:5000/api"
@@ -34,6 +37,13 @@ TEST_PHONE = f"1{random.randint(10000000, 99999999)}"  # 随机生成手机号
 # 存储全局变量
 USER_ID = None
 ACCESS_TOKEN = None
+
+# 定义报告输出目录
+REPORT_DIR = "../doc/test_report"
+
+def ensure_report_dir():
+    """确保报告目录存在"""
+    os.makedirs(REPORT_DIR, exist_ok=True)
 
 def print_header(title):
     """打印带有格式的标题"""
@@ -312,11 +322,59 @@ def cleanup():
 
 def run_all_tests():
     """运行所有测试"""
+    # 创建缓冲区以捕获输出
+    output_buffer = io.StringIO()
+    
+    # 确保报告目录存在
+    ensure_report_dir()
+    
+    # 生成报告文件名
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    report_filename = f"用户模块_api_test_report_{timestamp}.md"
+    report_path = os.path.join(REPORT_DIR, report_filename)
+    
     try:
-        print("\n📋 开始用户模块API测试")
-        print(f"测试用户名: {TEST_USERNAME}")
-        print(f"测试邮箱: {TEST_EMAIL}")
-        print(f"测试手机号: {TEST_PHONE}")
+        # 定义同时向控制台和缓冲区打印的函数
+        def tee_print(*args, **kwargs):
+            print(*args, **kwargs)
+            print(*args, **kwargs, file=output_buffer)
+        
+        tee_print("\n📋 开始用户模块API测试")
+        tee_print(f"测试用户名: {TEST_USERNAME}")
+        tee_print(f"测试邮箱: {TEST_EMAIL}")
+        tee_print(f"测试手机号: {TEST_PHONE}")
+        
+        # 保存原始print函数
+        original_print_header = print_header
+        original_print_result = print_result
+        original_print_response = print_response
+        
+        # 重定义打印函数以同时输出到缓冲区
+        def new_print_header(title):
+            original_print_header(title)
+            output_buffer.write("\n" + "=" * 80 + "\n")
+            output_buffer.write(f"测试: {title}\n")
+            output_buffer.write("=" * 80 + "\n")
+        
+        def new_print_result(status, message):
+            original_print_result(status, message)
+            if status:
+                output_buffer.write(f"✅ 成功: {message}\n")
+            else:
+                output_buffer.write(f"❌ 失败: {message}\n")
+        
+        def new_print_response(response):
+            original_print_response(response)
+            output_buffer.write(f"状态码: {response.status_code}\n")
+            try:
+                output_buffer.write(f"响应内容: {json.dumps(response.json(), ensure_ascii=False, indent=2)}\n")
+            except:
+                output_buffer.write(f"响应内容: {response.text}\n")
+        
+        # 替换打印函数
+        globals()['print_header'] = new_print_header
+        globals()['print_result'] = new_print_result
+        globals()['print_response'] = new_print_response
         
         # 运行测试
         tests = [
@@ -336,33 +394,57 @@ def run_all_tests():
             
             # 如果关键测试失败，可能无法继续
             if name in ["用户注册", "用户登录"] and not success:
-                print(f"\n⚠️ {name}失败，无法继续测试")
+                tee_print(f"\n⚠️ {name}失败，无法继续测试")
                 break
                 
         # 显示测试结果摘要
-        print("\n" + "=" * 80)
-        print("测试结果摘要")
-        print("=" * 80)
+        summary = "\n" + "=" * 80 + "\n"
+        summary += "测试结果摘要\n"
+        summary += "=" * 80 + "\n"
         
         success_count = sum(1 for _, success in results if success)
         total_count = len(results)
         
         for name, success in results:
             status = "✅" if success else "❌"
-            print(f"{status} {name}")
+            summary += f"{status} {name}\n"
             
-        print(f"\n总计: {success_count}/{total_count} 测试通过")
+        summary += f"\n总计: {success_count}/{total_count} 测试通过\n"
         
         if success_count == total_count:
-            print("\n🎉 所有测试通过!")
+            summary += "\n🎉 所有测试通过!\n"
         else:
-            print("\n⚠️ 部分测试失败，请检查详细输出")
+            summary += "\n⚠️ 部分测试失败，请检查详细输出\n"
+        
+        tee_print(summary)
+        
+        # 还原打印函数
+        globals()['print_header'] = original_print_header
+        globals()['print_result'] = original_print_result
+        globals()['print_response'] = original_print_response
+        
+        # 写入报告文件
+        with open(report_path, 'w', encoding='utf-8') as report_file:
+            report_file.write("# 用户模块 API 测试报告\n\n")
+            report_file.write(f"**测试时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            report_file.write(f"**测试脚本**: test_user_api.py\n")
+            report_file.write(f"**描述**: 包括用户注册、登录、个人信息管理及注销功能测试\n\n")
+            report_file.write("---\n\n")
+            report_file.write("```\n")
+            report_file.write(output_buffer.getvalue())
+            report_file.write("```\n")
+        
+        print(f"\n测试报告已保存至: {report_path}")
             
     except Exception as e:
         print(f"\n❌ 测试过程中出现异常: {str(e)}")
     finally:
         # 无论测试是否成功，都尝试清理
         cleanup()
+        
+    # 返回测试结果，用于系统退出码
+    return success_count == total_count
 
 if __name__ == "__main__":
-    run_all_tests() 
+    success = run_all_tests()
+    sys.exit(0 if success else 1) 
