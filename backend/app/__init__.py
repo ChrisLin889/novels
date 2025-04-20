@@ -2,6 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
 import os
 from dotenv import load_dotenv
 
@@ -11,6 +12,7 @@ load_dotenv()
 # Initialize extensions
 db = SQLAlchemy()
 jwt = JWTManager()
+migrate = Migrate()
 
 def create_app(config_name=None):
     app = Flask(__name__)
@@ -25,7 +27,7 @@ def create_app(config_name=None):
     else:
         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
             'DATABASE_URL',
-            'mysql+pymysql://root:password@localhost/novel_db'
+            'mysql+pymysql://root:ok123456@localhost/novel_db'
         )
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -35,6 +37,7 @@ def create_app(config_name=None):
     CORS(app)
     db.init_app(app)
     jwt.init_app(app)
+    migrate.init_app(app, db)
     
     # Register blueprints
     from app.api.user import user_bp
