@@ -24,6 +24,11 @@ TEST_MODULES = [
         "name": "小说模块 API",
         "script": "test_novel_api.py",
         "description": "包括小说创建、查询、更新、章节管理、标签管理等功能测试"
+    },
+    {
+        "name": "作者模块 API",
+        "script": "test_author_api.py",
+        "description": "包括作者申请、管理员审核、作者资料管理及注销功能测试"
     }
 ]
 
