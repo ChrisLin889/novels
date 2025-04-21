@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, g
 from app.services.admin_service import AdminService
+from app.services.author_service import AuthorService
 from app.utils.auth import admin_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 # Create blueprint
 admin_bp = Blueprint('admin', __name__)
@@ -353,4 +355,68 @@ def get_dashboard_stats():
     """
     result = AdminService.get_dashboard_stats()
     
-    return jsonify(result) 
+    return jsonify(result)
+
+# ====== Author Management ======
+
+@admin_bp.route('/author-applications', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_pending_applications():
+    """获取待处理的作者申请列表"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 20)), 100)
+    except ValueError:
+        return jsonify({
+            'error': '无效的分页参数'
+        }), 400
+    
+    # 调用服务获取待处理申请
+    result = AuthorService.get_pending_applications(page, per_page)
+    
+    if not result['success']:
+        return jsonify({'error': result['message']}), 400
+        
+    return jsonify({
+        'total': result['total'],
+        'pages': result['pages'],
+        'current_page': result['current_page'],
+        'applications': result['applications']
+    }), 200
+
+@admin_bp.route('/author-applications/<int:application_id>', methods=['POST'])
+@jwt_required()
+@admin_required
+def process_application(application_id):
+    """处理作者申请"""
+    # Get admin user ID from auth
+    admin_id = get_jwt_identity()
+    
+    # Get request data
+    data = request.json
+    if not data:
+        return jsonify({
+            'error': '缺少请求数据'
+        }), 400
+    
+    # 验证必要字段
+    action = data.get('action')
+    comment = data.get('comment')
+    
+    if not action or action not in ['approve', 'reject']:
+        return jsonify({'error': '无效的操作，必须是 approve 或 reject'}), 400
+        
+    if action == 'reject' and not comment:
+        return jsonify({'error': '拒绝申请时必须提供原因'}), 400
+        
+    # 调用服务处理申请
+    result = AuthorService.process_application(application_id, admin_id, action, comment)
+    
+    if not result['success']:
+        return jsonify({'error': result['message']}), 400
+        
+    return jsonify({
+        'message': result['message'],
+        'application': result['application']
+    }), 200 
