@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.interaction_service import InteractionService
+from app.models.user import User
 
 interaction_bp = Blueprint('interaction', __name__)
 
@@ -168,10 +169,10 @@ def toggle_follow():
     user_id = get_jwt_identity()
     data = request.get_json()
     
-    if 'user_id' not in data:
+    if 'target_user_id' not in data:
         return jsonify({'error': 'User ID to follow is required'}), 400
     
-    followed_id = data.get('user_id')
+    followed_id = data.get('target_user_id')
     
     # Use service to toggle follow
     result = InteractionService.toggle_follow(user_id, followed_id)
@@ -252,9 +253,10 @@ def send_message():
     if not result['success']:
         return jsonify({'error': result['error']}), 400
     
+    # 修改返回结构，符合API文档
     return jsonify({
-        'message': result['message'],
-        'data': result['data']
+        'message': 'Message sent successfully',
+        'message_id': result['data']['id']  # 假设data包含消息ID
     }), 201
 
 @interaction_bp.route('/conversation/<int:user_id>', methods=['GET'])
@@ -270,10 +272,12 @@ def get_conversation(user_id):
     if not result['success']:
         return jsonify({'error': result['error']}), 404
     
+    # Use directly from service layer which now includes the conversation_with field
     return jsonify({
         'total': result['total'],
         'pages': result['pages'],
         'current_page': result['current_page'],
+        'conversation_with': result['conversation_with'],
         'messages': result['messages']
     }), 200
 
@@ -290,11 +294,12 @@ def get_inbox():
     if not result['success']:
         return jsonify({'error': result['error']}), 404
     
+    # Return using consistent field names from the service layer
     return jsonify({
         'total': result['total'],
         'pages': result['pages'],
         'current_page': result['current_page'],
-        'messages': result['messages'],
+        'conversations': result['conversations'],  # Now directly use the correct field name
         'unread_count': result['unread_count']
     }), 200
 
@@ -311,77 +316,7 @@ def mark_message_read(message_id):
     
     return jsonify({'message': result['message']}), 200
 
-# New routes for tipping functionality
-@interaction_bp.route('/tip', methods=['POST'])
-@jwt_required()
-def send_tip():
-    tipper_id = get_jwt_identity()
-    data = request.get_json()
-    
-    required_fields = ['author_id', 'novel_id', 'amount']
-    if not all(key in data for key in required_fields):
-        return jsonify({'error': 'Author ID, novel ID, and amount are required'}), 400
-    
-    author_id = data.get('author_id')
-    novel_id = data.get('novel_id')
-    amount = data.get('amount')
-    message = data.get('message')
-    chapter_id = data.get('chapter_id')
-    
-    # Use service to send tip
-    result = InteractionService.send_tip(tipper_id, author_id, novel_id, amount, message, chapter_id)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 400
-    
-    return jsonify({
-        'message': result['message'],
-        'tip': result['tip']
-    }), 201
-
-@interaction_bp.route('/tips/received', methods=['GET'])
-@jwt_required()
-def get_tips_received():
-    user_id = get_jwt_identity()
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    
-    # Use service to get tips received
-    result = InteractionService.get_tips_received(user_id, page, per_page)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 404
-    
-    return jsonify({
-        'total': result['total'],
-        'pages': result['pages'],
-        'current_page': result['current_page'],
-        'tips': result['tips'],
-        'total_amount': result['total_amount']
-    }), 200
-
-@interaction_bp.route('/tips/sent', methods=['GET'])
-@jwt_required()
-def get_tips_sent():
-    user_id = get_jwt_identity()
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    
-    # Use service to get tips sent
-    result = InteractionService.get_tips_sent(user_id, page, per_page)
-    
-    if not result['success']:
-        return jsonify({'error': result['error']}), 404
-    
-    return jsonify({
-        'total': result['total'],
-        'pages': result['pages'],
-        'current_page': result['current_page'],
-        'tips': result['tips'],
-        'total_amount': result['total_amount']
-    }), 200
-
-@interaction_bp.route('/user-comments', methods=['GET'])
+@interaction_bp.route('/user/comments', methods=['GET'])
 @jwt_required()
 def get_user_comments():
     user_id = get_jwt_identity()

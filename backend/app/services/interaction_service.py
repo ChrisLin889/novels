@@ -1,4 +1,4 @@
-from app.models.interaction import UserCollection, UserHistory, Comment, UserFollowing, PrivateMessage, UserTip
+from app.models.interaction import UserCollection, UserHistory, Comment, UserFollowing, PrivateMessage
 from app.models.novel import Novel, Chapter
 from app.models.user import User
 from app import db
@@ -253,6 +253,53 @@ class InteractionService:
         }
     
     @staticmethod
+    def toggle_follow(follower_id: int, followed_id: int) -> Dict[str, Any]:
+        """切换关注状态"""
+        # 检查用户是否存在
+        follower = User.query.get(follower_id)
+        followed = User.query.get(followed_id)
+        
+        if not follower or not followed:
+            return {'success': False, 'error': 'User not found'}
+            
+        # 检查是否已经关注
+        is_following = InteractionDAO.check_following(follower_id, followed_id)
+        
+        if is_following:
+            # 已关注，则取消关注
+            result = InteractionService.unfollow_user(follower_id, followed_id)
+            if result['success']:
+                return {
+                    'success': True,
+                    'message': f'Successfully unfollowed the user',
+                    'is_following': False
+                }
+        else:
+            # 未关注，则添加关注
+            result = InteractionService.follow_user(follower_id, followed_id)
+            if result['success']:
+                return {
+                    'success': True,
+                    'message': f'Successfully followed the user',
+                    'is_following': True
+                }
+        
+        return {'success': False, 'error': 'Failed to toggle follow status'}
+    
+    @staticmethod
+    def get_follow_status(follower_id: int, followed_id: int) -> Dict[str, Any]:
+        """获取关注状态"""
+        # 复用check_following方法的逻辑
+        result = InteractionService.check_following(follower_id, followed_id)
+        if 'error' in result:
+            return {'success': False, 'error': result['error']}
+        
+        return {
+            'success': True,
+            'is_following': result['is_following']
+        }
+    
+    @staticmethod
     def get_followers(user_id: int, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
         """Get followers for a user"""
         # Check if user exists
@@ -306,18 +353,17 @@ class InteractionService:
         return {
             'success': True,
             'message': 'Message sent',
-            'message_data': message.to_dict()
+            'data': message.to_dict()
         }
     
     @staticmethod
     def mark_message_as_read(user_id: int, message_id: int) -> Dict[str, Any]:
         """Mark a message as read"""
-        # Check if message exists
         message = PrivateMessage.query.get(message_id)
         if not message:
             return {'success': False, 'error': 'Message not found'}
             
-        # Check if user is the recipient
+        # Check if user is recipient
         if message.recipient_id != user_id:
             return {'success': False, 'error': 'Unauthorized'}
             
@@ -325,8 +371,14 @@ class InteractionService:
         
         return {
             'success': result,
-            'message': 'Message marked as read' if result else 'Message already read or error occurred'
+            'message': 'Message marked as read' if result else 'Failed to mark message as read'
         }
+    
+    @staticmethod
+    def mark_message_read(user_id: int, message_id: int) -> Dict[str, Any]:
+        """将消息标记为已读（API层使用的方法名）"""
+        # 复用mark_message_as_read方法
+        return InteractionService.mark_message_as_read(user_id, message_id)
     
     @staticmethod
     def get_conversation(user_id: int, other_user_id: int, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
@@ -344,9 +396,9 @@ class InteractionService:
         for message in result.get('messages', []):
             if message['recipient_id'] == user_id and not message.get('read_at'):
                 InteractionDAO.mark_message_as_read(message['id'])
-                
-        # Add other user details
-        result['other_user'] = other_user.to_dict()
+        
+        # Add conversation_with field for API consistency
+        result['conversation_with'] = other_user.to_dict()
                 
         return {'success': True, **result}
     
@@ -359,77 +411,4 @@ class InteractionService:
             return {'success': False, 'error': 'User not found'}
             
         result = InteractionDAO.get_inbox(user_id, page, per_page)
-        return {'success': True, **result}
-    
-    @staticmethod
-    def send_tip(tipper_id: int, author_id: int, novel_id: int, 
-                amount: int, message: Optional[str] = None, 
-                chapter_id: Optional[int] = None) -> Dict[str, Any]:
-        """Send a tip to an author"""
-        # Check if users exist
-        tipper = User.query.get(tipper_id)
-        author = User.query.get(author_id)
-        
-        if not tipper or not author:
-            return {'success': False, 'error': 'User not found'}
-            
-        # Check if novel exists
-        novel = Novel.query.get(novel_id)
-        if not novel:
-            return {'success': False, 'error': 'Novel not found'}
-            
-        # Check if the author owns the novel
-        if novel.author != author.username:
-            return {'success': False, 'error': 'This user is not the author of the novel'}
-            
-        # Check if chapter exists if provided
-        if chapter_id:
-            chapter = Chapter.query.get(chapter_id)
-            if not chapter or chapter.novel_id != novel_id:
-                return {'success': False, 'error': 'Invalid chapter'}
-                
-        # Check if amount is valid
-        if amount <= 0:
-            return {'success': False, 'error': 'Tip amount must be positive'}
-            
-        # Check if user has enough balance (stub for future implementation)
-        # if tipper.balance < amount:
-        #     return {'success': False, 'error': 'Insufficient balance'}
-            
-        tip = InteractionDAO.send_tip(tipper_id, author_id, novel_id, amount, message, chapter_id)
-        
-        if not tip:
-            return {'success': False, 'error': 'Failed to send tip'}
-            
-        # Update balances (stub for future implementation)
-        # tipper.balance -= amount
-        # author.balance += amount
-        # db.session.commit()
-            
-        return {
-            'success': True,
-            'message': f'Sent {amount} coin tip to {author.username}',
-            'tip': tip.to_dict()
-        }
-        
-    @staticmethod
-    def get_tips_received(user_id: int, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
-        """Get tips received by a user"""
-        # Check if user exists
-        user = User.query.get(user_id)
-        if not user:
-            return {'success': False, 'error': 'User not found'}
-            
-        result = InteractionDAO.get_tips_received(user_id, page, per_page)
-        return {'success': True, **result}
-        
-    @staticmethod
-    def get_tips_sent(user_id: int, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
-        """Get tips sent by a user"""
-        # Check if user exists
-        user = User.query.get(user_id)
-        if not user:
-            return {'success': False, 'error': 'User not found'}
-            
-        result = InteractionDAO.get_tips_sent(user_id, page, per_page)
         return {'success': True, **result} 

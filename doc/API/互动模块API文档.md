@@ -27,10 +27,6 @@
    - [5.2 获取与特定用户的对话](#52-获取与特定用户的对话)
    - [5.3 获取收件箱](#53-获取收件箱)
    - [5.4 标记消息为已读](#54-标记消息为已读)
-6. [打赏功能](#6-打赏功能)
-   - [6.1 打赏作者](#61-打赏作者)
-   - [6.2 获取收到的打赏](#62-获取收到的打赏)
-   - [6.3 获取发出的打赏](#63-获取发出的打赏)
 
 ## 1. 评论功能
 
@@ -103,10 +99,11 @@
 
 ### 1.3 获取章节评论
 
-- **URL**: `/api/interaction/comments/chapter/{chapter_id}`
+- **URL**: `/api/interaction/comments/{novel_id}/chapter/{chapter_id}`
 - **方法**: `GET`
 - **权限**: 无需登录
 - **路径参数**:
+  - `novel_id`: 小说ID
   - `chapter_id`: 章节ID
 - **查询参数**:
   - `page`: 页码（默认：1）
@@ -218,11 +215,11 @@
 
 ### 2.3 获取粉丝列表
 
-- **URL**: `/api/interaction/followers`
+- **URL**: `/api/interaction/followers/{user_id}`
 - **方法**: `GET`
-- **权限**: 需要登录
-- **请求头**:
-  - `Authorization`: Bearer {token}
+- **权限**: 无需登录
+- **路径参数**:
+  - `user_id`: 用户ID，要查看其粉丝列表的用户
 - **查询参数**:
   - `page`: 页码（默认：1）
   - `per_page`: 每页数量（默认：20）
@@ -247,11 +244,11 @@
 
 ### 2.4 获取关注列表
 
-- **URL**: `/api/interaction/following`
+- **URL**: `/api/interaction/following/{user_id}`
 - **方法**: `GET`
-- **权限**: 需要登录
-- **请求头**:
-  - `Authorization`: Bearer {token}
+- **权限**: 无需登录
+- **路径参数**:
+  - `user_id`: 用户ID，要查看其关注列表的用户
 - **查询参数**:
   - `page`: 页码（默认：1）
   - `per_page`: 每页数量（默认：20）
@@ -524,127 +521,19 @@
 
 ### 5.4 标记消息为已读
 
-- **URL**: `/api/interaction/message/read`
+- **URL**: `/api/interaction/message/{message_id}/read`
 - **方法**: `POST`
 - **权限**: 需要登录
 - **请求头**:
   - `Authorization`: Bearer {token}
-- **请求参数**:
-
-```json
-{
-  "message_id": 8  // 消息ID，不提供则标记所有消息为已读
-}
-```
+- **路径参数**:
+  - `message_id`: 消息ID
 
 - **成功响应** (200 OK):
 
 ```json
 {
-  "message": "Message marked as read" | "All messages marked as read"
-}
-```
-
-## 6. 打赏功能
-
-### 6.1 打赏作者
-
-- **URL**: `/api/interaction/tip`
-- **方法**: `POST`
-- **权限**: 需要登录
-- **请求头**:
-  - `Authorization`: Bearer {token}
-- **请求参数**:
-
-```json
-{
-  "author_id": 2,      // 作者ID
-  "amount": 10.5,      // 打赏金额
-  "message": "string"  // 留言（可选）
-}
-```
-
-- **成功响应** (201 Created):
-
-```json
-{
-  "message": "Tip sent successfully",
-  "tip": {
-    "id": 5,
-    "amount": 10.5,
-    "message": "string",
-    "created_at": "2025-04-03T18:15:22"
-  }
-}
-```
-
-### 6.2 获取收到的打赏
-
-- **URL**: `/api/interaction/tips/received`
-- **方法**: `GET`
-- **权限**: 需要登录（作者）
-- **请求头**:
-  - `Authorization`: Bearer {token}
-- **查询参数**:
-  - `page`: 页码（默认：1）
-  - `per_page`: 每页数量（默认：20）
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "total": 8,
-  "pages": 1,
-  "current_page": 1,
-  "total_amount": 85.5,
-  "tips": [
-    {
-      "id": 5,
-      "amount": 10.5,
-      "message": "string",
-      "from_user": {
-        "id": 1,
-        "username": "string",
-        "avatar": "string"
-      },
-      "created_at": "2025-04-03T18:15:22"
-    }
-  ]
-}
-```
-
-### 6.3 获取发出的打赏
-
-- **URL**: `/api/interaction/tips/sent`
-- **方法**: `GET`
-- **权限**: 需要登录
-- **请求头**:
-  - `Authorization`: Bearer {token}
-- **查询参数**:
-  - `page`: 页码（默认：1）
-  - `per_page`: 每页数量（默认：20）
-
-- **成功响应** (200 OK):
-
-```json
-{
-  "total": 5,
-  "pages": 1,
-  "current_page": 1,
-  "total_amount": 42.5,
-  "tips": [
-    {
-      "id": 5,
-      "amount": 10.5,
-      "message": "string",
-      "to_author": {
-        "id": 2,
-        "username": "string",
-        "avatar": "string"
-      },
-      "created_at": "2025-04-03T18:15:22"
-    }
-  ]
+  "message": "Message marked as read"
 }
 ```
 

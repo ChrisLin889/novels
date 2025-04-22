@@ -109,28 +109,4 @@ class PrivateMessage(db.Model):
             'created_at': self.created_at.isoformat(),
             'read_at': self.read_at.isoformat() if self.read_at else None,
             'is_read': self.read_at is not None
-        }
-
-class UserTip(db.Model):
-    __tablename__ = 'user_tips'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    tipper_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    novel_id = db.Column(db.Integer, db.ForeignKey('novel.id'), nullable=False, index=True)
-    chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=True)
-    amount = db.Column(db.Integer, nullable=False)  # Amount in cents
-    message = db.Column(db.String(200), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'tipper_id': self.tipper_id,
-            'author_id': self.author_id,
-            'novel_id': self.novel_id,
-            'chapter_id': self.chapter_id,
-            'amount': self.amount,
-            'message': self.message,
-            'created_at': self.created_at.isoformat()
         } 

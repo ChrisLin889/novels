@@ -1,9 +1,9 @@
 from typing import List, Dict, Optional, Tuple
 from app.dao.admin_dao import AdminDAO
-from app.models.admin import SensitiveWord, ContentAudit, UserAction
+from app.models.admin import Admin, SensitiveWord, ContentAudit, AdminAction
 from app.models.user import User
 from app.models.novel import Novel, Chapter
-from app.models.interaction import Comment, UserTip
+from app.models.interaction import Comment
 from app.services.permission_service import PermissionService
 from datetime import datetime
 import re
@@ -167,7 +167,7 @@ class AdminService:
                     Author.query.filter_by(user_id=user_id).delete()
             
             # 创建操作记录
-            action = UserAction(
+            action = AdminAction(
                 admin_id=admin_id,
                 target_user_id=user_id,
                 action_type='update_role',
@@ -374,9 +374,6 @@ class AdminService:
         readings_today = db.session.query(func.sum(Novel.view_count)).filter(
             Novel.updated_at >= today_start
         ).scalar() or 0
-        tips_today = db.session.query(func.sum(UserTip.amount)).filter(
-            UserTip.created_at >= today_start
-        ).scalar() or 0
         
         return {
             'user_stats': {
@@ -393,7 +390,6 @@ class AdminService:
             },
             'activity_stats': {
                 'comments_today': comments_today,
-                'readings_today': readings_today,
-                'tips_today': tips_today
+                'readings_today': readings_today
             }
         } 

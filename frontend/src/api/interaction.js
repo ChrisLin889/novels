@@ -152,7 +152,7 @@ export function checkFollowStatus(userId) {
  */
 export function getUserComments(params) {
   return request({
-    url: '/interaction/user-comments',
+    url: '/interaction/user/comments',
     method: 'get',
     params
   });

@@ -29,6 +29,11 @@ TEST_MODULES = [
         "name": "作者模块 API",
         "script": "test_author_api.py",
         "description": "包括作者申请、管理员审核、作者资料管理及注销功能测试"
+    },
+    {
+        "name": "互动模块 API",
+        "script": "test_interaction_api.py",
+        "description": "包括评论、关注、收藏、阅读进度及私信功能测试"
     }
 ]
 

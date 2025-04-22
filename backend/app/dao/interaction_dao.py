@@ -1,4 +1,4 @@
-from app.models.interaction import UserCollection, UserHistory, Comment, UserFollowing, PrivateMessage, UserTip
+from app.models.interaction import UserCollection, UserHistory, Comment, UserFollowing, PrivateMessage
 from app.models.novel import Novel, Chapter
 from app.models.user import User
 from app import db
@@ -397,119 +397,60 @@ class InteractionDAO:
     @staticmethod
     def get_inbox(user_id: int, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
         """Get paginated inbox for a user"""
-        messages = PrivateMessage.query.filter_by(
+        # 先查询与用户有过通信的所有用户ID（发件人）
+        senders = db.session.query(PrivateMessage.sender_id).filter_by(
             recipient_id=user_id
-        ).order_by(
-            desc(PrivateMessage.created_at)
-        ).paginate(page=page, per_page=per_page)
+        ).distinct().all()
         
-        result = []
-        for message in messages.items:
-            sender = User.query.get(message.sender_id)
-            if sender:
-                message_dict = message.to_dict()
-                message_dict['sender'] = sender.to_dict()
-                result.append(message_dict)
-                
+        # 提取发件人ID列表
+        sender_ids = [sender[0] for sender in senders]
+        
+        # 查询每个发件人的最新消息
+        conversations = []
+        for sender_id in sender_ids:
+            # 查询这个发件人的最新消息
+            latest_message = PrivateMessage.query.filter_by(
+                sender_id=sender_id,
+                recipient_id=user_id
+            ).order_by(desc(PrivateMessage.created_at)).first()
+            
+            if latest_message:
+                sender = User.query.get(sender_id)
+                if sender:
+                    # 构建会话对象
+                    conversation = {
+                        'id': sender_id,  # 用对话者ID作为会话ID
+                        'user': sender.to_dict(),
+                        'last_message': {  # 修改为'last_message'与API文档一致
+                            'id': latest_message.id,
+                            'content': latest_message.content,
+                            'is_read': latest_message.read_at is not None,  # 使用'is_read'布尔值
+                            'created_at': latest_message.created_at.isoformat()
+                        },
+                        'unread_count': PrivateMessage.query.filter_by(
+                            sender_id=sender_id,
+                            recipient_id=user_id,
+                            read_at=None
+                        ).count()
+                    }
+                    conversations.append(conversation)
+        
+        # 按最新消息时间排序
+        conversations.sort(key=lambda x: x['last_message']['created_at'], reverse=True)
+        
+        # 手动分页
+        total = len(conversations)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paged_conversations = conversations[start:end] if start < total else []
+        
         return {
-            'total': messages.total,
-            'pages': messages.pages,
+            'total': total,
+            'pages': (total + per_page - 1) // per_page,
             'current_page': page,
-            'messages': result,
+            'conversations': paged_conversations,  # 修改为'conversations'直接使用统一字段名
             'unread_count': PrivateMessage.query.filter_by(
                 recipient_id=user_id, 
                 read_at=None
             ).count()
-        }
-        
-    @staticmethod
-    def send_tip(tipper_id: int, author_id: int, novel_id: int, 
-                 amount: int, message: Optional[str] = None, 
-                 chapter_id: Optional[int] = None) -> Optional[UserTip]:
-        """Send a tip to an author"""
-        # Validate novel and author
-        novel = Novel.query.get(novel_id)
-        if not novel or novel.author != User.query.get(author_id).username:
-            return None
-            
-        # Validate chapter if provided
-        if chapter_id:
-            chapter = Chapter.query.get(chapter_id)
-            if not chapter or chapter.novel_id != novel_id:
-                return None
-                
-        # Create tip
-        tip = UserTip(
-            tipper_id=tipper_id,
-            author_id=author_id,
-            novel_id=novel_id,
-            chapter_id=chapter_id,
-            amount=amount,
-            message=message
-        )
-        
-        db.session.add(tip)
-        db.session.commit()
-        return tip
-        
-    @staticmethod
-    def get_tips_received(author_id: int, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
-        """Get paginated tips received by an author"""
-        tips = UserTip.query.filter_by(
-            author_id=author_id
-        ).order_by(
-            desc(UserTip.created_at)
-        ).paginate(page=page, per_page=per_page)
-        
-        result = []
-        for tip in tips.items:
-            tipper = User.query.get(tip.tipper_id)
-            novel = Novel.query.get(tip.novel_id)
-            chapter = Chapter.query.get(tip.chapter_id) if tip.chapter_id else None
-            
-            if tipper and novel:
-                tip_dict = tip.to_dict()
-                tip_dict['tipper'] = tipper.to_dict()
-                tip_dict['novel'] = novel.to_dict()
-                if chapter:
-                    tip_dict['chapter'] = chapter.to_dict()
-                result.append(tip_dict)
-                
-        return {
-            'total': tips.total,
-            'pages': tips.pages,
-            'current_page': page,
-            'tips': result,
-            'total_amount': sum(tip.amount for tip in UserTip.query.filter_by(author_id=author_id).all())
-        }
-        
-    @staticmethod
-    def get_tips_sent(tipper_id: int, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
-        """Get paginated tips sent by a user"""
-        tips = UserTip.query.filter_by(
-            tipper_id=tipper_id
-        ).order_by(
-            desc(UserTip.created_at)
-        ).paginate(page=page, per_page=per_page)
-        
-        result = []
-        for tip in tips.items:
-            author = User.query.get(tip.author_id)
-            novel = Novel.query.get(tip.novel_id)
-            chapter = Chapter.query.get(tip.chapter_id) if tip.chapter_id else None
-            
-            if author and novel:
-                tip_dict = tip.to_dict()
-                tip_dict['author'] = author.to_dict()
-                tip_dict['novel'] = novel.to_dict()
-                if chapter:
-                    tip_dict['chapter'] = chapter.to_dict()
-                result.append(tip_dict)
-                
-        return {
-            'total': tips.total,
-            'pages': tips.pages,
-            'current_page': page,
-            'tips': result,
-            'total_amount': sum(tip.amount for tip in UserTip.query.filter_by(tipper_id=tipper_id).all())
         } 
