@@ -1,0 +1,23 @@
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc0NTQzMzAzOSwianRpIjoiZTJlMWJkZTYtM2E2ZC00NWExLWJlMWQtNzg4ZDZlYTM1YjJhIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6NSwibmJmIjoxNzQ1NDMzMDM5LCJleHAiOjE3NDYwMzc4MzksInJvbGUiOiJhdXRob3IifQ.5mxWQHCvbv2u9oMVu0YiDVhtrwEgPNaBBBJ8yp4LbuA",
+  "success": true,
+  "user": {
+    "author": {
+      "bio": null,
+      "fans_count": 0,
+      "id": 1,
+      "pen_name": "testauthor",
+      "verified": false,
+      "works_count": 0
+    },
+    "avatar": "default.jpg",
+    "created_at": "2025-04-18T19:13:56",
+    "email": "author@test.com",
+    "id": 5,
+    "phone": "12345678902",
+    "role": "author",
+    "status": "active",
+    "updated_at": "2025-04-24T02:30:40",
+    "username": "testauthor"
+  }
+}

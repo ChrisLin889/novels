@@ -1,0 +1,36 @@
+{
+  "chapters": [],
+  "novel": {
+    "author": "testauthor",
+    "author_id": 1,
+    "category": "Fantasy",
+    "chapter_count": 0,
+    "collection_count": 0,
+    "cover": "default_cover.jpg",
+    "created_at": "2025-04-23T18:31:16",
+    "id": 34,
+    "intro": "\u4e00\u4e2a\u666e\u901a\u5c11\u5e74\u610f\u5916\u83b7\u5f97\u9b54\u6cd5\u80fd\u529b\uff0c\u8e0f\u4e0a\u6210\u4e3a\u9b54\u6cd5\u5927\u5e08\u7684\u9053\u8def\u3002\u9014\u4e2d\u4ed6\u9047\u5230\u5404\u79cd\u795e\u5947\u751f\u7269\uff0c\u7ed3\u4ea4\u5fd7\u540c\u9053\u5408\u7684\u670b\u53cb\uff0c\u5171\u540c\u5bf9\u6297\u9ed1\u6697\u52bf\u529b\u3002",
+    "is_internal_author": true,
+    "status": "ongoing",
+    "tags": [
+      {
+        "category_id": 5,
+        "created_at": null,
+        "description": "\u5305\u542b\u5e7b\u60f3\u5143\u7d20\u7684\u4f5c\u54c1",
+        "id": 1,
+        "name": "\u5947\u5e7b"
+      },
+      {
+        "category_id": 5,
+        "created_at": null,
+        "description": "\u4e3b\u89d2\u8e0f\u4e0a\u5192\u9669\u65c5\u7a0b\u7684\u4f5c\u54c1",
+        "id": 2,
+        "name": "\u5192\u9669"
+      }
+    ],
+    "title": "\u9b54\u6cd5\u4e16\u754c\u7684\u5192\u9669",
+    "updated_at": "2025-04-23T18:32:25",
+    "view_count": 1
+  },
+  "success": true
+}

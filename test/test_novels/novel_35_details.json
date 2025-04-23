@@ -1,0 +1,36 @@
+{
+  "chapters": [],
+  "novel": {
+    "author": "testauthor",
+    "author_id": 1,
+    "category": "Science Fiction",
+    "chapter_count": 0,
+    "collection_count": 0,
+    "cover": "default_cover.jpg",
+    "created_at": "2025-04-23T18:31:32",
+    "id": 35,
+    "intro": "2100\u5e74\uff0c\u4eba\u7c7b\u5df2\u7ecf\u5f00\u59cb\u661f\u9645\u6b96\u6c11\u3002\u4e00\u4f4d\u5e74\u8f7b\u7684\u5b87\u822a\u5458\u5728\u524d\u5f80\u65b0\u661f\u7403\u7684\u65c5\u9014\u4e2d\u53d1\u73b0\u4e86\u4e00\u4e2a\u5916\u661f\u6587\u660e\u7684\u79d8\u5bc6\uff0c\u8fd9\u4e2a\u53d1\u73b0\u5c06\u6539\u53d8\u6574\u4e2a\u4eba\u7c7b\u7684\u547d\u8fd0\u3002",
+    "is_internal_author": true,
+    "status": "ongoing",
+    "tags": [
+      {
+        "category_id": 5,
+        "created_at": null,
+        "description": "\u4e3b\u89d2\u8e0f\u4e0a\u5192\u9669\u65c5\u7a0b\u7684\u4f5c\u54c1",
+        "id": 2,
+        "name": "\u5192\u9669"
+      },
+      {
+        "category_id": 7,
+        "created_at": null,
+        "description": "\u9ed1\u6697\u98ce\u683c\u7684\u4f5c\u54c1",
+        "id": 8,
+        "name": "\u9ed1\u6697"
+      }
+    ],
+    "title": "\u661f\u9645\u65c5\u7a0b2100",
+    "updated_at": "2025-04-23T18:32:25",
+    "view_count": 1
+  },
+  "success": true
+}

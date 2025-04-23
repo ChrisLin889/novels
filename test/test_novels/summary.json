@@ -1,0 +1,70 @@
+{
+  "test_novels": [
+    {
+      "id": 34,
+      "title": "魔法世界的冒险",
+      "category": "Fantasy",
+      "author": "testauthor",
+      "intro": "一个普通少年意外获得魔法能力，踏上成为魔法大师的道路。途中他遇到各种神奇生物，结交志同道合的朋友，共同对抗黑暗势力。",
+      "tags": ["奇幻", "冒险"],
+      "chapters": [
+        {
+          "id": 15,
+          "title": "第一章 魔法觉醒",
+          "chapter_number": 1
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "title": "星际旅程2100",
+      "category": "Science Fiction",
+      "author": "testauthor",
+      "intro": "2100年，人类已经开始星际殖民。一位年轻的宇航员在前往新星球的旅途中发现了一个外星文明的秘密，这个发现将改变整个人类的命运。",
+      "tags": ["冒险", "黑暗"],
+      "chapters": [
+        {
+          "id": 16,
+          "title": "第一章 太空旅行",
+          "chapter_number": 1
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "春风十里",
+      "category": "Romance",
+      "author": "testauthor",
+      "intro": "大学校园里，两个性格迥异的年轻人因为一次偶然的相遇而改变了彼此的人生轨迹。在四年的相处中，他们经历了友情、误解、分离与重逢，最终明白了爱的真谛。",
+      "tags": ["浪漫", "幽默"],
+      "chapters": [
+        {
+          "id": 17,
+          "title": "第一章 初见",
+          "chapter_number": 1
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "迷雾小镇",
+      "category": "Mystery",
+      "author": "testauthor",
+      "intro": "一个平静的小镇突然发生了一系列离奇的失踪事件，年轻的女警官开始调查，逐渐揭开了小镇背后隐藏多年的秘密。但真相比她想象的更加可怕。",
+      "tags": ["悬疑", "黑暗"],
+      "chapters": [
+        {
+          "id": 18,
+          "title": "第一章 迷雾笼罩",
+          "chapter_number": 1
+        }
+      ]
+    }
+  ],
+  "author": {
+    "username": "testauthor",
+    "role": "author",
+    "author_id": 1
+  },
+  "created_at": "2025-04-23"
+} 
