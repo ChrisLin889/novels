@@ -122,6 +122,49 @@ def search_by_tag():
     except Exception as e:
         return error_response(str(e), 500)
 
+@search_bp.route('/novels/tag/<string:tag>', methods=['GET'])
+def search_by_tag_path(tag):
+    """
+    Search novels by tag
+    
+    GET params:
+    - page: Page number (default: 1)
+    - per_page: Items per page (default: 20)
+    """
+    try:
+        # Tag is now a path parameter, not a query parameter
+        if not tag:
+            return error_response('Tag parameter is required', 400)
+        
+        # Parse numeric parameters
+        try:
+            page = int(request.args.get('page', 1))
+            per_page = min(int(request.args.get('per_page', 20)), 50)  # Limit max per_page
+        except ValueError:
+            return error_response('Invalid pagination parameters', 400)
+        
+        # Call service to search by tag
+        result = SearchService.search_by_tag(
+            tag=tag,
+            page=page,
+            per_page=per_page
+        )
+        
+        # Handle error response
+        if not result['success']:
+            return error_response(result['error'], 400)
+        
+        # Return success response
+        return success_response({
+            'total': result['total'],
+            'page': result['page'],
+            'per_page': result['per_page'],
+            'total_pages': result['total_pages'],
+            'results': result['results']
+        })
+    except Exception as e:
+        return error_response(str(e), 500)
+
 @search_bp.route('/similar/<int:novel_id>', methods=['GET'])
 def get_similar_novels(novel_id):
     """
@@ -144,7 +187,46 @@ def get_similar_novels(novel_id):
         if not result['success']:
             return error_response(result['error'], 404 if 'not found' in result['error'].lower() else 400)
         
+        # Change 'results' key to 'similar_novels' to match API documentation
+        return success_response({'similar_novels': result['results']})
+    except Exception as e:
+        return error_response(str(e), 500)
+
+@search_bp.route('/tags/hot', methods=['GET'])
+def get_hot_tags():
+    """
+    Get hot tags
+    
+    GET params:
+    - limit: Number of tags to return (default: 20)
+    - category_id: Category ID (optional)
+    """
+    try:
+        # Get parameters
+        try:
+            limit = min(int(request.args.get('limit', 20)), 100)  # Limit max results
+        except ValueError:
+            return error_response('Invalid limit parameter', 400)
+            
+        # Get optional category_id parameter
+        category_id = request.args.get('category_id')
+        if category_id:
+            try:
+                category_id = int(category_id)
+            except ValueError:
+                return error_response('Invalid category_id parameter', 400)
+        
+        # Call service to get hot tags
+        result = SearchService.get_hot_tags(
+            limit=limit,
+            category_id=category_id
+        )
+        
+        # Handle error response
+        if not result['success']:
+            return error_response(result['error'], 400)
+        
         # Return success response
-        return success_response({'results': result['results']})
+        return success_response({'tags': result['tags']})
     except Exception as e:
         return error_response(str(e), 500) 

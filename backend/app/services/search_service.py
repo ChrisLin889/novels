@@ -56,7 +56,7 @@ class SearchDAO:
     @staticmethod
     def get_similar_novels_query(novel: Novel, limit: int = 5):
         """
-        Create query for finding similar novels
+        Create query for finding similar novels based on tags and category
         
         Args:
             novel: Novel to find similar ones for
@@ -65,17 +65,67 @@ class SearchDAO:
         Returns:
             SQLAlchemy query object
         """
-        # Find novels with same category
-        query = Novel.query.filter(
-            and_(
-                Novel.category == novel.category,
-                Novel.id != novel.id
-            )
-        ).order_by(
-            Novel.view_count.desc()  # Sort by popularity
-        ).limit(limit)
+        # Check if the novel has tags
+        novel_tags = novel.tags.all()
         
-        return query
+        if novel_tags:
+            # If the novel has tags, find novels with similar tags
+            # First get novels with at least one common tag, ordered by tag count
+            from sqlalchemy import func
+            
+            # Subquery to count matching tags for each novel
+            subquery = db.session.query(
+                novel_tag.c.novel_id,
+                func.count(novel_tag.c.tag_id).label('tag_count')
+            ).filter(
+                novel_tag.c.tag_id.in_([tag.id for tag in novel_tags]),
+                novel_tag.c.novel_id != novel.id
+            ).group_by(
+                novel_tag.c.novel_id
+            ).subquery()
+            
+            # Query novels with matching tags, ordered by tag count
+            query = Novel.query.join(
+                subquery, Novel.id == subquery.c.novel_id
+            ).order_by(
+                subquery.c.tag_count.desc(),  # Sort by tag similarity
+                Novel.view_count.desc()       # Then by popularity
+            ).limit(limit)
+            
+            # Check if we have enough results
+            results_count = query.count()
+            
+            # If we don't have enough similar novels by tags, add some from the same category
+            if results_count < limit:
+                # Get IDs of novels we already have
+                existing_ids = [n.id for n in query.all()]
+                
+                # Get additional novels from the same category
+                additional_query = Novel.query.filter(
+                    and_(
+                        Novel.category == novel.category,
+                        Novel.id != novel.id,
+                        ~Novel.id.in_(existing_ids)  # Exclude novels we already have
+                    )
+                ).order_by(
+                    Novel.view_count.desc()  # Sort by popularity
+                ).limit(limit - results_count)
+                
+                # Combine the results
+                from sqlalchemy import union_all
+                query = union_all(query, additional_query)
+            
+            return query
+        else:
+            # If the novel has no tags, find novels with the same category
+            return Novel.query.filter(
+                and_(
+                    Novel.category == novel.category,
+                    Novel.id != novel.id
+                )
+            ).order_by(
+                Novel.view_count.desc()  # Sort by popularity
+            ).limit(limit)
 
 class SearchService:
     """
@@ -243,4 +293,61 @@ class SearchService:
             Empty list (Redis functionality removed)
         """
         # No longer have trending keywords after Redis removal
-        return [] 
+        return []
+    
+    @staticmethod
+    def get_hot_tags(limit: int = 20, category_id: Optional[int] = None) -> Dict:
+        """
+        Get hot tags (ordered by usage frequency)
+        
+        Args:
+            limit: Number of tags to return
+            category_id: Category ID (optional)
+            
+        Returns:
+            Dict with hot tags
+        """
+        try:
+            from app.models.tag import Tag
+            
+            # Base query - count how many novels use each tag
+            query = db.session.query(
+                Tag,
+                func.count(novel_tag.c.novel_id).label('novel_count')
+            ).outerjoin(
+                novel_tag,
+                Tag.id == novel_tag.c.tag_id
+            )
+            
+            # Filter by category if provided
+            if category_id:
+                query = query.filter(Tag.category_id == category_id)
+            
+            # Group by tag, order by usage count and limit the results
+            query = query.group_by(Tag.id).order_by(db.desc('novel_count')).limit(limit)
+            
+            # Execute query
+            result = query.all()
+            
+            # Format the response
+            tags = []
+            for tag, novel_count in result:
+                tag_dict = tag.to_dict()
+                tag_dict['novel_count'] = novel_count
+                
+                # Add category name if tag has a category
+                if tag.category:
+                    tag_dict['category_name'] = tag.category.name
+                
+                tags.append(tag_dict)
+            
+            return {
+                'success': True,
+                'tags': tags
+            }
+        except Exception as e:
+            logger.error(f"Error in get_hot_tags: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            } 

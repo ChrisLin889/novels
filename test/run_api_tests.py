@@ -34,6 +34,16 @@ TEST_MODULES = [
         "name": "互动模块 API",
         "script": "test_interaction_api.py",
         "description": "包括评论、关注、收藏、阅读进度及私信功能测试"
+    },
+    {
+        "name": "搜索模块 API",
+        "script": "test_search_api.py",
+        "description": "包括小说搜索、标签搜索、相似小说推荐、热门标签获取功能测试"
+    },
+    {
+        "name": "管理模块 API",
+        "script": "test_admin_api.py",
+        "description": "包括仪表盘统计、用户管理、敏感词管理、内容审核及作者申请管理功能测试"
     }
 ]
 
