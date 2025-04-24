@@ -41,8 +41,7 @@ export function getChapterList(novelId, params) {
 
 /**
  * Get chapter content
- * @param {Number} novelId - Novel ID
- * @param {Number} chapterNum - Chapter number
+ * @param {Number} id - Chapter ID
  * @returns {Promise}
  */
 export function getChapterContent(id) {
@@ -132,7 +131,7 @@ export function addToCollection(novelId) {
 export function removeFromCollection(novelId) {
   return request({
     url: '/interaction/collection',
-    method: 'post',
+    method: 'delete',
     data: { novel_id: novelId }
   });
 }

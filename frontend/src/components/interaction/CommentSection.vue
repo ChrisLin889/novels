@@ -146,6 +146,10 @@ export default {
     isOwner: {
       type: Boolean,
       default: false
+    },
+    novelId: {
+      type: Number,
+      default: null
     }
   },
   setup(props) {
@@ -172,20 +176,25 @@ export default {
     // 获取评论列表
     const fetchComments = async () => {
       try {
-        console.log('获取评论，参数:', {
+        const fetchParams = {
           entityId: props.entityId,
           entityType: props.entityType,
           page: currentPage.value,
           per_page: pageSize.value
-        });
+        };
         
-        // 直接调用API而不是通过Vuex，以便调试
-        const response = await store.dispatch('interaction/fetchComments', {
-          entityId: props.entityId,
-          entityType: props.entityType,
-          page: currentPage.value,
-          per_page: pageSize.value
-        });
+        // 如果是章节评论并且有传入的小说ID，则直接使用它
+        if (props.entityType === 'chapter' && props.novelId) {
+          console.log('使用传入的小说ID获取章节评论:', props.novelId);
+          fetchParams.novelId = props.novelId;
+          localStorage.setItem('current_novel_id', props.novelId.toString());
+        }
+        
+        console.log('获取评论，参数:', fetchParams);
+        
+        // 调用API获取评论
+        const response = await store.dispatch('interaction/fetchComments', fetchParams);
+        
         console.log('获取评论结果:', response);
       } catch (error) {
         console.error('获取评论失败:', error);
@@ -199,17 +208,22 @@ export default {
       
       submitting.value = true;
       try {
-        console.log('提交评论，参数:', {
+        const commentData = {
           entityId: props.entityId,
           entityType: props.entityType,
           content: commentContent.value.trim()
-        });
+        };
         
-        const response = await store.dispatch('interaction/postComment', {
-          entityId: props.entityId,
-          entityType: props.entityType,
-          content: commentContent.value.trim()
-        });
+        // 如果是章节评论并且有传入的小说ID，则直接使用它
+        if (props.entityType === 'chapter' && props.novelId) {
+          console.log('使用传入的小说ID发表章节评论:', props.novelId);
+          localStorage.setItem('current_novel_id', props.novelId.toString());
+          commentData.novelId = props.novelId;
+        }
+        
+        console.log('准备提交评论，数据:', commentData);
+        
+        const response = await store.dispatch('interaction/postComment', commentData);
         
         console.log('提交评论结果:', response);
         

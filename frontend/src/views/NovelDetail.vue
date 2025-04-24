@@ -95,7 +95,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { getNovelDetail, addToCollection, removeFromCollection, checkCollection } from '@/api/novel';
+import { getNovelDetail } from '@/api/novel';
+import { toggleCollection as apiToggleCollection, checkCollectionStatus as apiCheckCollectionStatus } from '@/api/interaction';
 import { ElMessage } from 'element-plus';
 import CommentSection from '@/components/interaction/CommentSection.vue';
 
@@ -175,7 +176,7 @@ export default {
     // 检查收藏状态
     const checkCollectionStatus = async () => {
       try {
-        const result = await checkCollection(novelId.value);
+        const result = await apiCheckCollectionStatus(novelId.value);
         isCollected.value = result.is_collected;
         console.log('收藏状态:', isCollected.value);
       } catch (err) {
@@ -207,22 +208,21 @@ export default {
       }
       
       try {
-        if (isCollected.value) {
-          // 取消收藏
-          await removeFromCollection(novelId.value);
-          // 从本地书架移除
-          store.dispatch('novel/removeFromBookshelf', Number(novelId.value));
-          ElMessage.success('已从书架中移除');
-        } else {
-          // 添加收藏
-          await addToCollection(novelId.value);
+        // 使用toggleCollection API，统一调用添加或取消收藏
+        const response = await apiToggleCollection(novelId.value);
+        
+        // 根据API返回更新状态
+        if (response.is_collected) {
           // 添加到本地书架
           store.dispatch('novel/addToBookshelf', novel.value);
           ElMessage.success('已添加到书架');
+          isCollected.value = true;
+        } else {
+          // 从本地书架移除
+          store.dispatch('novel/removeFromBookshelf', Number(novelId.value));
+          ElMessage.success('已从书架中移除');
+          isCollected.value = false;
         }
-        
-        // 更新收藏状态
-        isCollected.value = !isCollected.value;
       } catch (err) {
         console.error('收藏操作失败:', err);
         ElMessage.error('操作失败，请稍后重试');

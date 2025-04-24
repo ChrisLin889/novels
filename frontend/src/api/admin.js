@@ -1,13 +1,15 @@
 import request from '@/utils/request';
 
-const API_URL = '/admin';
-
 /**
  * 获取管理员仪表盘统计数据
+ * @returns {Promise}
  */
 export const getDashboardStats = async () => {
   try {
-    const response = await request.get(`${API_URL}/dashboard`);
+    const response = await request({
+      url: '/admin/dashboard',
+      method: 'get'
+    });
     return response;
   } catch (error) {
     console.error('获取仪表盘数据失败:', error);
@@ -21,10 +23,15 @@ export const getDashboardStats = async () => {
  * @param {number} params.page - 页码
  * @param {number} params.per_page - 每页数量
  * @param {string} params.role - 角色筛选
+ * @returns {Promise}
  */
 export const getUsers = async (params = {}) => {
   try {
-    const response = await request.get(`${API_URL}/users`, { params });
+    const response = await request({
+      url: '/admin/users',
+      method: 'get',
+      params
+    });
     return response;
   } catch (error) {
     console.error('获取用户列表失败:', error);
@@ -39,14 +46,39 @@ export const getUsers = async (params = {}) => {
  * @param {string} data.action - 操作类型：'ban' 或 'unban'
  * @param {string} data.reason - 操作原因
  * @param {number} data.duration - 禁用天数（仅在 ban 操作时可选）
+ * @returns {Promise}
  */
 export const manageUser = async (userId, data) => {
   try {
-    const response = await request.post(`${API_URL}/users/${userId}`, data);
+    const response = await request({
+      url: `/admin/users/${userId}`,
+      method: 'post',
+      data
+    });
     return response;
   } catch (error) {
     console.error('管理用户状态失败:', error);
     throw error.response?.data?.error || '管理用户状态失败';
+  }
+};
+
+/**
+ * 更新用户角色
+ * @param {number} userId - 用户ID
+ * @param {string} role - 新角色
+ * @returns {Promise}
+ */
+export const updateUserRole = async (userId, role) => {
+  try {
+    const response = await request({
+      url: `/admin/users/${userId}/role`,
+      method: 'put',
+      data: { role }
+    });
+    return response;
+  } catch (error) {
+    console.error('更新用户角色失败:', error);
+    throw error.response?.data?.error || '更新用户角色失败';
   }
 };
 
@@ -56,10 +88,15 @@ export const manageUser = async (userId, data) => {
  * @param {number} params.page - 页码
  * @param {number} params.per_page - 每页数量
  * @param {number} params.user_id - 目标用户ID（可选）
+ * @returns {Promise}
  */
 export const getUserActions = async (params = {}) => {
   try {
-    const response = await request.get(`${API_URL}/user-actions`, { params });
+    const response = await request({
+      url: '/admin/user-actions',
+      method: 'get',
+      params
+    });
     return response;
   } catch (error) {
     console.error('获取用户操作历史失败:', error);
@@ -73,10 +110,15 @@ export const getUserActions = async (params = {}) => {
  * @param {number} params.page - 页码
  * @param {number} params.per_page - 每页数量
  * @param {string} params.category - 分类筛选（可选）
+ * @returns {Promise}
  */
 export const getSensitiveWords = async (params = {}) => {
   try {
-    const response = await request.get(`${API_URL}/sensitive-words`, { params });
+    const response = await request({
+      url: '/admin/sensitive-words',
+      method: 'get',
+      params
+    });
     return response;
   } catch (error) {
     console.error('获取敏感词列表失败:', error);
@@ -90,12 +132,17 @@ export const getSensitiveWords = async (params = {}) => {
  * @param {string} data.word - 敏感词内容
  * @param {number} data.level - 敏感级别（1-3）
  * @param {string} data.category - 分类
+ * @returns {Promise}
  */
 export const addSensitiveWord = async (data) => {
   try {
-    const response = await request.post(`${API_URL}/sensitive-words`, {
-      action: 'add',
-      ...data
+    const response = await request({
+      url: '/admin/sensitive-words',
+      method: 'post',
+      data: {
+        action: 'add',
+        ...data
+      }
     });
     return response;
   } catch (error) {
@@ -107,12 +154,17 @@ export const addSensitiveWord = async (data) => {
 /**
  * 删除敏感词
  * @param {number} wordId - 敏感词ID
+ * @returns {Promise}
  */
 export const deleteSensitiveWord = async (wordId) => {
   try {
-    const response = await request.post(`${API_URL}/sensitive-words`, {
-      action: 'delete',
-      word_id: wordId
+    const response = await request({
+      url: '/admin/sensitive-words',
+      method: 'post',
+      data: {
+        action: 'delete',
+        word_id: wordId
+      }
     });
     return response;
   } catch (error) {
@@ -127,10 +179,15 @@ export const deleteSensitiveWord = async (wordId) => {
  * @param {Object} params - 查询参数
  * @param {number} params.page - 页码
  * @param {number} params.per_page - 每页数量
+ * @returns {Promise}
  */
 export const getPendingContent = async (contentType, params = {}) => {
   try {
-    const response = await request.get(`${API_URL}/content/${contentType}`, { params });
+    const response = await request({
+      url: `/admin/content/${contentType}`,
+      method: 'get',
+      params
+    });
     return response;
   } catch (error) {
     console.error('获取待审核内容失败:', error);
@@ -144,14 +201,63 @@ export const getPendingContent = async (contentType, params = {}) => {
  * @param {Object} data - 审核数据
  * @param {string} data.status - 状态：'approved' 或 'rejected'
  * @param {string} data.reason - 拒绝原因（status为rejected时必填）
+ * @returns {Promise}
  */
 export const auditContent = async (auditId, data) => {
   try {
-    const response = await request.post(`${API_URL}/content/audit/${auditId}`, data);
+    const response = await request({
+      url: `/admin/content/audit/${auditId}`,
+      method: 'post',
+      data
+    });
     return response;
   } catch (error) {
     console.error('审核内容失败:', error);
     throw error.response?.data?.error || '审核内容失败';
+  }
+};
+
+/**
+ * 获取待处理作者申请
+ * @param {Object} params - 查询参数
+ * @param {number} params.page - 页码
+ * @param {number} params.per_page - 每页数量
+ * @param {string} params.status - 状态筛选（可选）
+ * @returns {Promise}
+ */
+export const getAuthorApplications = async (params = {}) => {
+  try {
+    const response = await request({
+      url: '/admin/author-applications',
+      method: 'get',
+      params
+    });
+    return response;
+  } catch (error) {
+    console.error('获取作者申请列表失败:', error);
+    throw error.response?.data?.error || '获取作者申请列表失败';
+  }
+};
+
+/**
+ * 处理作者申请
+ * @param {number} applicationId - 申请ID
+ * @param {Object} data - 处理数据
+ * @param {string} data.status - 状态：'approved' 或 'rejected'
+ * @param {string} data.comment - 处理意见（可选）
+ * @returns {Promise}
+ */
+export const processAuthorApplication = async (applicationId, data) => {
+  try {
+    const response = await request({
+      url: `/admin/author-applications/${applicationId}`,
+      method: 'post',
+      data
+    });
+    return response;
+  } catch (error) {
+    console.error('处理作者申请失败:', error);
+    throw error.response?.data?.error || '处理作者申请失败';
   }
 };
 
@@ -161,10 +267,15 @@ export const auditContent = async (auditId, data) => {
  * @param {number} params.page - 页码
  * @param {number} params.per_page - 每页数量
  * @param {string} params.status - 状态筛选（可选）
+ * @returns {Promise}
  */
 export const getCrawledNovels = async (params = {}) => {
   try {
-    const response = await request.get(`${API_URL}/crawled-novels`, { params });
+    const response = await request({
+      url: '/admin/crawled-novels',
+      method: 'get',
+      params
+    });
     return response;
   } catch (error) {
     console.error('获取爬取的小说列表失败:', error);
@@ -175,10 +286,14 @@ export const getCrawledNovels = async (params = {}) => {
 /**
  * 获取爬取的小说章节
  * @param {number} novelId - 爬取的小说ID
+ * @returns {Promise}
  */
 export const getCrawledChapters = async (novelId) => {
   try {
-    const response = await request.get(`${API_URL}/crawled-novels/${novelId}/chapters`);
+    const response = await request({
+      url: `/admin/crawled-novels/${novelId}/chapters`,
+      method: 'get'
+    });
     return response;
   } catch (error) {
     console.error('获取爬取的小说章节失败:', error);
@@ -192,10 +307,15 @@ export const getCrawledChapters = async (novelId) => {
  * @param {Object} data - 管理数据
  * @param {string} data.action - 操作：'approve' 或 'reject'
  * @param {string} data.reason - 拒绝原因（action为reject时必填）
+ * @returns {Promise}
  */
 export const manageCrawledNovel = async (novelId, data) => {
   try {
-    const response = await request.post(`${API_URL}/crawled-novels/${novelId}`, data);
+    const response = await request({
+      url: `/admin/crawled-novels/${novelId}`,
+      method: 'post',
+      data
+    });
     return response;
   } catch (error) {
     console.error('管理爬取的小说失败:', error);

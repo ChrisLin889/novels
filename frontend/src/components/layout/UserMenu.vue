@@ -11,10 +11,6 @@
             <el-dropdown-item command="profile">个人中心</el-dropdown-item>
             <el-dropdown-item v-if="isAuthor" command="author">作者中心</el-dropdown-item>
             <el-dropdown-item v-if="isAdmin" command="admin">管理后台</el-dropdown-item>
-            <el-dropdown-item command="bookshelf">我的书架</el-dropdown-item>
-            <el-dropdown-item command="following">我关注的</el-dropdown-item>
-            <el-dropdown-item command="followers">我的粉丝</el-dropdown-item>
-            <el-dropdown-item command="comments">我的评论</el-dropdown-item>
             <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -113,14 +109,6 @@ export default {
       } else if (command === 'author') {
         console.log('点击了作者中心，即将导航到 /author');
         router.push('/author');
-      } else if (command === 'bookshelf') {
-        router.push('/user/bookshelf');
-      } else if (command === 'following') {
-        router.push('/user/following');
-      } else if (command === 'followers') {
-        router.push('/user/followers');
-      } else if (command === 'comments') {
-        router.push('/user/comments');
       }
     };
     

@@ -21,14 +21,6 @@
                 <el-dropdown-item command="profile">个人中心</el-dropdown-item>
                 <el-dropdown-item v-if="isAdmin" command="admin">管理后台</el-dropdown-item>
                 <el-dropdown-item v-if="isAuthor" command="author">作家中心</el-dropdown-item>
-                <el-dropdown-item command="bookshelf">我的书架</el-dropdown-item>
-                <el-dropdown-item command="messages">
-                  我的消息
-                  <el-badge v-if="unreadCount > 0" :value="unreadCount" class="message-badge" />
-                </el-dropdown-item>
-                <el-dropdown-item command="following">我关注的</el-dropdown-item>
-                <el-dropdown-item command="followers">我的粉丝</el-dropdown-item>
-                <el-dropdown-item command="comments">我的评论</el-dropdown-item>
                 <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -57,10 +49,6 @@
             </template>
           </el-input>
         </div>
-        
-        <template v-if="isLoggedIn">
-          <router-link to="/user/bookshelf" class="mobile-only">我的书架</router-link>
-        </template>
       </div>
     </div>
     
@@ -70,6 +58,18 @@
         <router-link to="/" class="nav-item" :class="{ active: activeIndex === '/' }">首页</router-link>
         <router-link to="/category" class="nav-item" :class="{ active: activeIndex === '/category' }">分类</router-link>
         <router-link to="/ranking" class="nav-item" :class="{ active: activeIndex === '/ranking' }">排行榜</router-link>
+        
+        <!-- 登录后显示的导航项 -->
+        <template v-if="isLoggedIn">
+          <router-link to="/user/bookshelf" class="nav-item" :class="{ active: activeIndex === '/user/bookshelf' }">我的书架</router-link>
+          <router-link to="/user/messages" class="nav-item" :class="{ active: activeIndex === '/user/messages' }">
+            我的消息
+            <el-badge v-if="unreadCount > 0" :value="unreadCount" class="message-badge" />
+          </router-link>
+          <router-link to="/user/following" class="nav-item" :class="{ active: activeIndex === '/user/following' }">我关注的</router-link>
+          <router-link to="/user/followers" class="nav-item" :class="{ active: activeIndex === '/user/followers' }">我的粉丝</router-link>
+          <router-link to="/user/comments" class="nav-item" :class="{ active: activeIndex === '/user/comments' }">我的评论</router-link>
+        </template>
       </div>
     </div>
   </div>
@@ -180,16 +180,6 @@ export default {
         router.push('/admin/dashboard');
       } else if (command === 'author') {
         router.push('/author/center');
-      } else if (command === 'bookshelf') {
-        router.push('/user/bookshelf');
-      } else if (command === 'messages') {
-        router.push('/user/messages');
-      } else if (command === 'following') {
-        router.push('/user/following');
-      } else if (command === 'followers') {
-        router.push('/user/followers');
-      } else if (command === 'comments') {
-        router.push('/user/comments');
       }
     };
     

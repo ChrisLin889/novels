@@ -39,6 +39,16 @@
       </el-dropdown>
       <el-button type="primary" @click="nextChapter" :disabled="!nextChapterId">下一章</el-button>
     </div>
+    
+    <!-- 添加章节评论区 -->
+    <div v-if="!loading && !error" class="chapter-comments">
+      <comment-section 
+        :entity-id="Number(chapterId)" 
+        entity-type="chapter" 
+        :is-owner="false"
+        :novel-id="Number(novelId)"
+      />
+    </div>
   </div>
 </template>
 
@@ -46,9 +56,13 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
+import CommentSection from '@/components/interaction/CommentSection.vue';
 
 export default {
   name: 'Reader',
+  components: {
+    CommentSection
+  },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -64,6 +78,31 @@ export default {
     
     const novelId = computed(() => route.params.novelId);
     const chapterId = computed(() => route.params.chapterId);
+    
+    // 增强存储当前小说ID的逻辑
+    const storeNovelId = (id) => {
+      if (id) {
+        console.log('正在存储小说ID到localStorage:', id);
+        localStorage.setItem('current_novel_id', id);
+        return true;
+      }
+      return false;
+    };
+    
+    // 存储当前小说ID，供评论系统使用
+    watch(novelId, (newNovelId) => {
+      if (newNovelId) {
+        storeNovelId(newNovelId);
+      }
+    }, { immediate: true });
+    
+    // 确保章节加载成功后也保存小说ID
+    watch(() => chapter.value, (newChapter) => {
+      if (newChapter && newChapter.novel_id) {
+        console.log('章节加载后存储小说ID:', newChapter.novel_id);
+        storeNovelId(newChapter.novel_id);
+      }
+    });
     
     const formattedContent = computed(() => {
       if (!chapter.value || !chapter.value.content) return '';
@@ -82,14 +121,46 @@ export default {
       error.value = '';
       
       try {
-        const response = await store.dispatch('novel/getChapterContent', {
-          novelId: novelId.value,
-          chapterId: chapterId.value
-        });
+        // 添加重试逻辑
+        let attempts = 0;
+        const maxAttempts = 3;
+        let response;
+        
+        while (attempts < maxAttempts) {
+          try {
+            console.log(`尝试获取章节内容: 第${attempts + 1}次尝试`);
+            response = await store.dispatch('novel/getChapterContent', {
+              novelId: novelId.value,
+              chapterId: chapterId.value
+            });
+            // 成功获取数据，跳出循环
+            break;
+          } catch (err) {
+            attempts++;
+            if (attempts >= maxAttempts) {
+              // 所有尝试都失败，抛出最后一个错误
+              throw err;
+            }
+            // 等待一段时间后重试
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        if (!response) {
+          throw new Error('获取章节内容失败');
+        }
         
         chapter.value = response.chapter;
         prevChapterId.value = response.prev_chapter ? response.prev_chapter.id : null;
         nextChapterId.value = response.next_chapter ? response.next_chapter.id : null;
+        
+        // 如果章节内容中包含小说ID，确保存储它
+        if (response.chapter && response.chapter.novel_id) {
+          storeNovelId(response.chapter.novel_id);
+        } else {
+          // 否则使用路由参数中的小说ID
+          storeNovelId(novelId.value);
+        }
         
         // 添加到最近阅读
         if (response.chapter) {
@@ -108,7 +179,21 @@ export default {
         document.title = `${chapter.value.title || '阅读'} - 小说网站`;
       } catch (err) {
         console.error('获取章节内容失败:', err);
-        error.value = typeof err === 'string' ? err : '获取章节内容失败，请稍后重试';
+        // 更详细的错误信息
+        if (err.response && err.response.status) {
+          const status = err.response.status;
+          if (status === 404) {
+            error.value = '章节不存在，可能已被删除';
+          } else if (status >= 500) {
+            error.value = '服务器错误，请稍后重试';
+          } else {
+            error.value = `请求错误 (${status})，请稍后重试`;
+          }
+        } else if (err.message && err.message.includes('Network Error')) {
+          error.value = '网络连接失败，请检查网络后重试';
+        } else {
+          error.value = typeof err === 'string' ? err : '获取章节内容失败，请稍后重试';
+        }
       } finally {
         loading.value = false;
       }
@@ -256,6 +341,13 @@ export default {
 .reader-footer {
   display: flex;
   justify-content: space-between;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  margin-bottom: 30px;
+}
+
+.chapter-comments {
+  margin-top: 40px;
   padding-top: 20px;
   border-top: 1px solid #eee;
 }

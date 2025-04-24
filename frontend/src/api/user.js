@@ -70,6 +70,10 @@ export function changePassword(data) {
   });
 }
 
+/**
+ * User logout
+ * @returns {Promise}
+ */
 export function logout() {
   return request({
     url: '/user/logout',
@@ -77,6 +81,10 @@ export function logout() {
   });
 }
 
+/**
+ * Get user profile (alias function)
+ * @returns {Promise}
+ */
 export function getUserProfile() {
   return request({
     url: '/user/profile',

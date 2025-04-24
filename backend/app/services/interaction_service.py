@@ -131,7 +131,7 @@ class InteractionService:
             return {'success': False, 'error': 'Novel not found'}
             
         # Check if chapter exists if provided
-        if chapter_id:
+        if chapter_id is not None and chapter_id != 0:
             chapter = Chapter.query.get(chapter_id)
             if not chapter or chapter.novel_id != novel_id:
                 return {'success': False, 'error': 'Invalid chapter'}

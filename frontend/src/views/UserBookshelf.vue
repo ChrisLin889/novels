@@ -71,7 +71,8 @@ import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { ElMessageBox, ElMessage } from 'element-plus';
 import { Close } from '@element-plus/icons-vue';
-import { getUserCollection, removeFromCollection } from '@/api/novel';
+import { getUserCollection } from '@/api/novel';
+import { toggleCollection } from '@/api/interaction';
 
 export default {
   name: 'UserBookshelf',
@@ -152,7 +153,7 @@ export default {
         try {
           if (store.getters['user/isAuthenticated']) {
             // 调用API从远程书架移除
-            await removeFromCollection(id);
+            await toggleCollection(id);
           }
           
           // 从本地书架移除

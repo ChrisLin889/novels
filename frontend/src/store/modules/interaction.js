@@ -1,8 +1,8 @@
 import { 
   postComment, 
   getNovelComments, 
-  followUser, 
-  unfollowUser, 
+  getChapterComments,
+  toggleFollow, 
   getFollowers, 
   getFollowing, 
   sendMessage, 
@@ -141,15 +141,41 @@ export default {
   
   actions: {
     // 获取评论
-    async fetchComments({ commit }, { entityId, entityType, page = 1, per_page = 10 }) {
+    async fetchComments({ commit }, { entityId, entityType, page = 1, per_page = 10, novelId }) {
       commit('SET_COMMENTS_LOADING', true);
       try {
         let response;
         if (entityType === 'novel') {
           response = await getNovelComments(entityId, { page, per_page });
         } else if (entityType === 'chapter') {
-          // 这里应添加章节评论接口
-          response = { comments: [], total: 0 };
+          // 优先使用传入的novelId参数
+          if (novelId) {
+            console.log('使用传入的小说ID获取章节评论:', novelId, '章节ID:', entityId);
+            response = await getChapterComments(novelId, entityId, { page, per_page });
+          } else {
+            // 尝试从localStorage获取
+            const localNovelId = localStorage.getItem('current_novel_id');
+            
+            // 添加调试日志
+            console.log('从localStorage获取小说ID:', localNovelId, '章节ID:', entityId);
+            
+            if (!localNovelId || localNovelId === 'undefined' || localNovelId === 'null') {
+              console.error('获取小说ID失败，localStorage中没有小说ID');
+              // 尝试从URL中获取小说ID
+              const path = window.location.pathname;
+              const matches = path.match(/\/read\/(\d+)\//);
+              if (matches && matches[1]) {
+                const novelIdFromUrl = matches[1];
+                console.log('从URL获取小说ID:', novelIdFromUrl);
+                localStorage.setItem('current_novel_id', novelIdFromUrl);
+                response = await getChapterComments(novelIdFromUrl, entityId, { page, per_page });
+              } else {
+                throw new Error('无法获取小说ID，无法加载评论');
+              }
+            } else {
+              response = await getChapterComments(localNovelId, entityId, { page, per_page });
+            }
+          }
         }
         
         commit('SET_COMMENTS', { 
@@ -166,14 +192,50 @@ export default {
     },
     
     // 发表评论
-    async postComment({ commit }, { entityId, entityType, content, parentId }) {
+    async postComment({ commit }, { entityId, entityType, content, parentId, novelId }) {
       try {
-        const data = {
-          novel_id: entityType === 'novel' ? entityId : undefined,
-          chapter_id: entityType === 'chapter' ? entityId : undefined,
+        let data = {
           content,
           parent_id: parentId
         };
+        
+        if (entityType === 'novel') {
+          data.novel_id = entityId;
+        } else if (entityType === 'chapter') {
+          // 优先使用传入的novelId参数
+          if (novelId) {
+            data.novel_id = parseInt(novelId);
+            data.chapter_id = entityId;
+            console.log('使用传入的novelId发表章节评论:', data);
+          } else {
+            // 从localStorage获取小说ID作为备选
+            const localNovelId = localStorage.getItem('current_novel_id');
+            
+            // 添加调试日志
+            console.log('从localStorage获取小说ID:', localNovelId);
+            
+            if (!localNovelId || localNovelId === 'undefined' || localNovelId === 'null') {
+              console.error('获取小说ID失败，localStorage中没有小说ID');
+              // 尝试从URL中获取小说ID
+              const path = window.location.pathname;
+              const matches = path.match(/\/read\/(\d+)\//);
+              if (matches && matches[1]) {
+                const novelIdFromUrl = matches[1];
+                console.log('从URL获取小说ID:', novelIdFromUrl);
+                localStorage.setItem('current_novel_id', novelIdFromUrl);
+                data.novel_id = parseInt(novelIdFromUrl);
+              } else {
+                throw new Error('无法获取小说ID，无法发表评论');
+              }
+            } else {
+              data.novel_id = parseInt(localNovelId);
+            }
+            
+            data.chapter_id = entityId;
+          }
+        }
+        
+        console.log('最终发表评论数据:', data);
         
         const response = await postComment(data);
         
@@ -245,7 +307,7 @@ export default {
     // 关注用户
     async follow({ commit }, { userId, userData }) {
       try {
-        const response = await followUser(userId);
+        const response = await toggleFollow(userId);
         // 只有在实际关注时才添加到following列表
         if (response.is_following) {
           commit('ADD_FOLLOWING', userData);
@@ -259,7 +321,7 @@ export default {
     // 取消关注
     async unfollow({ commit }, { userId }) {
       try {
-        const response = await unfollowUser(userId);
+        const response = await toggleFollow(userId);
         // 只有在实际取消关注时才从following列表中移除
         if (!response.is_following) {
           commit('REMOVE_FOLLOWING', userId);

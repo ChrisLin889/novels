@@ -99,7 +99,7 @@ export default {
     async getChapterContent({ commit }, { chapterId }) {
       try {
         const response = await request({
-          url: `/novel/chapter/${chapterId}`,
+          url: `/novel/chapters/${chapterId}`,
           method: 'get'
         });
         commit('SET_CHAPTER_CONTENT', response);

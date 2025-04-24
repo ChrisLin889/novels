@@ -41,10 +41,17 @@
 
 ```json
 {
-  "novel_id": 6,     // 小说ID
-  "content": "string" // 评论内容
+  "novel_id": 6,         // 小说ID（必填）
+  "content": "string",   // 评论内容（必填）
+  "chapter_id": 15,      // 章节ID（可选，仅在对章节发表评论时需要）
+  "parent_id": 2         // 父评论ID（可选，用于回复其他评论）
 }
 ```
+
+**注意事项**：
+- 当发表小说级别评论时，`chapter_id`可以省略、设为null或0
+- 当发表章节评论时，必须提供有效的`chapter_id`
+- 系统会检查章节是否存在以及是否属于指定小说
 
 - **成功响应** (201 Created):
 
@@ -61,6 +68,22 @@
       "avatar": "string"
     }
   }
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "Novel ID and content are required"
+}
+```
+
+或
+
+```json
+{
+  "error": "Invalid chapter"
 }
 ```
 

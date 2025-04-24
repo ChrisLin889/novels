@@ -46,4 +46,20 @@ export function getSimilarNovels(params) {
       limit: params.limit || 5
     }
   });
+}
+
+/**
+ * Get hot tags
+ * @param {Object} params - Query parameters (limit, category_id)
+ * @returns {Promise}
+ */
+export function getHotTags(params = {}) {
+  return request({
+    url: '/search/tags/hot',
+    method: 'get',
+    params: {
+      limit: params.limit || 20,
+      category_id: params.category_id
+    }
+  });
 } 

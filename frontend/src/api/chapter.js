@@ -9,14 +9,14 @@ export function getChapters(novelId) {
 
 export function getChapterDetail(chapterId) {
   return request({
-    url: `/novel/chapter/${chapterId}`,
+    url: `/novel/chapters/${chapterId}`,
     method: 'get'
   })
 }
 
 export function addChapter(novelId, data) {
   return request({
-    url: `/novel/${novelId}/chapter/add`,
+    url: `/novel/${novelId}/chapters`,
     method: 'post',
     data
   })
@@ -24,7 +24,7 @@ export function addChapter(novelId, data) {
 
 export function updateChapter(chapterId, data) {
   return request({
-    url: `/novel/chapter/${chapterId}/update`,
+    url: `/novel/chapters/${chapterId}`,
     method: 'put',
     data
   })
@@ -32,7 +32,7 @@ export function updateChapter(chapterId, data) {
 
 export function deleteChapter(chapterId) {
   return request({
-    url: `/novel/chapter/${chapterId}/delete`,
+    url: `/novel/chapters/${chapterId}`,
     method: 'delete'
   })
 } 

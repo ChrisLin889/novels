@@ -162,6 +162,7 @@ def test_add_comment():
     headers = {"Authorization": f"Bearer {USER1_TOKEN}"}
     comment_content = f"这是测试评论 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     
+    # 准备发表评论的数据
     payload = {
         "novel_id": TEST_NOVEL_ID,
         "content": comment_content
@@ -205,7 +206,7 @@ def test_add_comment():
             # 即使重试失败，也将测试视为通过，因为我们测试了正确的验证行为
             return True
         else:
-            print_result(False, f"请求失败，状态码: {response.status_code}")
+            print_result(False, f"请求失败，状态码: {response.status_code}，错误: {data.get('error', '未知错误')}")
             return False
     else:
         print_result(False, f"请求失败，状态码: {response.status_code}")

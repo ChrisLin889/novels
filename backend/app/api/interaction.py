@@ -102,8 +102,12 @@ def add_comment():
     content = data.get('content')
     chapter_id = data.get('chapter_id')
     
-    # Use service to add comment
-    result = InteractionService.add_comment(user_id, novel_id, content, chapter_id)
+    # 确保chapter_id为None或有效值
+    if chapter_id == '' or chapter_id == 0 or chapter_id is None:
+        chapter_id = None
+    
+    # Use service to add comment - 修正参数顺序以匹配服务层
+    result = InteractionService.add_comment(user_id, novel_id, chapter_id, content)
     
     if not result['success']:
         return jsonify({'error': result['error']}), 400

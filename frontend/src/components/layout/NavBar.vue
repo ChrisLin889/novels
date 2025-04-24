@@ -12,6 +12,13 @@
         <el-menu-item index="/">首页</el-menu-item>
         <el-menu-item index="/novels">小说列表</el-menu-item>
         <el-menu-item index="/about">关于我们</el-menu-item>
+        <!-- 登录后显示的导航项 -->
+        <template v-if="isLoggedIn">
+          <el-menu-item index="/user/bookshelf">我的书架</el-menu-item>
+          <el-menu-item index="/user/following">我关注的</el-menu-item>
+          <el-menu-item index="/user/followers">我的粉丝</el-menu-item>
+          <el-menu-item index="/user/comments">我的评论</el-menu-item>
+        </template>
       </el-menu>
     </div>
     
@@ -23,11 +30,24 @@
 
 <script>
 import UserMenu from './UserMenu.vue';
+import { computed } from 'vue';
 
 export default {
   name: 'NavBar',
   components: {
     UserMenu
+  },
+  setup() {
+    // 判断用户是否登录
+    const isLoggedIn = computed(() => {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+      return !!token && !!user;
+    });
+
+    return {
+      isLoggedIn
+    };
   }
 };
 </script>

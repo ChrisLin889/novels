@@ -4,8 +4,11 @@ import router from '@/router';
 
 // Create axios instance with base URL from environment
 const request = axios.create({
-  baseURL: 'http://localhost:5000/api',
-  timeout: 5000
+  baseURL: '/api', // 改为相对路径，依赖代理配置
+  timeout: 15000, // 延长超时时间
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
 // Request interceptor: add token to headers
@@ -13,15 +16,10 @@ request.interceptors.request.use(
   config => {
     console.log('发送请求:', config.url, '参数:', config.params || config.data);
     
-    // 确保URL没有重复的/api前缀
+    // 确保URL正确
     if (config.url.startsWith('/api/')) {
-      config.url = config.url.substring(4); // 移除重复的/api前缀
-    }
-    
-    // 重定向author相关请求到novel下的端点
-    if (config.url.startsWith('/author/')) {
-      config.url = '/novel' + config.url;
-      console.log('重定向作家请求到:', config.url);
+      // 已经有 /api 前缀，移除重复的前缀
+      config.url = config.url.replace('/api', '');
     }
     
     const token = localStorage.getItem('token');
@@ -52,7 +50,9 @@ request.interceptors.response.use(
       return Promise.resolve(null);
     }
     
-    console.error('API响应错误:', error.config?.url, error.response?.data || error.message);
+    console.error('API响应错误:', error.config?.url, 
+      error.response?.data || error.message, 
+      error.code || '无错误代码');
     
     // 处理错误响应
     if (error.response) {
@@ -81,6 +81,12 @@ request.interceptors.response.use(
         // 其他错误
         ElMessage.error(data?.message || '请求失败');
       }
+    } else if (error.code === 'ECONNABORTED') {
+      // 请求超时
+      ElMessage.error('请求超时，请检查网络连接并重试');
+    } else if (error.code === 'ERR_NETWORK') {
+      // 网络连接错误
+      ElMessage.error('无法连接到服务器，请检查网络连接');
     } else {
       // 网络错误等
       ElMessage.error(error.message || '网络错误，请检查您的网络连接');
