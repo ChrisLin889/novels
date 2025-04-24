@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional, Tuple
 from app.dao.admin_dao import AdminDAO
-from app.models.admin import Admin, SensitiveWord, ContentAudit, AdminAction
+from app.models.admin import Admin, SensitiveWord, ContentAudit, UserAction
 from app.models.user import User
 from app.models.novel import Novel, Chapter
 from app.models.interaction import Comment
@@ -135,6 +135,15 @@ class AdminService:
             }
         
         try:
+            # 获取管理员的 admin_id (而不是 user_id)
+            admin = Admin.query.filter_by(user_id=admin_id).first()
+            if not admin:
+                return {
+                    'success': False,
+                    'message': f'Admin record not found for user_id {admin_id}'
+                }
+            actual_admin_id = admin.id
+            
             # 根据角色更新相应的关联记录
             if role == 'admin':
                 # 检查是否已经是管理员
@@ -167,8 +176,8 @@ class AdminService:
                     Author.query.filter_by(user_id=user_id).delete()
             
             # 创建操作记录
-            action = AdminAction(
-                admin_id=admin_id,
+            action = UserAction(
+                admin_id=actual_admin_id,  # 使用实际的admin_id而不是用户ID
                 target_user_id=user_id,
                 action_type='update_role',
                 reason=f'Role updated to {role}'

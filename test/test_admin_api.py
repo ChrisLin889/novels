@@ -803,8 +803,10 @@ def run_all_tests():
             # 输出到控制台
             original_print(*args, **kwargs)
             # 输出到文件
-            kwargs.pop('flush', None)  # 移除文件不支持的参数
-            print(*args, file=report_file, **kwargs)
+            kwargs_copy = kwargs.copy()
+            kwargs_copy.pop('flush', None)  # 移除文件不支持的参数
+            kwargs_copy.pop('file', None)   # 移除file参数，防止重复
+            original_print(*args, file=report_file, **kwargs_copy)
         
         # 替换全局打印函数
         globals()['print'] = tee_print

@@ -7,7 +7,7 @@ from app.models.interaction import Comment
 from app.models.author import Author
 from app.services.permission_service import PermissionService
 from sqlalchemy import desc, func
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class AdminDAO:
     """
@@ -76,16 +76,22 @@ class AdminDAO:
         user = User.query.get(user_id)
         if not user:
             raise ValueError(f"User {user_id} not found")
+        
+        # 获取管理员的 admin_id (而不是 user_id)
+        admin = Admin.query.filter_by(user_id=admin_id).first()
+        if not admin:
+            raise ValueError(f"Admin record not found for user_id {admin_id}")
+        actual_admin_id = admin.id
             
         # Update user status
         user.status = 1  # Banned
         user.banned_until = datetime.utcnow().replace(
             hour=23, minute=59, second=59
-        ) + datetime.timedelta(days=duration) if duration else None
+        ) + timedelta(days=duration) if duration else None
         
         # Create action record
         action = UserAction(
-            admin_id=admin_id,
+            admin_id=actual_admin_id,  # 使用实际的admin_id而不是用户ID
             target_user_id=user_id,
             action_type='ban',
             reason=reason,
@@ -115,6 +121,12 @@ class AdminDAO:
             
         if user.status != 1:  # Not banned
             raise ValueError(f"User {user_id} is not banned")
+        
+        # 获取管理员的 admin_id (而不是 user_id)
+        admin = Admin.query.filter_by(user_id=admin_id).first()
+        if not admin:
+            raise ValueError(f"Admin record not found for user_id {admin_id}")
+        actual_admin_id = admin.id
             
         # Update user status
         user.status = 0  # Active
@@ -122,7 +134,7 @@ class AdminDAO:
         
         # Create action record
         action = UserAction(
-            admin_id=admin_id,
+            admin_id=actual_admin_id,  # 使用实际的admin_id而不是用户ID
             target_user_id=user_id,
             action_type='unban',
             reason=reason

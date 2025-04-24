@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 from sqlalchemy import or_, and_, func
 from app import db
-from app.models.novel import Novel
+from app.models.novel import Novel, Chapter, novel_tag
 from datetime import datetime, timedelta
 import logging
 import os

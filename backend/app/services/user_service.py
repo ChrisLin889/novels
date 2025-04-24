@@ -461,6 +461,15 @@ class UserService:
                 # Clear author relationship but keep the novels
                 db.session.delete(author)
         
+        # 处理作者申请记录 - 应该在删除用户前处理
+        from app.models.author import AuthorApplication
+        AuthorApplication.query.filter_by(user_id=user_id).delete()
+        
+        # 处理操作记录 - 需要在删除用户前处理
+        from app.models.admin import UserAction
+        # 删除此用户作为目标的记录
+        UserAction.query.filter_by(target_user_id=user_id).delete()
+        
         # Delete user interactions (collections, history, following)
         UserCollection.query.filter_by(user_id=user_id).delete()
         UserHistory.query.filter_by(user_id=user_id).delete()
