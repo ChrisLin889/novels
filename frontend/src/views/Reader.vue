@@ -1,5 +1,5 @@
 <template>
-  <div class="reader-container" :class="{ 'reader-dark': isDarkMode }">
+  <div class="reader-container" :class="{ 'reader-dark': isDarkMode }" :style="{ backgroundColor: bgColor }">
     <div class="reader-header">
       <el-button @click="goBack" icon="el-icon-arrow-left">返回</el-button>
       <h1 class="chapter-title">{{ chapter.title || '加载中...' }}</h1>
@@ -34,10 +34,34 @@
             <el-dropdown-item command="toggleDarkMode">{{ isDarkMode ? '关闭' : '开启' }}夜间模式</el-dropdown-item>
             <el-dropdown-item command="increaseFont">放大字体</el-dropdown-item>
             <el-dropdown-item command="decreaseFont">缩小字体</el-dropdown-item>
+            <el-dropdown-item command="showBgColorDialog" divided>背景颜色</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
       <el-button type="primary" @click="nextChapter" :disabled="!nextChapterId">下一章</el-button>
+    </div>
+    
+    <!-- 背景颜色选择面板 -->
+    <div v-if="bgColorDialogVisible" class="color-picker-overlay" @click.self="bgColorDialogVisible = false">
+      <div class="color-picker-panel">
+        <div class="color-picker-header">
+          <h3>选择背景颜色</h3>
+          <button class="close-btn" @click="bgColorDialogVisible = false">
+            <i class="el-icon-close"></i>
+          </button>
+        </div>
+        <div class="color-options">
+          <div class="color-option" 
+            v-for="option in bgColorOptions" 
+            :key="option.value"
+            :style="{ backgroundColor: option.color }"
+            @click="selectBgColor(option.value)"
+          >
+            <span>{{ option.label }}</span>
+            <i v-if="bgColor === option.color" class="el-icon-check"></i>
+          </div>
+        </div>
+      </div>
     </div>
     
     <!-- 添加章节评论区 -->
@@ -75,6 +99,16 @@ export default {
     const nextChapterId = ref(null);
     const isDarkMode = ref(localStorage.getItem('reader_dark_mode') === 'true');
     const fontSize = ref(parseInt(localStorage.getItem('reader_font_size')) || 18);
+    const bgColor = ref(localStorage.getItem('reader_bg_color') || '#fff');
+    const bgColorDialogVisible = ref(false);
+    
+    const bgColorOptions = [
+      { label: '默认', value: 'bgDefault', color: isDarkMode.value ? '#252525' : '#fff' },
+      { label: '米色', value: 'bgBeige', color: '#f8f2e4' },
+      { label: '护眼绿', value: 'bgGreen', color: '#e3f1e1' },
+      { label: '淡蓝', value: 'bgBlue', color: '#e9f5f9' },
+      { label: '淡粉', value: 'bgPink', color: '#fbeef2' }
+    ];
     
     const novelId = computed(() => route.params.novelId);
     const chapterId = computed(() => route.params.chapterId);
@@ -216,11 +250,38 @@ export default {
       }
     };
     
+    // 选择背景颜色
+    const selectBgColor = (command) => {
+      if (command === 'bgDefault') {
+        bgColor.value = isDarkMode.value ? '#252525' : '#fff';
+      } else if (command === 'bgBeige') {
+        bgColor.value = '#f8f2e4';
+      } else if (command === 'bgGreen') {
+        bgColor.value = '#e3f1e1';
+      } else if (command === 'bgBlue') {
+        bgColor.value = '#e9f5f9';
+      } else if (command === 'bgPink') {
+        bgColor.value = '#fbeef2';
+      }
+      
+      localStorage.setItem('reader_bg_color', bgColor.value);
+      bgColorDialogVisible.value = false;
+    };
+    
     // 阅读器设置
     const changeSettings = (command) => {
       if (command === 'toggleDarkMode') {
         isDarkMode.value = !isDarkMode.value;
         localStorage.setItem('reader_dark_mode', isDarkMode.value);
+        
+        // 更新默认背景色选项的颜色
+        bgColorOptions[0].color = isDarkMode.value ? '#252525' : '#fff';
+        
+        // 如果用户正在使用默认背景色，则随夜间模式切换背景色
+        if (bgColor.value === '#fff' || bgColor.value === '#252525') {
+          bgColor.value = isDarkMode.value ? '#252525' : '#fff';
+          localStorage.setItem('reader_bg_color', bgColor.value);
+        }
       } else if (command === 'increaseFont') {
         if (fontSize.value < 28) {
           fontSize.value += 2;
@@ -233,6 +294,8 @@ export default {
           localStorage.setItem('reader_font_size', fontSize.value);
           updateFontSize();
         }
+      } else if (command === 'showBgColorDialog') {
+        bgColorDialogVisible.value = true;
       }
     };
     
@@ -240,6 +303,18 @@ export default {
     const updateFontSize = () => {
       document.documentElement.style.setProperty('--reader-font-size', `${fontSize.value}px`);
     };
+    
+    // 监听夜间模式变化，更新背景色
+    watch(isDarkMode, (newValue) => {
+      // 更新默认背景色选项的颜色
+      bgColorOptions[0].color = newValue ? '#252525' : '#fff';
+      
+      // 如果用户没有设置自定义背景色，则随夜间模式切换默认背景色
+      if (bgColor.value === '#fff' || bgColor.value === '#252525') {
+        bgColor.value = newValue ? '#252525' : '#fff';
+        localStorage.setItem('reader_bg_color', bgColor.value);
+      }
+    });
     
     // 监听路由变化，以便在章节之间导航时重新获取内容
     watch(
@@ -267,11 +342,15 @@ export default {
       prevChapterId,
       nextChapterId,
       isDarkMode,
+      bgColor,
+      bgColorDialogVisible,
+      bgColorOptions,
       formattedContent,
       goBack,
       prevChapter,
       nextChapter,
       changeSettings,
+      selectBgColor,
       fetchChapterContent
     };
   }
@@ -289,13 +368,14 @@ export default {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #fff;
+  background-color: #fff; /* 默认颜色现在由内联样式控制 */
   min-height: 80vh;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+  position: relative;
 }
 
 .reader-dark {
-  background-color: #252525;
   color: #e0e0e0;
 }
 
@@ -350,5 +430,103 @@ export default {
   margin-top: 40px;
   padding-top: 20px;
   border-top: 1px solid #eee;
+}
+
+/* 背景颜色选择面板样式 */
+.color-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.color-picker-panel {
+  background-color: white;
+  border-radius: 8px;
+  width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.color-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.color-picker-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #303133;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #909399;
+}
+
+.close-btn:hover {
+  color: #409EFF;
+}
+
+.color-options {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  gap: 15px;
+}
+
+.color-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  color: #303133;
+}
+
+.color-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 在夜间模式下调整面板颜色 */
+.reader-dark .color-picker-panel {
+  background-color: #2d2d2d;
+  border-color: #444;
+}
+
+.reader-dark .color-picker-header {
+  border-color: #444;
+}
+
+.reader-dark .color-picker-header h3 {
+  color: #e0e0e0;
+}
+
+.reader-dark .close-btn {
+  color: #909399;
+}
+
+.reader-dark .color-option {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.reader-dark .color-option span {
+  color: #303133;  /* 保持文字颜色便于阅读 */
 }
 </style> 
