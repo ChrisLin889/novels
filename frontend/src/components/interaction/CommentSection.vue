@@ -83,6 +83,14 @@
             <span v-if="isOwner && comment.user.id !== userId" class="action-btn">
               <i class="el-icon-message"></i> 私信
             </span>
+            <!-- 添加关注按钮 -->
+            <span 
+              v-if="isAuthenticated && comment.user.id !== userId" 
+              class="action-btn" 
+              @click="handleFollow(comment.user.id)"
+            >
+              <i class="el-icon-star-off"></i> {{ isFollowing(comment.user.id) ? '取消关注' : '关注' }}
+            </span>
           </div>
           
           <!-- 回复框 -->
@@ -126,7 +134,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
@@ -161,6 +169,8 @@ export default {
     const currentPage = ref(1);
     const pageSize = ref(10);
     const submitting = ref(false);
+    // 存储关注状态
+    const followStatus = reactive({});
 
     // 从store获取数据
     const userInfo = computed(() => store.getters['user/userInfo'] || {});
@@ -196,9 +206,68 @@ export default {
         const response = await store.dispatch('interaction/fetchComments', fetchParams);
         
         console.log('获取评论结果:', response);
+        
+        // 获取评论后，检查每个评论作者的关注状态
+        await checkCommentsFollowStatus();
       } catch (error) {
         console.error('获取评论失败:', error);
         ElMessage.error('获取评论失败，请稍后重试');
+      }
+    };
+
+    // 检查评论作者的关注状态
+    const checkCommentsFollowStatus = async () => {
+      if (!isAuthenticated.value) return;
+      
+      for (const comment of comments.value) {
+        if (comment.user.id !== userId.value) {
+          try {
+            const response = await store.dispatch('interaction/checkFollowStatus', {
+              userId: comment.user.id
+            });
+            followStatus[comment.user.id] = response.is_following;
+          } catch (error) {
+            console.error('获取关注状态失败:', error);
+          }
+        }
+      }
+    };
+    
+    // 检查是否已关注
+    const isFollowing = (targetUserId) => {
+      return followStatus[targetUserId] || false;
+    };
+    
+    // 处理关注/取消关注
+    const handleFollow = async (targetUserId) => {
+      if (!isAuthenticated.value) {
+        ElMessage.warning('请先登录后操作');
+        return;
+      }
+      
+      try {
+        const userData = comments.value.find(c => c.user.id === targetUserId)?.user;
+        
+        if (isFollowing(targetUserId)) {
+          // 取消关注
+          await store.dispatch('interaction/unfollow', {
+            userId: targetUserId
+          });
+          ElMessage.success('已取消关注');
+        } else {
+          // 关注
+          await store.dispatch('interaction/follow', {
+            userId: targetUserId,
+            userData
+          });
+          ElMessage.success('关注成功');
+        }
+        
+        // 更新关注状态
+        followStatus[targetUserId] = !followStatus[targetUserId];
+      } catch (error) {
+        console.error('关注操作失败:', error);
+        ElMessage.error('操作失败，请稍后重试');
       }
     };
 
@@ -356,7 +425,9 @@ export default {
       handlePageChange,
       navigateToLogin,
       getInitials,
-      formatTime
+      formatTime,
+      handleFollow,
+      isFollowing
     };
   }
 };

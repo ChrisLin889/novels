@@ -224,26 +224,26 @@ class NovelService:
             return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def get_author_novels(author_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
-        """Get novels created by a specific author
+    def get_author_novels(user_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
+        """获取用户作为作者创建的小说列表
         
         Args:
-            author_id: Author ID
-            page: Page number
-            per_page: Items per page
+            user_id: 用户ID（不是作者ID）
+            page: 页码
+            per_page: 每页数量
             
         Returns:
-            Dictionary with author's novels and pagination info
+            包含作者小说列表和分页信息的字典
         """
         try:
-            # Get query for author novels
-            query = NovelDAO.get_novel_by_author_query(author_id)
+            # 获取用户作为作者创建的小说查询
+            query = NovelDAO.get_novel_by_user_id_query(user_id)
             
-            # Apply pagination
+            # 应用分页
             pagination = query.order_by(desc(Novel.updated_at))\
                 .paginate(page=page, per_page=per_page, error_out=False)
             
-            # Convert novels to dict
+            # 转换小说为字典
             novels = [novel.to_dict() for novel in pagination.items]
             
             return {
@@ -573,11 +573,18 @@ class NovelService:
         }
     
     @staticmethod
-    def get_author_stats(author_id: int) -> Dict[str, Any]:
-        """Get statistics for an author"""
+    def get_author_stats(user_id: int) -> Dict[str, Any]:
+        """获取用户作为作者的统计数据
+        
+        Args:
+            user_id: 用户ID（不是作者ID）
+            
+        Returns:
+            包含作者统计数据的字典
+        """
         try:
-            # 获取作者的小说列表
-            novels = NovelDAO.get_novel_by_author_query(author_id).all()
+            # 获取用户作为作者创建的小说列表
+            novels = NovelDAO.get_novel_by_user_id_query(user_id).all()
             
             # 统计数据
             novel_count = len(novels)

@@ -73,6 +73,26 @@ class NovelDAO:
         return Novel.query.filter_by(author_id=author_id)
     
     @staticmethod
+    def get_novel_by_user_id_query(user_id: int):
+        """获取用户(通过作者身份)创建的小说查询
+        
+        此方法处理用户ID到作者ID的映射，解决API层直接使用用户ID的问题。
+        首先查找用户对应的作者记录，然后返回该作者创建的小说查询。
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            对应作者创建的小说查询，如果用户不是作者则返回空查询
+        """
+        # 先找到该用户对应的作者记录
+        author = Author.query.filter_by(user_id=user_id).first()
+        if not author:
+            return Novel.query.filter(False)  # 返回一个空查询
+        # 返回该作者的小说查询
+        return Novel.query.filter_by(author_id=author.id)
+    
+    @staticmethod
     def get_popular_novels_query(category: Optional[str] = None):
         """Get query for popular novels with optional category filter"""
         query = Novel.query.order_by(desc(Novel.view_count))

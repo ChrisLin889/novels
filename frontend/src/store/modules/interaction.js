@@ -9,7 +9,8 @@ import {
   getInbox,
   getConversation,
   markMessageAsRead,
-  getUserComments
+  getUserComments,
+  checkFollowStatus
 } from '@/api/interaction';
 
 export default {
@@ -337,24 +338,53 @@ export default {
       commit('SET_INBOX_LOADING', true);
       try {
         const response = await getInbox({ page, per_page });
+        console.log('获取收件箱响应:', response);
         
-        // 适配API响应格式
-        const conversations = (response.messages || []).map(message => {
-          return {
-            user: message.sender,
-            last_message: {
-              content: message.content,
-              created_at: message.created_at,
-              is_from_me: false
-            },
-            unread_count: message.is_read ? 0 : 1
-          };
-        });
+        // 适配API响应格式 - 根据实际返回值结构调整
+        let conversations = [];
+        let totalCount = 0;
+        let unreadCount = 0;
+        
+        if (response.conversations) {
+          // 标准格式
+          conversations = response.conversations;
+          totalCount = response.total || 0;
+          unreadCount = response.unread_count || 0;
+        } else if (Array.isArray(response)) {
+          // 可能直接返回数组
+          conversations = response.map(message => {
+            return {
+              user: message.sender || message.user || {},
+              last_message: {
+                content: message.content || '',
+                created_at: message.created_at || new Date().toISOString(),
+                is_from_me: message.is_from_me || false
+              },
+              unread_count: message.is_read ? 0 : 1
+            };
+          });
+          totalCount = conversations.length;
+        } else if (response.messages) {
+          // 另一种可能的格式
+          conversations = response.messages.map(message => {
+            return {
+              user: message.sender || message.user || {},
+              last_message: {
+                content: message.content || '',
+                created_at: message.created_at || new Date().toISOString(),
+                is_from_me: message.is_from_me || false
+              },
+              unread_count: message.is_read ? 0 : 1
+            };
+          });
+          totalCount = response.total || conversations.length;
+          unreadCount = response.unread_count || 0;
+        }
         
         commit('SET_INBOX', { 
           inbox: conversations, 
-          total: response.total || 0,
-          unreadCount: response.unread_count || 0
+          total: totalCount,
+          unreadCount: unreadCount
         });
         return response;
       } catch (error) {
@@ -370,21 +400,59 @@ export default {
       commit('SET_CONVERSATION_LOADING', true);
       try {
         const response = await getConversation(userId, params);
+        console.log('获取对话响应:', response);
         
-        // 添加 is_from_me 标志
-        const messages = (response.messages || []).map(message => {
-          return {
-            ...message,
-            is_from_me: message.sender_id === userId ? false : true
-          };
-        });
-        
-        // 确保有伙伴信息，如果没有提供则构建一个基本对象
+        // 处理不同的响应格式
+        let messages = [];
         let partner = {};
-        if (messages.length > 0) {
-          const partnerMessage = messages.find(m => m.sender_id === userId);
-          if (partnerMessage && partnerMessage.sender) {
-            partner = partnerMessage.sender;
+        
+        if (response.messages && Array.isArray(response.messages)) {
+          // 标准格式
+          messages = response.messages.map(message => {
+            // 确保消息有is_from_me字段，根据发送者ID判断
+            return {
+              ...message,
+              is_from_me: message.sender_id !== parseInt(userId),
+              created_at: message.created_at || new Date().toISOString()
+            };
+          });
+        } else if (response.conversation && Array.isArray(response.conversation)) {
+          // 可能的另一种格式
+          messages = response.conversation.map(message => {
+            return {
+              ...message,
+              is_from_me: message.sender_id !== parseInt(userId),
+              created_at: message.created_at || new Date().toISOString()
+            };
+          });
+        } else if (Array.isArray(response)) {
+          // 直接返回消息数组
+          messages = response.map(message => {
+            return {
+              ...message,
+              is_from_me: message.sender_id !== parseInt(userId),
+              created_at: message.created_at || new Date().toISOString()
+            };
+          });
+        }
+        
+        // 按时间排序
+        messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        
+        // 获取对话伙伴信息
+        if (response.conversation_with) {
+          partner = response.conversation_with;
+        } else {
+          // 尝试从消息中获取伙伴信息
+          const partnerMessage = messages.find(m => !m.is_from_me);
+          if (partnerMessage) {
+            partner = partnerMessage.sender || {};
+            if (!partner.id) {
+              partner.id = userId;
+            }
+          } else {
+            // 如果没有消息或找不到伙伴信息，使用默认值
+            partner = { id: userId, username: '用户' + userId };
           }
         }
         
@@ -397,9 +465,13 @@ export default {
         commit('SET_CONVERSATION_PARTNER', partner);
         
         // 标记为已读
-        commit('MARK_CONVERSATION_READ', userId);
+        if (messages.length > 0) {
+          commit('MARK_CONVERSATION_READ', userId);
+        }
+        
         return Promise.resolve(response);
       } catch (error) {
+        console.error('获取对话失败:', error);
         return Promise.reject(error);
       } finally {
         commit('SET_CONVERSATION_LOADING', false);
@@ -413,15 +485,17 @@ export default {
         
         // 添加发送者信息，因为API返回的消息可能没有
         const messageWithInfo = {
-          ...response.data,
+          ...(response.data || response), // 处理不同的响应格式
           is_from_me: true,
           sender_id: rootState.user.userInfo.id,
-          recipient_id: recipientId
+          recipient_id: recipientId,
+          created_at: new Date().toISOString()
         };
         
         commit('ADD_MESSAGE', messageWithInfo);
         return Promise.resolve(response);
       } catch (error) {
+        console.error('发送消息失败:', error);
         return Promise.reject(error);
       }
     },
@@ -429,13 +503,36 @@ export default {
     // 标记消息为已读
     async markAsRead({ commit }, { messageId, userId }) {
       try {
-        await markMessageAsRead(messageId);
+        if (messageId) {
+          await markMessageAsRead(messageId);
+        } else if (userId) {
+          // 即使没有具体消息ID，也标记整个对话为已读
+          console.log('标记用户对话为已读:', userId);
+        }
+        
         if (userId) {
           commit('MARK_CONVERSATION_READ', userId);
         }
+        
         return Promise.resolve();
       } catch (error) {
+        console.error('标记消息已读失败:', error);
+        // 即使API调用失败，也尝试在前端标记为已读，提升用户体验
+        if (userId) {
+          commit('MARK_CONVERSATION_READ', userId);
+        }
         return Promise.reject(error);
+      }
+    },
+    
+    // 检查关注状态
+    async checkFollowStatus(_, { userId }) {
+      try {
+        const response = await checkFollowStatus(userId);
+        return response;
+      } catch (error) {
+        console.error('获取关注状态失败:', error);
+        return { is_following: false };
       }
     }
   },

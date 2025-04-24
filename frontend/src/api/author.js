@@ -6,7 +6,7 @@ import request from '@/utils/request'
  */
 export function getAuthorStats() {
   return request({
-    url: '/author/stats',
+    url: '/novel/author/stats',
     method: 'get'
   })
 }

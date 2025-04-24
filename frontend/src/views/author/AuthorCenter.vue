@@ -239,8 +239,48 @@ export default {
         console.log('Loading author novels...');
         const response = await getMyNovels();
         console.log('Author novels response:', response);
-        if (response && response.novels) {
-          novels.value = response.novels;
+        
+        // 更详细的响应检查和数据提取
+        if (response) {
+          console.log('Response type:', typeof response);
+          console.log('Response keys:', Object.keys(response));
+          
+          // 检查多种可能的响应格式
+          if (Array.isArray(response)) {
+            // 如果响应直接是数组
+            console.log('Response is an array');
+            novels.value = response;
+          } else if (response.novels) {
+            // 如果响应有novels字段
+            console.log('Response has novels field');
+            novels.value = response.novels;
+          } else {
+            // 尝试其他可能的响应格式
+            const possibleKeys = ['data', 'items', 'list', 'results'];
+            for (const key of possibleKeys) {
+              if (response[key] && Array.isArray(response[key])) {
+                console.log(`Found novels in response.${key}`);
+                novels.value = response[key];
+                break;
+              }
+            }
+            
+            // 如果仍然没有找到小说数据，检查response本身是否包含小说对象的特征
+            if (novels.value.length === 0 && response.id && response.title) {
+              console.log('Response appears to be a single novel');
+              novels.value = [response];
+            }
+          }
+          
+          // 修改条件判断逻辑，区分"无法解析"和"没有小说"两种情况
+          if (!novels.value) {
+            console.log('Failed to parse novels from response');
+            novels.value = [];
+            ElMessage.warning('无法解析小说列表，请联系管理员');
+          } else if (novels.value.length === 0) {
+            console.log('Author has no novels yet');
+            // 这是正常情况，不需要显示错误消息
+          }
         } else {
           novels.value = [];
           ElMessage.warning('无法获取小说列表，请稍后再试');
@@ -314,7 +354,13 @@ export default {
               ElMessage.success('更新成功');
             }
             novelDialogVisible.value = false;
-            loadNovels();
+            
+            // 添加延迟以确保后端处理完成
+            setTimeout(() => {
+              console.log('重新加载小说列表和统计数据');
+              loadNovels();
+              loadStats();
+            }, 500);
           } catch (error) {
             console.error('小说操作失败:', error);
             // 尝试获取更详细的错误信息

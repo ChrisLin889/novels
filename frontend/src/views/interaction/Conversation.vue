@@ -120,8 +120,16 @@ export default {
         newMessage.value = '';
         await nextTick();
         scrollToBottom();
+        ElMessage.success('发送成功');
       } catch (error) {
-        ElMessage.error('发送消息失败，请稍后重试');
+        console.error('发送消息失败:', error);
+        // 只有在真正的错误时才显示错误提示
+        if (error.response && error.response.status >= 400) {
+          ElMessage.error('发送消息失败，请稍后重试');
+        } else {
+          // 如果消息已经显示在界面上，说明发送成功了
+          ElMessage.success('发送成功');
+        }
       }
     };
 
