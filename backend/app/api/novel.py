@@ -4,6 +4,8 @@ from app.services.novel_service import NovelService
 from app.utils.security import author_required, admin_required
 from app.models.author import Author
 from app.services.permission_service import PermissionService
+import sys
+import datetime
 
 novel_bp = Blueprint('novel', __name__)
 
@@ -91,14 +93,67 @@ def get_chapter(chapter_id):
     """获取章节内容"""
     # Get user ID if logged in
     user_id = None
-    if request.headers.get('Authorization'):
-        try:
-            user_id = get_jwt_identity()
-        except:
-            pass
+    auth_header = request.headers.get('Authorization')
     
-    # Use service to get chapter
+    print(f"\n\n==== 章节请求调试信息 ====")
+    print(f"章节ID: {chapter_id}")
+    print(f"请求头: {dict(request.headers)}")
+    print(f"当前时间: {datetime.datetime.now()}")
+    
+    try:
+        # 处理认证逻辑
+        if auth_header:
+            print(f"Authorization头: {auth_header[:30]}...")
+            if auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+                print(f"提取token: {token[:15]}...")
+                
+                try:
+                    # 明确解码和验证token
+                    from flask_jwt_extended import decode_token
+                    decoded = decode_token(token)
+                    print(f"Token解码成功: {decoded}")
+                    
+                    # 获取用户ID（sub字段）
+                    if 'sub' in decoded:
+                        user_id = decoded['sub']
+                        print(f"用户ID: {user_id}, 类型: {type(user_id)}")
+                        
+                        # 验证用户是否存在
+                        from app.models.user import User
+                        user = User.query.get(user_id)
+                        if user:
+                            print(f"用户存在: {user.username} (ID: {user_id})")
+                        else:
+                            print(f"警告: 用户ID {user_id} 在数据库中不存在!")
+                    else:
+                        print(f"错误: Token中没有sub字段!")
+                except Exception as token_err:
+                    print(f"Token解析错误: {str(token_err)}")
+            else:
+                print(f"Authorization头格式错误: {auth_header[:15]}...")
+        else:
+            print("请求中没有Authorization头")
+    except Exception as auth_err:
+        import traceback
+        print(f"处理认证时出错: {str(auth_err)}")
+        print(f"错误类型: {type(auth_err).__name__}")
+        print(f"错误跟踪: {traceback.format_exc()}")
+    
+    # 确保user_id为整数而非字符串
+    if user_id is not None:
+        try:
+            user_id = int(user_id)
+            print(f"转换后的用户ID (整数): {user_id}")
+        except (ValueError, TypeError):
+            print(f"警告: 无法将用户ID {user_id} 转换为整数，将其设为None")
+            user_id = None
+    
+    # Use service to get chapter with extensive logging
+    print(f"调用NovelService.get_chapter, 参数: chapter_id={chapter_id}, user_id={user_id}")
     result = NovelService.get_chapter(chapter_id, True, user_id)
+    print(f"NovelService.get_chapter返回结果: success={result.get('success', False)}")
+    print(f"==== 章节请求调试信息结束 ====\n\n")
     
     if not result['success']:
         return error_response(result['error'], 404)

@@ -92,37 +92,80 @@ class InteractionDAO:
     @staticmethod
     def update_reading_history(user_id: int, novel_id: int, chapter_id: int) -> UserHistory:
         """Update user's reading history"""
-        history = UserHistory.query.filter_by(
-            user_id=user_id,
-            novel_id=novel_id
-        ).first()
+        print(f"DEBUG - InteractionDAO.update_reading_history 开始: user_id={user_id}, novel_id={novel_id}, chapter_id={chapter_id}")
         
-        if history:
-            history.chapter_id = chapter_id
-            history.last_read_time = datetime.datetime.utcnow()
-        else:
-            history = UserHistory(
+        try:
+            # 查询现有历史记录
+            history = UserHistory.query.filter_by(
                 user_id=user_id,
-                novel_id=novel_id,
-                chapter_id=chapter_id
-            )
-            db.session.add(history)
-        
-        db.session.commit()
-        return history
+                novel_id=novel_id
+            ).first()
+            
+            if history:
+                print(f"DEBUG - 找到现有历史记录 ID={history.id}, 当前章节={history.chapter_id}, 更新时间={history.last_read_time}")
+                history.chapter_id = chapter_id
+                history.last_read_time = datetime.datetime.utcnow()
+                print(f"DEBUG - 已更新章节ID为 {chapter_id}")
+            else:
+                print(f"DEBUG - 未找到历史记录, 创建新记录")
+                history = UserHistory(
+                    user_id=user_id,
+                    novel_id=novel_id,
+                    chapter_id=chapter_id
+                )
+                db.session.add(history)
+                print(f"DEBUG - 新记录已添加到会话")
+            
+            # 检查小说和章节是否存在
+            novel = Novel.query.get(novel_id)
+            chapter = Chapter.query.get(chapter_id)
+            if not novel:
+                print(f"DEBUG - 警告: 小说ID={novel_id} 不存在")
+            if not chapter:
+                print(f"DEBUG - 警告: 章节ID={chapter_id} 不存在")
+            
+            # 明确提交会话
+            print(f"DEBUG - 提交数据库会话")
+            db.session.commit()
+            print(f"DEBUG - 会话提交成功, 历史记录ID={history.id if history else None}")
+            
+            # 验证更新是否成功
+            updated_history = UserHistory.query.filter_by(
+                user_id=user_id,
+                novel_id=novel_id
+            ).first()
+            
+            if updated_history:
+                print(f"DEBUG - 验证成功: 记录ID={updated_history.id}, 章节ID={updated_history.chapter_id}")
+            else:
+                print(f"DEBUG - 警告: 提交后无法找到记录")
+                
+            return history
+        except Exception as e:
+            print(f"DEBUG - 更新阅读历史时发生异常: {str(e)}")
+            print(f"DEBUG - 异常类型: {type(e).__name__}")
+            import traceback
+            print(f"DEBUG - 异常跟踪: {traceback.format_exc()}")
+            db.session.rollback()
+            raise
     
     @staticmethod
     def get_user_history(user_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
         """Get paginated list of user's reading history"""
+        print(f"DEBUG - InteractionDAO.get_user_history: user_id={user_id}, page={page}, per_page={per_page}")
+        
         history_records = UserHistory.query.filter_by(
             user_id=user_id
         ).order_by(
             desc(UserHistory.last_read_time)
         ).paginate(page=page, per_page=per_page)
         
+        print(f"DEBUG - 查询到的历史记录数: {len(history_records.items)}")
+        
         # Get novel and chapter details for each history record
         result = []
         for history in history_records.items:
+            print(f"DEBUG - 处理历史记录: history_id={history.id}, novel_id={history.novel_id}, chapter_id={history.chapter_id}")
             novel = Novel.query.get(history.novel_id)
             chapter = Chapter.query.get(history.chapter_id)
             
@@ -133,6 +176,11 @@ class InteractionDAO:
                     'last_read_time': history.last_read_time.isoformat()
                 }
                 result.append(record)
+                print(f"DEBUG - 添加了历史记录: novel={novel.title}, chapter={chapter.title}")
+            else:
+                print(f"DEBUG - 跳过历史记录: novel={'存在' if novel else '不存在'}, chapter={'存在' if chapter else '不存在'}")
+        
+        print(f"DEBUG - 最终返回的历史记录数: {len(result)}")
         
         return {
             'total': history_records.total,

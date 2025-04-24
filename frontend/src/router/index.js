@@ -16,6 +16,7 @@ import AdminCrawledNovels from '@/views/admin/CrawledNovels.vue';
 const UserCenter = () => import('@/views/UserCenter.vue');
 const UserProfile = () => import('@/views/UserProfile.vue');
 const UserBookshelf = () => import('@/views/UserBookshelf.vue');
+const UserReadingHistory = () => import('@/views/UserReadingHistory.vue');
 const SearchResult = () => import('@/views/SearchResult.vue');
 const Category = () => import('@/views/Category.vue');
 const Ranking = () => import('@/views/Ranking.vue');
@@ -103,6 +104,12 @@ const routes = [
         component: UserBookshelf,
         name: 'UserBookshelf',
         meta: { title: '我的书架' }
+      },
+      {
+        path: 'history',
+        component: UserReadingHistory,
+        name: 'UserReadingHistory',
+        meta: { title: '阅读历史' }
       },
       {
         path: 'messages',

@@ -543,13 +543,16 @@ class NovelService:
     def get_chapter(chapter_id: int, include_content: bool = True, user_id: Optional[int] = None) -> Dict[str, Any]:
         """Get chapter details with optional content"""
         # Get chapter from DAO
+        print(f"DEBUG - NovelService.get_chapter开始, chapter_id={chapter_id}, user_id={user_id}")
         chapter = NovelDAO.get_chapter_by_id(chapter_id)
         if not chapter:
+            print(f"DEBUG - 章节不存在: chapter_id={chapter_id}")
             return {'success': False, 'error': 'Chapter not found'}
             
         # Get novel for this chapter
         novel = NovelDAO.get_novel_by_id(chapter.novel_id)
         if not novel:
+            print(f"DEBUG - 小说不存在: novel_id={chapter.novel_id}")
             return {'success': False, 'error': 'Novel not found'}
             
         # Get adjacent chapters
@@ -557,7 +560,14 @@ class NovelService:
         
         # Update reading history if user is logged in
         if user_id:
-            InteractionDAO.update_reading_history(user_id, novel.id, chapter.id)
+            print(f"DEBUG - 准备更新阅读历史: user_id={user_id}, novel_id={novel.id}, chapter_id={chapter.id}")
+            try:
+                history = InteractionDAO.update_reading_history(user_id, novel.id, chapter.id)
+                print(f"DEBUG - 阅读历史更新成功: history_id={history.id if history else 'None'}")
+            except Exception as e:
+                print(f"DEBUG - 阅读历史更新失败: {str(e)}")
+        else:
+            print("DEBUG - 没有用户ID, 跳过阅读历史更新")
             
         # Update view count
         NovelDAO.increment_view_count(novel.id)

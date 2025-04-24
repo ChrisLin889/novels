@@ -66,15 +66,21 @@ def get_history():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
+    print(f"DEBUG - 获取阅读历史API: user_id={user_id}, page={page}, per_page={per_page}")
+    
     # Use service to get reading history
     result = InteractionService.get_reading_history(user_id, page, per_page)
     
-    return jsonify({
+    print(f"DEBUG - 阅读历史服务返回结果: total={result.get('total', 0)}, history_count={len(result.get('history', []))}")
+    
+    response = {
         'total': result['total'],
         'pages': result['pages'],
         'current_page': result['current_page'],
         'history': result['history']
-    }), 200
+    }
+    
+    return jsonify(response), 200
 
 @interaction_bp.route('/progress/<int:novel_id>', methods=['GET'])
 @jwt_required()

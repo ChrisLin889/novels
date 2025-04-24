@@ -154,6 +154,12 @@ export default {
       loading.value = true;
       error.value = '';
       
+      // 检查登录状态和token
+      const token = localStorage.getItem('token');
+      console.log('读取章节时检查token:', token ? `${token.substring(0, 15)}...` : '无token');
+      console.log('章节ID:', chapterId.value);
+      console.log('用户身份:', store.getters['user/userInfo']);
+      
       try {
         // 添加重试逻辑
         let attempts = 0;
@@ -167,9 +173,11 @@ export default {
               novelId: novelId.value,
               chapterId: chapterId.value
             });
+            console.log('章节内容API响应:', response);
             // 成功获取数据，跳出循环
             break;
           } catch (err) {
+            console.error(`章节内容获取失败 (尝试 ${attempts + 1}/${maxAttempts}):`, err);
             attempts++;
             if (attempts >= maxAttempts) {
               // 所有尝试都失败，抛出最后一个错误

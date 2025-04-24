@@ -46,7 +46,7 @@ export function getChapterList(novelId, params) {
  */
 export function getChapterContent(id) {
   return request({
-    url: `/novel/chapter/${id}`,
+    url: `/novel/chapters/${id}`,
     method: 'get'
   });
 }

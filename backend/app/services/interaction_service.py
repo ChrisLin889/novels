@@ -62,18 +62,48 @@ class InteractionService:
     @staticmethod
     def update_reading_history(user_id: int, novel_id: int, chapter_id: int) -> Dict[str, Any]:
         """Update user's reading history"""
+        print(f"\n=== InteractionService.update_reading_history ===")
+        print(f"参数: user_id={user_id}, novel_id={novel_id}, chapter_id={chapter_id}")
+        print(f"参数类型: user_id={type(user_id)}, novel_id={type(novel_id)}, chapter_id={type(chapter_id)}")
+        
+        # 校验参数
+        if not all([user_id, novel_id, chapter_id]):
+            print(f"错误: 参数不能为空 - user_id={user_id}, novel_id={novel_id}, chapter_id={chapter_id}")
+            return {'success': False, 'error': 'Invalid parameters - all IDs must be provided'}
+        
+        # 检查ID是否为整数
+        try:
+            user_id = int(user_id)
+            novel_id = int(novel_id)
+            chapter_id = int(chapter_id)
+        except (ValueError, TypeError):
+            print(f"错误: 参数必须能转换为整数")
+            return {'success': False, 'error': 'Invalid parameters - all IDs must be integers'}
+        
         # Check if novel and chapter exist
         novel = Novel.query.get(novel_id)
         chapter = Chapter.query.get(chapter_id)
         
+        print(f"检查小说和章节: novel存在={novel is not None}, chapter存在={chapter is not None}")
+        
         if not novel or not chapter or chapter.novel_id != novel_id:
+            print(f"错误: 小说或章节无效 - novel_id={novel_id}, chapter_id={chapter_id}")
+            print(f"章节所属小说ID: {chapter.novel_id if chapter else None}")
             return {'success': False, 'error': 'Invalid novel or chapter'}
         
-        history = InteractionDAO.update_reading_history(user_id, novel_id, chapter_id)
-        return {
-            'success': True,
-            'message': 'Reading history updated'
-        }
+        try:
+            history = InteractionDAO.update_reading_history(user_id, novel_id, chapter_id)
+            print(f"DAO操作成功: history_id={history.id if history else None}")
+            return {
+                'success': True,
+                'message': 'Reading history updated',
+                'history_id': history.id if history else None
+            }
+        except Exception as e:
+            import traceback
+            print(f"更新阅读历史出错: {str(e)}")
+            print(f"错误跟踪: {traceback.format_exc()}")
+            return {'success': False, 'error': f'Failed to update history: {str(e)}'}
     
     @staticmethod
     def get_reading_progress(user_id: int, novel_id: int) -> Dict[str, Any]:
@@ -119,8 +149,25 @@ class InteractionService:
     @staticmethod
     def get_reading_history(user_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
         """Get user's reading history"""
-        result = InteractionDAO.get_user_history(user_id, page, per_page)
-        return {'success': True, **result}
+        print(f"\n=== InteractionService.get_reading_history ===")
+        print(f"参数: user_id={user_id}, page={page}, per_page={per_page}")
+        
+        try:
+            result = InteractionDAO.get_user_history(user_id, page, per_page)
+            print(f"DAO返回结果: 历史记录数={len(result.get('history', []))}, 总记录数={result.get('total', 0)}")
+            return {'success': True, **result}
+        except Exception as e:
+            import traceback
+            print(f"获取阅读历史出错: {str(e)}")
+            print(f"错误跟踪: {traceback.format_exc()}")
+            return {
+                'success': False, 
+                'error': f'Failed to get reading history: {str(e)}',
+                'history': [],
+                'total': 0,
+                'pages': 0,
+                'current_page': page
+            }
     
     @staticmethod
     def add_comment(user_id: int, novel_id: int, chapter_id: Optional[int], content: str) -> Dict[str, Any]:

@@ -217,7 +217,7 @@ export function getUserCollection(params) {
  */
 export function getReadingHistory(params) {
   return request({
-    url: '/interaction/reading/history',
+    url: '/interaction/history',
     method: 'get',
     params
   });
@@ -230,7 +230,7 @@ export function getReadingHistory(params) {
  */
 export function getReadingProgress(novelId) {
   return request({
-    url: `/interaction/reading/progress/${novelId}`,
+    url: `/interaction/progress/${novelId}`,
     method: 'get'
   });
 } 
