@@ -276,4 +276,81 @@ export const scanContentForSensitiveWords = async () => {
     console.error('内容扫描失败:', error);
     throw error.response?.data?.error || '内容扫描失败';
   }
-}; 
+};
+
+// ======= 回收站功能 =======
+
+// 获取回收站中的小说
+export function getRecycledNovels(params) {
+  return request({
+    url: '/admin/recycle-bin/novels',
+    method: 'get',
+    params
+  });
+}
+
+// 获取回收站中的章节
+export function getRecycledChapters(params) {
+  return request({
+    url: '/admin/recycle-bin/chapters',
+    method: 'get',
+    params
+  });
+}
+
+// 获取回收站中的评论
+export function getRecycledComments(params) {
+  return request({
+    url: '/admin/recycle-bin/comments',
+    method: 'get',
+    params
+  });
+}
+
+// 还原小说
+export function restoreNovel(novelId) {
+  return request({
+    url: `/admin/recycle-bin/novels/${novelId}/restore`,
+    method: 'post'
+  });
+}
+
+// 还原章节
+export function restoreChapter(chapterId) {
+  return request({
+    url: `/admin/recycle-bin/chapters/${chapterId}/restore`,
+    method: 'post'
+  });
+}
+
+// 还原评论
+export function restoreComment(commentId) {
+  return request({
+    url: `/admin/recycle-bin/comments/${commentId}/restore`,
+    method: 'post'
+  });
+}
+
+// 永久删除回收站中的小说
+export function permanentlyDeleteNovel(novelId) {
+  return request({
+    url: `/admin/recycle-bin/novels/${novelId}/permanent`,
+    method: 'delete'
+  });
+}
+
+// 永久删除回收站中的章节
+export function permanentlyDeleteChapter(chapterId) {
+  return request({
+    url: `/admin/recycle-bin/chapters/${chapterId}/permanent`,
+    method: 'delete'
+  });
+}
+
+// 永久删除回收站中的评论
+export function permanentlyDeleteComment(commentId) {
+  return request({
+    url: `/admin/recycle-bin/comments/${commentId}/permanent`,
+    method: 'delete'
+  });
+} 

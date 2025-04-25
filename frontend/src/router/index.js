@@ -180,6 +180,12 @@ const routes = [
         name: 'AdminContent',
         component: AdminContent,
         meta: { title: '内容审核' }
+      },
+      {
+        path: 'recycle-bin',
+        name: 'RecycleBin',
+        component: () => import('@/views/admin/RecycleBin.vue'),
+        meta: { title: '内容回收站' }
       }
     ]
   },

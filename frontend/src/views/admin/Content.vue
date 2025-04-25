@@ -1,6 +1,12 @@
 <template>
   <div class="content-audit-container">
-    <h1 class="page-title">内容审核 - {{ contentTypeText }}</h1>
+    <div class="page-header">
+      <h1 class="page-title">内容审核 - {{ contentTypeText }}</h1>
+      <el-button type="warning" @click="goToRecycleBin">
+        <el-icon><Delete /></el-icon>
+        回收站
+      </el-button>
+    </div>
     
     <!-- 内容列表 -->
     <el-card class="list-card" v-loading="loading">
@@ -201,14 +207,19 @@
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Delete } from '@element-plus/icons-vue';
 
 export default {
   name: 'AdminContent',
+  components: {
+    Delete
+  },
   setup() {
     const store = useStore();
     const route = useRoute();
+    const router = useRouter();
     const rejectFormRef = ref(null);
     
     // 内容类型
@@ -382,6 +393,11 @@ export default {
       }
     };
     
+    // 跳转到回收站
+    const goToRecycleBin = () => {
+      router.push('/admin/recycle-bin');
+    };
+    
     return {
       contentType,
       contentTypeText,
@@ -406,7 +422,8 @@ export default {
       viewDetails,
       handleApprove,
       handleReject,
-      confirmReject
+      confirmReject,
+      goToRecycleBin
     };
   }
 };
@@ -415,6 +432,13 @@ export default {
 <style scoped>
 .content-audit-container {
   padding: 20px 0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
 .page-title {

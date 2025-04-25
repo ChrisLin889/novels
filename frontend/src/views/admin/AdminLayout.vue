@@ -51,6 +51,10 @@
             <el-icon><Reading /></el-icon>
             <span>内容审核</span>
           </el-menu-item>
+          <el-menu-item index="/admin/recycle-bin">
+            <el-icon><Delete /></el-icon>
+            <span>内容回收站</span>
+          </el-menu-item>
         </el-sub-menu>
       </el-menu>
     </div>
@@ -141,7 +145,8 @@ import {
   Bell, 
   DataLine,
   List,
-  ArrowDown
+  ArrowDown,
+  Delete
 } from '@element-plus/icons-vue';
 import { ElMessageBox } from 'element-plus';
 
@@ -158,7 +163,8 @@ export default {
     Bell, 
     DataLine,
     List,
-    ArrowDown
+    ArrowDown,
+    Delete
   },
   setup() {
     const store = useStore();
@@ -182,6 +188,7 @@ export default {
       if (routePath.includes('/admin/user-actions')) return '用户行为';
       if (routePath.includes('/admin/sensitive-words')) return '敏感词管理';
       if (routePath.includes('/admin/content')) return '内容审核';
+      if (routePath.includes('/admin/recycle-bin')) return '内容回收站';
       
       return '管理后台';
     });
