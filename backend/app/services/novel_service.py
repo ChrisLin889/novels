@@ -10,6 +10,7 @@ from app.services.permission_service import PermissionService
 from datetime import datetime
 from app.dao.novel_dao import NovelDAO
 from app.dao.interaction_dao import InteractionDAO
+from app.services.admin_service import AdminService
 
 class NovelService:
     """
@@ -289,13 +290,21 @@ class NovelService:
                 
             author_name = author.pen_name or user.username
             
-            # Create new novel using DAO
+            # 敏感词过滤和检查
+            has_sensitive, matches, filtered_intro = AdminService.filter_and_notify_sensitive_content(
+                content=intro,
+                user_id=user_id,
+                content_type='novel',
+                content_id=0  # 先设为0，小说创建后再更新
+            )
+            
+            # Create new novel using DAO with filtered intro
             novel = NovelDAO.create_novel(
                 title=title,
                 author_id=author.id,
                 author=author_name,
                 category=category,
-                intro=intro,
+                intro=filtered_intro,
                 cover=cover,
                 status='ongoing'
             )
@@ -307,7 +316,8 @@ class NovelService:
             return {
                 'success': True,
                 'novel_id': novel.id,
-                'novel': novel.to_dict()
+                'novel': novel.to_dict(),
+                'has_sensitive': has_sensitive
             }
         except Exception as e:
             db.session.rollback()
@@ -401,13 +411,27 @@ class NovelService:
             return {'success': False, 'error': 'Novel not found'}
         
         try:
-            # Create chapter using DAO
-            chapter = NovelDAO.create_chapter(novel_id, title, content, chapter_number)
+            # 获取作者对应的用户ID
+            author = Author.query.get(author_id)
+            if not author or not author.user_id:
+                return {'success': False, 'error': 'Author not found or not associated with user'}
+            
+            # 敏感词过滤和检查
+            has_sensitive, matches, filtered_content = AdminService.filter_and_notify_sensitive_content(
+                content=content,
+                user_id=author.user_id,
+                content_type='chapter',
+                content_id=0  # 先设为0，章节创建后再更新
+            )
+            
+            # Create chapter using DAO with filtered content
+            chapter = NovelDAO.create_chapter(novel_id, title, filtered_content, chapter_number)
             
             return {
                 'success': True,
                 'message': 'Chapter added successfully',
-                'chapter': chapter.to_dict()
+                'chapter': chapter.to_dict(),
+                'has_sensitive': has_sensitive
             }
         except Exception as e:
             db.session.rollback()

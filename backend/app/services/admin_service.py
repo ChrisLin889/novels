@@ -294,6 +294,36 @@ class AdminService:
         return has_sensitive, matches, filtered_content
     
     @staticmethod
+    def filter_and_notify_sensitive_content(content: str, user_id: int, 
+                                           content_type: str, content_id: int) -> Tuple[bool, List[Dict], str]:
+        """
+        检查内容中的敏感词并发送通知
+        
+        Args:
+            content: 要检查的内容
+            user_id: 内容所有者ID
+            content_type: 内容类型 (novel, chapter, comment)
+            content_id: 内容ID
+            
+        Returns:
+            Tuple of (has_sensitive, word_matches, filtered_content)
+        """
+        # 调用现有的敏感词过滤函数
+        has_sensitive, matches, filtered_content = AdminService.filter_sensitive_content(content)
+        
+        # 如果检测到敏感词，发送通知
+        if has_sensitive and matches:
+            from app.services.notification_service import NotificationService
+            NotificationService.create_sensitive_word_notification(
+                user_id=user_id,
+                content_type=content_type,
+                content_id=content_id,
+                matches=matches
+            )
+        
+        return has_sensitive, matches, filtered_content
+    
+    @staticmethod
     def get_sensitive_words(category: Optional[str] = None, page: int = 1, per_page: int = 50) -> Dict:
         """
         Get sensitive words with pagination

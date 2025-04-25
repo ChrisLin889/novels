@@ -879,3 +879,28 @@ schedule==1.1.0  # 或最新版本
 1. 用户通知列表页面
 2. 通知数量提示和已读标记功能
 3. 管理后台的手动敏感词扫描功能
+
+
+### 已完成实施:
+
+1. ✅ 创建用户通知模型 (UserNotification)
+2. ✅ 实现通知DAO和服务层
+3. ✅ 修改敏感词过滤服务，添加通知功能
+4. ✅ 添加批量扫描任务
+5. ✅ 添加定时任务调度器
+6. ✅ 更新requirements.txt，添加schedule依赖
+7. ✅ 应用启动时启动调度器 (通过独立脚本启动)
+8. ✅ 后端通知API接口注册 (导入notification蓝图)
+9. ✅ 管理员手动扫描接口注册
+10. ✅ 前端API调用模块 (notification.js, admin.js)
+11. ✅ 前端管理员扫描界面 (SensitiveWords.vue)
+12. ✅ 修改评论/小说/章节添加功能，添加实时敏感词检测 (interaction_service.py, novel_service.py)
+
+### 待完成:
+
+- 无
+
+### 实施中遇到的问题:
+
+1. 已创建独立脚本backend/scripts/setup_scheduler.py用于启动调度器，解决了无法在应用启动时自动启动的问题。
+2. 蓝图注册和API endpoint添加已完成。

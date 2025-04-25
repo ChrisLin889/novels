@@ -262,63 +262,18 @@ export const processAuthorApplication = async (applicationId, data) => {
 };
 
 /**
- * 获取爬取的小说列表
- * @param {Object} params - 查询参数
- * @param {number} params.page - 页码
- * @param {number} params.per_page - 每页数量
- * @param {string} params.status - 状态筛选（可选）
+ * 触发内容敏感词扫描和替换
  * @returns {Promise}
  */
-export const getCrawledNovels = async (params = {}) => {
+export const scanContentForSensitiveWords = async () => {
   try {
     const response = await request({
-      url: '/admin/crawled-novels',
-      method: 'get',
-      params
+      url: '/admin/content-scan',
+      method: 'post'
     });
     return response;
   } catch (error) {
-    console.error('获取爬取的小说列表失败:', error);
-    throw error.response?.data?.error || '获取爬取的小说列表失败';
-  }
-};
-
-/**
- * 获取爬取的小说章节
- * @param {number} novelId - 爬取的小说ID
- * @returns {Promise}
- */
-export const getCrawledChapters = async (novelId) => {
-  try {
-    const response = await request({
-      url: `/admin/crawled-novels/${novelId}/chapters`,
-      method: 'get'
-    });
-    return response;
-  } catch (error) {
-    console.error('获取爬取的小说章节失败:', error);
-    throw error.response?.data?.error || '获取爬取的小说章节失败';
-  }
-};
-
-/**
- * 管理爬取的小说
- * @param {number} novelId - 爬取的小说ID
- * @param {Object} data - 管理数据
- * @param {string} data.action - 操作：'approve' 或 'reject'
- * @param {string} data.reason - 拒绝原因（action为reject时必填）
- * @returns {Promise}
- */
-export const manageCrawledNovel = async (novelId, data) => {
-  try {
-    const response = await request({
-      url: `/admin/crawled-novels/${novelId}`,
-      method: 'post',
-      data
-    });
-    return response;
-  } catch (error) {
-    console.error('管理爬取的小说失败:', error);
-    throw error.response?.data?.error || '管理爬取的小说失败';
+    console.error('内容扫描失败:', error);
+    throw error.response?.data?.error || '内容扫描失败';
   }
 }; 

@@ -20,6 +20,7 @@
         </el-form-item>
         <el-form-item>
           <el-button type="success" @click="handleAddWord">添加敏感词</el-button>
+          <el-button type="warning" @click="handleContentScan" :loading="scanning">扫描并更新现有内容</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -135,6 +136,7 @@ export default {
     const currentPage = ref(1);
     const pageSize = ref(50);
     const submitting = ref(false);
+    const scanning = ref(false);
     
     // 筛选表单
     const filterForm = reactive({
@@ -299,6 +301,21 @@ export default {
       }
     };
     
+    // 扫描并更新现有内容
+    const handleContentScan = async () => {
+      try {
+        scanning.value = true;
+        await store.dispatch('admin/scanAndUpdateContent');
+        ElMessage.success('内容扫描完成并更新成功');
+        loadSensitiveWords();
+      } catch (error) {
+        console.error('扫描并更新内容失败:', error);
+        ElMessage.error('扫描并更新内容失败: ' + error);
+      } finally {
+        scanning.value = false;
+      }
+    };
+    
     return {
       loading,
       sensitiveWords,
@@ -311,6 +328,7 @@ export default {
       addRules,
       addFormRef,
       submitting,
+      scanning,
       formatDate,
       getCategoryTag,
       getLevelTag,
@@ -321,7 +339,8 @@ export default {
       handleCurrentChange,
       handleAddWord,
       submitAddWord,
-      handleDeleteWord
+      handleDeleteWord,
+      handleContentScan
     };
   }
 };

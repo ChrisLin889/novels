@@ -51,10 +51,6 @@
             <el-icon><Reading /></el-icon>
             <span>内容审核</span>
           </el-menu-item>
-          <el-menu-item index="/admin/crawled-novels">
-            <el-icon><Download /></el-icon>
-            <span>爬取小说</span>
-          </el-menu-item>
         </el-sub-menu>
       </el-menu>
     </div>
@@ -140,7 +136,6 @@ import {
   User, 
   Reading, 
   Warning, 
-  Download, 
   Fold, 
   Expand, 
   Bell, 
@@ -158,7 +153,6 @@ export default {
     User, 
     Reading, 
     Warning, 
-    Download, 
     Fold, 
     Expand, 
     Bell, 
@@ -188,7 +182,6 @@ export default {
       if (routePath.includes('/admin/user-actions')) return '用户行为';
       if (routePath.includes('/admin/sensitive-words')) return '敏感词管理';
       if (routePath.includes('/admin/content')) return '内容审核';
-      if (routePath.includes('/admin/crawled-novels')) return '爬取小说';
       
       return '管理后台';
     });

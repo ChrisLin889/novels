@@ -7,6 +7,7 @@ from sqlalchemy import desc
 import datetime
 from app.services.permission_service import PermissionService
 from app.dao.interaction_dao import InteractionDAO
+from app.services.admin_service import AdminService
 
 class InteractionService:
     """
@@ -183,8 +184,22 @@ class InteractionService:
             if not chapter or chapter.novel_id != novel_id:
                 return {'success': False, 'error': 'Invalid chapter'}
         
-        comment = InteractionDAO.add_comment(user_id, novel_id, chapter_id, content)
+        # 敏感词过滤和检查
+        has_sensitive, matches, filtered_content = AdminService.filter_and_notify_sensitive_content(
+            content=content,
+            user_id=user_id, 
+            content_type='comment',
+            content_id=0  # 先设为0，评论创建后再更新
+        )
+        
+        # 使用过滤后的内容创建评论
+        comment = InteractionDAO.add_comment(user_id, novel_id, chapter_id, filtered_content)
         user = User.query.get(user_id)
+        
+        # 如果有敏感词匹配，更新通知中的评论ID
+        if has_sensitive and matches:
+            # 这里可以通过事件或其他方式更新通知内容的ID，暂时不实现
+            pass
         
         return {
             'success': True,
@@ -197,7 +212,8 @@ class InteractionService:
                     'id': user.id,
                     'username': user.username,
                     'avatar': user.avatar
-                }
+                },
+                'has_sensitive': has_sensitive
             }
         }
     

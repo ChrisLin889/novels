@@ -10,7 +10,6 @@ import AdminUsers from '@/views/admin/Users.vue';
 import AdminUserActions from '@/views/admin/UserActions.vue';
 import AdminSensitiveWords from '@/views/admin/SensitiveWords.vue';
 import AdminContent from '@/views/admin/Content.vue';
-import AdminCrawledNovels from '@/views/admin/CrawledNovels.vue';
 
 // Lazy loading routes for better performance
 const UserCenter = () => import('@/views/UserCenter.vue');
@@ -181,12 +180,6 @@ const routes = [
         name: 'AdminContent',
         component: AdminContent,
         meta: { title: '内容审核' }
-      },
-      {
-        path: 'crawled-novels',
-        name: 'AdminCrawledNovels',
-        component: AdminCrawledNovels,
-        meta: { title: '爬取小说' }
       }
     ]
   },

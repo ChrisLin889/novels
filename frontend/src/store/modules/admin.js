@@ -14,25 +14,20 @@ const state = {
     chapter: [],
     comment: []
   },
-  crawledNovels: [],
-  crawledChapters: [],
   pagination: {
     users: { total: 0, totalPages: 0, page: 1, perPage: 20 },
     userActions: { total: 0, totalPages: 0, page: 1, perPage: 20 },
     sensitiveWords: { total: 0, totalPages: 0, page: 1, perPage: 50 },
     pendingNovel: { total: 0, totalPages: 0, page: 1, perPage: 20 },
     pendingChapter: { total: 0, totalPages: 0, page: 1, perPage: 20 },
-    pendingComment: { total: 0, totalPages: 0, page: 1, perPage: 20 },
-    crawledNovels: { total: 0, totalPages: 0, page: 1, perPage: 20 }
+    pendingComment: { total: 0, totalPages: 0, page: 1, perPage: 20 }
   },
   loading: {
     dashboard: false,
     users: false,
     userActions: false,
     sensitiveWords: false,
-    pendingContent: false,
-    crawledNovels: false,
-    crawledChapters: false
+    pendingContent: false
   },
   error: null
 };
@@ -51,9 +46,6 @@ const getters = {
     const key = `pending${type.charAt(0).toUpperCase() + type.slice(1)}`;
     return state.pagination[key] || { total: 0, totalPages: 0, page: 1, perPage: 20 };
   },
-  crawledNovelsList: state => state.crawledNovels,
-  crawledNovelsPagination: state => state.pagination.crawledNovels,
-  crawledChaptersList: state => state.crawledChapters,
   error: state => state.error
 };
 
@@ -203,49 +195,21 @@ const actions = {
     }
   },
 
-  // 获取爬取的小说列表
-  async fetchCrawledNovels({ commit }, params = {}) {
-    commit('SET_LOADING', { key: 'crawledNovels', value: true });
+  // 扫描并更新内容
+  async scanAndUpdateContent({ commit }) {
+    commit('SET_LOADING', { key: 'contentScan', value: true });
     commit('CLEAR_ERROR');
+    
     try {
-      const data = await adminApi.getCrawledNovels(params);
-      commit('SET_CRAWLED_NOVELS', data);
-      return data;
-    } catch (error) {
-      commit('SET_ERROR', error);
-      throw error;
-    } finally {
-      commit('SET_LOADING', { key: 'crawledNovels', value: false });
-    }
-  },
-
-  // 获取爬取的小说章节
-  async fetchCrawledChapters({ commit }, novelId) {
-    commit('SET_LOADING', { key: 'crawledChapters', value: true });
-    commit('CLEAR_ERROR');
-    try {
-      const data = await adminApi.getCrawledChapters(novelId);
-      commit('SET_CRAWLED_CHAPTERS', data);
-      return data;
-    } catch (error) {
-      commit('SET_ERROR', error);
-      throw error;
-    } finally {
-      commit('SET_LOADING', { key: 'crawledChapters', value: false });
-    }
-  },
-
-  // 管理爬取的小说
-  async manageCrawledNovel({ commit, dispatch }, { novelId, data }) {
-    commit('CLEAR_ERROR');
-    try {
-      const result = await adminApi.manageCrawledNovel(novelId, data);
-      // 刷新爬取的小说列表
-      dispatch('fetchCrawledNovels', { page: state.pagination.crawledNovels.page });
+      const result = await adminApi.scanContentForSensitiveWords();
+      
+      // 显示结果信息
       return result;
     } catch (error) {
       commit('SET_ERROR', error);
       throw error;
+    } finally {
+      commit('SET_LOADING', { key: 'contentScan', value: false });
     }
   }
 };
@@ -311,20 +275,6 @@ const mutations = {
       page: data.page || 1,
       perPage: data.per_page || 20
     };
-  },
-  
-  SET_CRAWLED_NOVELS(state, data) {
-    state.crawledNovels = data.novels || [];
-    state.pagination.crawledNovels = {
-      total: data.total || 0,
-      totalPages: data.total_pages || 0,
-      page: data.page || 1,
-      perPage: data.per_page || 20
-    };
-  },
-  
-  SET_CRAWLED_CHAPTERS(state, data) {
-    state.crawledChapters = data.chapters || [];
   }
 };
 

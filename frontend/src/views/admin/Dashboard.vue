@@ -128,14 +128,6 @@
             </el-card>
           </router-link>
         </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <router-link to="/admin/crawled-novels">
-            <el-card class="quick-link-item" shadow="hover">
-              <el-icon :size="32"><Download /></el-icon>
-              <div class="link-title">爬取小说管理</div>
-            </el-card>
-          </router-link>
-        </el-col>
       </el-row>
     </el-card>
   </div>
@@ -145,7 +137,7 @@
 import { computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
-import { InfoFilled, User, Reading, Warning, Download } from '@element-plus/icons-vue';
+import { InfoFilled, User, Reading, Warning } from '@element-plus/icons-vue';
 
 export default {
   name: 'AdminDashboard',
@@ -153,8 +145,7 @@ export default {
     InfoFilled,
     User,
     Reading,
-    Warning,
-    Download
+    Warning
   },
   setup() {
     const store = useStore();

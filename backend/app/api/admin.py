@@ -419,4 +419,22 @@ def process_application(application_id):
     return jsonify({
         'message': result['message'],
         'application': result['application']
-    }), 200 
+    }), 200
+
+@admin_bp.route('/content-scan', methods=['POST'])
+@admin_required
+def scan_content():
+    """
+    手动触发内容敏感词扫描和替换
+    """
+    from app.utils.tasks import scan_and_update_content
+    
+    # 执行扫描
+    result = scan_and_update_content()
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['error']
+        }), 500
+    
+    return jsonify(result), 200 
