@@ -25,6 +25,21 @@
    - [6.1 作者相关管理](#61-作者相关管理)
    - [6.2 小说相关管理](#62-小说相关管理)
 7. [附录：敏感词级别说明](#7-附录敏感词级别说明)
+8. [回收站管理](#8-回收站管理)
+   - [8.1 获取回收站小说列表](#81-获取回收站小说列表)
+   - [8.2 获取回收站章节列表](#82-获取回收站章节列表)
+   - [8.3 获取回收站评论列表](#83-获取回收站评论列表)
+   - [8.4 还原小说](#84-还原小说)
+   - [8.5 还原章节](#85-还原章节)
+   - [8.6 还原评论](#86-还原评论)
+   - [8.7 永久删除小说](#87-永久删除小说)
+   - [8.8 永久删除章节](#88-永久删除章节)
+   - [8.9 永久删除评论](#89-永久删除评论)
+9. [敏感词扫描及通知](#9-敏感词扫描及通知)
+   - [9.1 手动触发内容扫描](#91-手动触发内容扫描)
+   - [9.2 获取用户通知列表](#92-获取用户通知列表)
+   - [9.3 标记通知为已读](#93-标记通知为已读)
+   - [9.4 标记所有通知为已读](#94-标记所有通知为已读)
 
 ## 1. 仪表盘统计
 
@@ -606,4 +621,328 @@
 | 401      | 未授权（未登录）           | 确保请求中包含有效的授权令牌                 |
 | 403      | 权限不足                   | 确认当前用户是否具有管理员权限               |
 | 404      | 资源不存在                 | 检查请求的资源ID是否存在                     |
-| 500      | 服务器内部错误             | 请联系管理员，并提供错误发生时的详细信息     | 
+| 500      | 服务器内部错误             | 请联系管理员，并提供错误发生时的详细信息     |
+
+## 8. 回收站管理
+
+> **说明**：回收站功能用于管理被删除的内容（小说、章节、评论）。内容删除后先移至回收站，管理员可以查看回收站中的内容，并选择还原或永久删除。
+
+### 8.1 获取回收站小说列表
+
+- **URL**: `/api/admin/recycle-bin/novels`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码（默认: 1）
+  - `per_page`: 每页数量（默认: 20, 最大: 100）
+  - `title`: 标题筛选（可选）
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "novels": [
+    {
+      "id": 1,
+      "title": "小说标题",
+      "author_name": "作者名",
+      "deleted_at": "2023-01-01T00:00:00"
+    }
+  ],
+  "total": 10,
+  "page": 1,
+  "per_page": 20,
+  "total_pages": 1
+}
+```
+
+### 8.2 获取回收站章节列表
+
+- **URL**: `/api/admin/recycle-bin/chapters`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码（默认: 1）
+  - `per_page`: 每页数量（默认: 20, 最大: 100）
+  - `novel_id`: 小说ID筛选（可选）
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "chapters": [
+    {
+      "id": 1,
+      "title": "章节标题",
+      "novel_id": 5,
+      "novel_title": "小说标题",
+      "deleted_at": "2023-01-01T00:00:00"
+    }
+  ],
+  "total": 10,
+  "page": 1,
+  "per_page": 20,
+  "total_pages": 1
+}
+```
+
+### 8.3 获取回收站评论列表
+
+- **URL**: `/api/admin/recycle-bin/comments`
+- **方法**: `GET`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码（默认: 1）
+  - `per_page`: 每页数量（默认: 20, 最大: 100）
+  - `novel_id`: 小说ID筛选（可选）
+  - `chapter_id`: 章节ID筛选（可选）
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "comments": [
+    {
+      "id": 1,
+      "content": "评论内容",
+      "user": {
+        "id": 2,
+        "username": "用户名",
+        "avatar": "头像URL"
+      },
+      "novel_id": 5,
+      "novel_title": "小说标题",
+      "chapter_id": 10,
+      "chapter_title": "章节标题",
+      "deleted_at": "2023-01-01T00:00:00"
+    }
+  ],
+  "total": 10,
+  "page": 1,
+  "per_page": 20,
+  "total_pages": 1
+}
+```
+
+### 8.4 还原小说
+
+- **URL**: `/api/admin/recycle-bin/novels/{novel_id}/restore`
+- **方法**: `POST`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `novel_id`: 小说ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "小说已从回收站还原"
+}
+```
+
+- **错误响应** (400 Bad Request):
+
+```json
+{
+  "error": "ID为{novel_id}的小说不存在"
+}
+```
+
+### 8.5 还原章节
+
+- **URL**: `/api/admin/recycle-bin/chapters/{chapter_id}/restore`
+- **方法**: `POST`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `chapter_id`: 章节ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "章节已从回收站还原"
+}
+```
+
+### 8.6 还原评论
+
+- **URL**: `/api/admin/recycle-bin/comments/{comment_id}/restore`
+- **方法**: `POST`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `comment_id`: 评论ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "评论已从回收站还原"
+}
+```
+
+### 8.7 永久删除小说
+
+- **URL**: `/api/admin/recycle-bin/novels/{novel_id}/permanent`
+- **方法**: `DELETE`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `novel_id`: 小说ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "小说已永久删除"
+}
+```
+
+### 8.8 永久删除章节
+
+- **URL**: `/api/admin/recycle-bin/chapters/{chapter_id}/permanent`
+- **方法**: `DELETE`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `chapter_id`: 章节ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "章节已永久删除"
+}
+```
+
+### 8.9 永久删除评论
+
+- **URL**: `/api/admin/recycle-bin/comments/{comment_id}/permanent`
+- **方法**: `DELETE`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `comment_id`: 评论ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "评论已永久删除"
+}
+```
+
+## 9. 敏感词扫描及通知
+
+> **说明**：敏感词扫描功能用于定期扫描平台内容中的敏感词，自动替换并发送通知给内容所有者。
+
+### 9.1 手动触发内容扫描
+
+- **URL**: `/api/admin/content-scan`
+- **方法**: `POST`
+- **权限**: 管理员
+- **请求头**: `Authorization: Bearer {token}`
+- **描述**: 手动触发平台内容敏感词扫描和替换，同时向内容所有者发送通知
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "results": {
+    "novel": {
+      "total": 100,
+      "updated": 5
+    },
+    "chapter": {
+      "total": 500,
+      "updated": 15
+    },
+    "comment": {
+      "total": 1000,
+      "updated": 23
+    }
+  },
+  "timestamp": "2023-01-01T00:00:00"
+}
+```
+
+### 9.2 获取用户通知列表
+
+- **URL**: `/api/notification`
+- **方法**: `GET`
+- **权限**: 需要登录
+- **请求头**: `Authorization: Bearer {token}`
+- **查询参数**:
+  - `page`: 页码 (默认: 1)
+  - `per_page`: 每页数量 (默认: 20，最大: 100)
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "notifications": [
+    {
+      "id": 1,
+      "title": "您的评论中包含敏感词",
+      "content": "系统检测到您的评论（ID: 123）中包含以下敏感词：敏感词1（低级）、敏感词2（中级）。请注意遵守社区规范，谨慎用词。",
+      "notification_type": "sensitive_word",
+      "related_object_type": "comment",
+      "related_object_id": 123,
+      "is_read": false,
+      "created_at": "2023-01-01T00:00:00"
+    }
+  ],
+  "total": 10,
+  "page": 1,
+  "per_page": 20,
+  "total_pages": 1,
+  "unread_count": 5
+}
+```
+
+### 9.3 标记通知为已读
+
+- **URL**: `/api/notification/{notification_id}/read`
+- **方法**: `POST`
+- **权限**: 需要登录
+- **请求头**: `Authorization: Bearer {token}`
+- **路径参数**:
+  - `notification_id`: 通知ID
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "通知已标记为已读"
+}
+```
+
+### 9.4 标记所有通知为已读
+
+- **URL**: `/api/notification/read-all`
+- **方法**: `POST`
+- **权限**: 需要登录
+- **请求头**: `Authorization: Bearer {token}`
+
+- **成功响应** (200 OK):
+
+```json
+{
+  "success": true,
+  "message": "所有通知已标记为已读"
+}
+``` 
