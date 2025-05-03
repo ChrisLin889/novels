@@ -243,7 +243,7 @@ export const getAuthorApplications = async (params = {}) => {
  * 处理作者申请
  * @param {number} applicationId - 申请ID
  * @param {Object} data - 处理数据
- * @param {string} data.status - 状态：'approved' 或 'rejected'
+ * @param {string} data.action - 操作：'approve' 或 'reject'
  * @param {string} data.comment - 处理意见（可选）
  * @returns {Promise}
  */

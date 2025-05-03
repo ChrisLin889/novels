@@ -10,6 +10,7 @@ import AdminUsers from '@/views/admin/Users.vue';
 import AdminUserActions from '@/views/admin/UserActions.vue';
 import AdminSensitiveWords from '@/views/admin/SensitiveWords.vue';
 import AdminContent from '@/views/admin/Content.vue';
+import AdminAuthorApplications from '@/views/admin/AuthorApplications.vue';
 
 // Lazy loading routes for better performance
 const UserCenter = () => import('@/views/UserCenter.vue');
@@ -186,6 +187,12 @@ const routes = [
         name: 'RecycleBin',
         component: () => import('@/views/admin/RecycleBin.vue'),
         meta: { title: '内容回收站' }
+      },
+      {
+        path: 'author-applications',
+        name: 'AdminAuthorApplications',
+        component: AdminAuthorApplications,
+        meta: { title: '作者申请审核' }
       }
     ]
   },

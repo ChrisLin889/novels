@@ -56,6 +56,11 @@
             <span>内容回收站</span>
           </el-menu-item>
         </el-sub-menu>
+        
+        <el-menu-item index="/admin/author-applications">
+          <el-icon><EditPen /></el-icon>
+          <span>作者申请审核</span>
+        </el-menu-item>
       </el-menu>
     </div>
     
@@ -146,7 +151,8 @@ import {
   DataLine,
   List,
   ArrowDown,
-  Delete
+  Delete,
+  EditPen
 } from '@element-plus/icons-vue';
 import { ElMessageBox } from 'element-plus';
 
@@ -164,7 +170,8 @@ export default {
     DataLine,
     List,
     ArrowDown,
-    Delete
+    Delete,
+    EditPen
   },
   setup() {
     const store = useStore();
@@ -189,6 +196,7 @@ export default {
       if (routePath.includes('/admin/sensitive-words')) return '敏感词管理';
       if (routePath.includes('/admin/content')) return '内容审核';
       if (routePath.includes('/admin/recycle-bin')) return '内容回收站';
+      if (routePath.includes('/admin/author-applications')) return '作者申请审核';
       
       return '管理后台';
     });

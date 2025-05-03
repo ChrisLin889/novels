@@ -16,11 +16,8 @@ request.interceptors.request.use(
   config => {
     console.log('发送请求:', config.url, '参数:', config.params || config.data);
     
-    // 确保URL正确
-    if (config.url.startsWith('/api/')) {
-      // 已经有 /api 前缀，移除重复的前缀
-      config.url = config.url.replace('/api', '');
-    }
+    // 不做URL前缀处理，保持一致性
+    // 注意：baseURL会自动添加/api前缀，所以使用request时不需要在url中包含/api
     
     const token = localStorage.getItem('token');
     if (token) {

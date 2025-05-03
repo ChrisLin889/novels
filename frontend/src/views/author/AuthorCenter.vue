@@ -13,6 +13,9 @@
             <h3>{{ username }}</h3>
             <p>{{ user?.email || '' }}</p>
             <el-tag type="success">{{ user?.role || '' }}</el-tag>
+            <div class="action-buttons">
+              <el-button type="danger" @click="handleResignAuthor" size="small" style="margin-top: 15px;">注销作者身份</el-button>
+            </div>
             <div v-if="debug" class="debug-info">
               <p>User state: {{ JSON.stringify(user) }}</p>
             </div>
@@ -135,13 +138,15 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getAuthorStats, getMyNovels, addNovel, updateNovel, deleteNovel } from '@/api/author'
+import { getAuthorStats, getMyNovels, addNovel, updateNovel, deleteNovel, resignAuthor } from '@/api/author'
 
 export default {
   name: 'AuthorCenter',
   setup() {
     const store = useStore()
+    const router = useRouter()
     
     // 添加state getter以解决Vuex状态更新问题 (GitHub issue: vuejs/vuex#2046)
     const storeState = computed(() => store.state)
@@ -435,6 +440,45 @@ export default {
       return (isJPG || isPNG) && isLt2M
     }
 
+    // 处理注销作者身份
+    const handleResignAuthor = async () => {
+      try {
+        await ElMessageBox.confirm(
+          '确定要注销作者身份吗？注销后将无法发布新小说，已发布的小说不会被删除。',
+          '警告',
+          {
+            confirmButtonText: '确定注销',
+            cancelButtonText: '取消',
+            type: 'warning',
+            distinguishCancelAndClose: true
+          }
+        )
+        
+        // 调用注销API
+        await resignAuthor()
+        
+        ElMessage.success('已成功注销作者身份')
+        
+        // 更新用户状态
+        if (user.value) {
+          const updatedUser = {...user.value, role: 'user'};
+          store.dispatch('user/setUser', updatedUser);
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+        
+        // 跳转到首页
+        setTimeout(() => {
+          router.push('/');
+        }, 1500);
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('注销作者身份失败:', error);
+          const errorMessage = error.response?.data?.error || error.message || '注销作者身份失败';
+          ElMessage.error(errorMessage);
+        }
+      }
+    }
+
     onMounted(() => {
       console.log('AuthorCenter mounted, user:', user.value)
       loadStats()
@@ -461,7 +505,8 @@ export default {
       handleDeleteNovel,
       showChapterManagement,
       handleCoverSuccess,
-      beforeCoverUpload
+      beforeCoverUpload,
+      handleResignAuthor
     }
   }
 }

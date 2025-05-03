@@ -114,4 +114,15 @@ export function changePassword(data) {
     method: 'put',
     data
   })
+}
+
+/**
+ * 注销作者身份
+ * @returns {Promise}
+ */
+export function resignAuthor() {
+  return request({
+    url: '/author/resign',
+    method: 'post'
+  })
 } 
