@@ -22,6 +22,9 @@ class Novel(db.Model):
     collection_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # 添加回收站功能所需字段
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     
     # Relationships
     chapters = db.relationship('Chapter', backref='novel', lazy='dynamic', cascade='all, delete-orphan')
@@ -30,7 +33,7 @@ class Novel(db.Model):
                          backref=db.backref('novels', lazy='dynamic'))
     
     def to_dict(self):
-        return {
+        result = {
             'id': self.id,
             'title': self.title,
             'author': self.author,  # 使用作者名称
@@ -45,8 +48,14 @@ class Novel(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
             'chapter_count': self.chapters.count(),
-            'tags': [tag.to_dict() for tag in self.tags]
+            'tags': [tag.to_dict() for tag in self.tags],
+            'is_deleted': self.is_deleted
         }
+        
+        if self.deleted_at:
+            result['deleted_at'] = self.deleted_at.isoformat()
+            
+        return result
 
 class Chapter(db.Model):
     __tablename__ = 'chapter'
@@ -59,6 +68,9 @@ class Chapter(db.Model):
     word_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # 添加回收站功能所需字段
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     
     def to_dict(self, include_content=False):
         result = {
@@ -67,10 +79,14 @@ class Chapter(db.Model):
             'chapter_number': self.chapter_number,
             'title': self.title,
             'word_count': self.word_count,
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'is_deleted': self.is_deleted
         }
         
         if include_content:
             result['content'] = self.content
+            
+        if self.deleted_at:
+            result['deleted_at'] = self.deleted_at.isoformat()
             
         return result

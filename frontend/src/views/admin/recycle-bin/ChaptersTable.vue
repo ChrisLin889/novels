@@ -90,7 +90,7 @@ export default {
     },
     fetchNovels() {
       getAllNovels().then(response => {
-        this.novels = response.data.novels || [];
+        this.novels = response.novels || [];
       }).catch(error => {
         console.error('获取小说列表失败:', error);
       });
@@ -108,8 +108,8 @@ export default {
       }
       
       getRecycledChapters(params).then(response => {
-        this.chapters = response.data.chapters;
-        this.total = response.data.total;
+        this.chapters = response.chapters;
+        this.total = response.total;
         this.loading = false;
       }).catch(error => {
         console.error('获取回收站章节失败:', error);
@@ -136,7 +136,7 @@ export default {
         type: 'warning'
       }).then(() => {
         restoreChapter(row.id).then(response => {
-          this.$message.success(response.data.message || '章节已成功还原');
+          this.$message.success(response.message || '章节已成功还原');
           this.fetchData();
         }).catch(error => {
           console.error('还原章节失败:', error);
@@ -153,7 +153,7 @@ export default {
         type: 'danger'
       }).then(() => {
         permanentlyDeleteChapter(row.id).then(response => {
-          this.$message.success(response.data.message || '章节已永久删除');
+          this.$message.success(response.message || '章节已永久删除');
           this.fetchData();
         }).catch(error => {
           console.error('永久删除章节失败:', error);

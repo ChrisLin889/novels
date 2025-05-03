@@ -437,4 +437,270 @@ def scan_content():
             'error': result['error']
         }), 500
     
-    return jsonify(result), 200 
+    return jsonify(result), 200
+
+# ====== Recycle Bin ======
+
+@admin_bp.route('/recycle-bin/novels', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_recycled_novels():
+    """
+    Get all novels in recycle bin (paginated)
+    
+    GET params:
+    - page: Page number (default: 1)
+    - per_page: Items per page (default: 20)
+    - title: Title filter (optional)
+    """
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 20)), 100)
+    except ValueError:
+        return jsonify({
+            'error': 'Invalid pagination parameters'
+        }), 400
+    
+    title_filter = request.args.get('title')
+    
+    result = AdminService.get_recycled_novels(page=page, per_page=per_page, title_filter=title_filter)
+    
+    return jsonify(result)
+
+@admin_bp.route('/recycle-bin/chapters', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_recycled_chapters():
+    """
+    Get all chapters in recycle bin (paginated)
+    
+    GET params:
+    - novel_id: Novel ID filter (optional)
+    - page: Page number (default: 1)
+    - per_page: Items per page (default: 20)
+    """
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 20)), 100)
+        novel_id = request.args.get('novel_id')
+        if novel_id:
+            novel_id = int(novel_id)
+    except ValueError:
+        return jsonify({
+            'error': 'Invalid parameters'
+        }), 400
+    
+    result = AdminService.get_recycled_chapters(novel_id=novel_id, page=page, per_page=per_page)
+    
+    return jsonify(result)
+
+@admin_bp.route('/recycle-bin/comments', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_recycled_comments():
+    """
+    Get all comments in recycle bin (paginated)
+    
+    GET params:
+    - novel_id: Novel ID filter (optional)
+    - chapter_id: Chapter ID filter (optional)
+    - page: Page number (default: 1)
+    - per_page: Items per page (default: 20)
+    """
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 20)), 100)
+        
+        novel_id = request.args.get('novel_id')
+        if novel_id:
+            novel_id = int(novel_id)
+            
+        chapter_id = request.args.get('chapter_id')
+        if chapter_id:
+            chapter_id = int(chapter_id)
+    except ValueError:
+        return jsonify({
+            'error': 'Invalid parameters'
+        }), 400
+    
+    result = AdminService.get_recycled_comments(
+        novel_id=novel_id, 
+        chapter_id=chapter_id, 
+        page=page, 
+        per_page=per_page
+    )
+    
+    return jsonify(result)
+
+@admin_bp.route('/recycle-bin/novels/<int:novel_id>/restore', methods=['POST'])
+@jwt_required()
+@admin_required
+def restore_novel(novel_id):
+    """
+    Restore a novel and its associated content from recycle bin
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.restore_novel(admin_id, novel_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
+@admin_bp.route('/recycle-bin/chapters/<int:chapter_id>/restore', methods=['POST'])
+@jwt_required()
+@admin_required
+def restore_chapter(chapter_id):
+    """
+    Restore a chapter and its associated comments from recycle bin
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.restore_chapter(admin_id, chapter_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
+@admin_bp.route('/recycle-bin/comments/<int:comment_id>/restore', methods=['POST'])
+@jwt_required()
+@admin_required
+def restore_comment(comment_id):
+    """
+    Restore a comment from recycle bin
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.restore_comment(admin_id, comment_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
+@admin_bp.route('/recycle-bin/novels/<int:novel_id>/permanent', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def permanently_delete_novel(novel_id):
+    """
+    Permanently delete a novel from recycle bin
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.permanently_delete_novel(admin_id, novel_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
+@admin_bp.route('/recycle-bin/chapters/<int:chapter_id>/permanent', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def permanently_delete_chapter(chapter_id):
+    """
+    Permanently delete a chapter from recycle bin
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.permanently_delete_chapter(admin_id, chapter_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
+@admin_bp.route('/recycle-bin/comments/<int:comment_id>/permanent', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def permanently_delete_comment(comment_id):
+    """
+    Permanently delete a comment from recycle bin
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.permanently_delete_comment(admin_id, comment_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
+# Modify existing delete routes to use soft delete instead of permanent delete
+
+@admin_bp.route('/novels/<int:novel_id>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def delete_novel(novel_id):
+    """
+    Soft delete a novel (move to recycle bin)
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.delete_novel(admin_id, novel_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
+@admin_bp.route('/chapters/<int:chapter_id>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def delete_chapter(chapter_id):
+    """
+    Soft delete a chapter (move to recycle bin)
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.delete_chapter(admin_id, chapter_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result)
+
+@admin_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def delete_comment(comment_id):
+    """
+    Soft delete a comment (move to recycle bin)
+    """
+    # Get admin user ID from auth
+    admin_id = g.user.id
+    
+    result = AdminService.delete_comment(admin_id, comment_id)
+    
+    if not result['success']:
+        return jsonify({
+            'error': result['message']
+        }), 400
+    
+    return jsonify(result) 

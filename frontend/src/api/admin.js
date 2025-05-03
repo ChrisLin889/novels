@@ -280,6 +280,24 @@ export const scanContentForSensitiveWords = async () => {
 
 // ======= 回收站功能 =======
 
+// 获取所有小说（用于下拉选择）
+export function getAllNovels() {
+  return request({
+    url: '/novel/list',
+    method: 'get',
+    params: { per_page: 1000 }  // 获取大量小说用于选择
+  });
+}
+
+// 通过小说ID获取章节列表
+export function getChaptersByNovelId(novelId) {
+  return request({
+    url: `/novel/${novelId}/chapters`,
+    method: 'get',
+    params: { per_page: 1000 }  // 获取大量章节用于选择
+  });
+}
+
 // 获取回收站中的小说
 export function getRecycledNovels(params) {
   return request({

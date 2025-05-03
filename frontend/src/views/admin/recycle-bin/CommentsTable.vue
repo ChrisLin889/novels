@@ -81,7 +81,7 @@
 </template>
 
 <script>
-import { getRecycledComments, restoreComment, permanentlyDeleteComment, getAllNovels, getAllChapters } from '@/api/admin';
+import { getRecycledComments, restoreComment, permanentlyDeleteComment, getAllNovels, getChaptersByNovelId } from '@/api/admin';
 
 export default {
   name: 'CommentsTable',
@@ -110,22 +110,21 @@ export default {
     },
     fetchNovels() {
       getAllNovels().then(response => {
-        this.novels = response.data.novels || [];
+        this.novels = response.novels || [];
       }).catch(error => {
         console.error('获取小说列表失败:', error);
       });
     },
     fetchChapters() {
-      if (!this.selectedNovelId) {
+      if (this.selectedNovelId) {
+        getChaptersByNovelId(this.selectedNovelId).then(response => {
+          this.chapters = response.chapters || [];
+        }).catch(error => {
+          console.error('获取章节列表失败:', error);
+        });
+      } else {
         this.chapters = [];
-        return;
       }
-      
-      getAllChapters({ novel_id: this.selectedNovelId }).then(response => {
-        this.chapters = response.data.chapters || [];
-      }).catch(error => {
-        console.error('获取章节列表失败:', error);
-      });
     },
     fetchData() {
       this.loading = true;
@@ -144,8 +143,8 @@ export default {
       }
       
       getRecycledComments(params).then(response => {
-        this.comments = response.data.comments;
-        this.total = response.data.total;
+        this.comments = response.comments;
+        this.total = response.total;
         this.loading = false;
       }).catch(error => {
         console.error('获取回收站评论失败:', error);
@@ -178,7 +177,7 @@ export default {
         type: 'warning'
       }).then(() => {
         restoreComment(row.id).then(response => {
-          this.$message.success(response.data.message || '评论已成功还原');
+          this.$message.success(response.message || '评论已成功还原');
           this.fetchData();
         }).catch(error => {
           console.error('还原评论失败:', error);
@@ -195,7 +194,7 @@ export default {
         type: 'danger'
       }).then(() => {
         permanentlyDeleteComment(row.id).then(response => {
-          this.$message.success(response.data.message || '评论已永久删除');
+          this.$message.success(response.message || '评论已永久删除');
           this.fetchData();
         }).catch(error => {
           console.error('永久删除评论失败:', error);

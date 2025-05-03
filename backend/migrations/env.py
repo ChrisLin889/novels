@@ -27,7 +27,11 @@ config.set_main_option(
 def get_metadata():
     from app import db
     # 导入所有模型，确保它们被映射
-    from app.models import User, Novel, Chapter, UserCollection, UserHistory, Comment, Author, Category, Tag
+    from app.models import (
+        User, Novel, Chapter, UserCollection, UserHistory, Comment, 
+        Author, Category, Tag, Admin, AuthorApplication, PrivateMessage,
+        UserFollowing, ContentAudit, SensitiveWord
+    )
     return db.metadata
 
 # other values from the config, defined by the needs of env.py,

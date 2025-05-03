@@ -431,4 +431,539 @@ class AdminService:
                 'comments_today': comments_today,
                 'readings_today': readings_today
             }
-        } 
+        }
+
+    # ====== Recycle Bin ======
+    
+    @staticmethod
+    def delete_novel(admin_id: int, novel_id: int) -> Dict:
+        """
+        Soft delete a novel (move to recycle bin)
+        
+        Args:
+            admin_id: ID of admin performing the action
+            novel_id: ID of novel to delete
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if novel exists
+        novel = Novel.query.get(novel_id)
+        if not novel:
+            return {
+                'success': False,
+                'message': f'Novel with ID {novel_id} not found'
+            }
+        
+        # Get novel title for response message
+        novel_title = novel.title
+        
+        # Soft delete novel (move to recycle bin)
+        result = AdminDAO.soft_delete_novel(novel_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Novel "{novel_title}" (ID: {novel_id}) has been moved to recycle bin'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to move novel with ID {novel_id} to recycle bin'
+            }
+
+    @staticmethod
+    def delete_chapter(admin_id: int, chapter_id: int) -> Dict:
+        """
+        Soft delete a chapter (move to recycle bin)
+        
+        Args:
+            admin_id: ID of admin performing the action
+            chapter_id: ID of chapter to delete
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if chapter exists
+        chapter = Chapter.query.get(chapter_id)
+        if not chapter:
+            return {
+                'success': False,
+                'message': f'Chapter with ID {chapter_id} not found'
+            }
+        
+        # Get chapter details for response message
+        chapter_title = chapter.title
+        
+        # Soft delete chapter (move to recycle bin)
+        result = AdminDAO.soft_delete_chapter(chapter_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Chapter "{chapter_title}" (ID: {chapter_id}) has been moved to recycle bin'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to move chapter with ID {chapter_id} to recycle bin'
+            }
+
+    @staticmethod
+    def delete_comment(admin_id: int, comment_id: int) -> Dict:
+        """
+        Soft delete a comment (move to recycle bin)
+        
+        Args:
+            admin_id: ID of admin performing the action
+            comment_id: ID of comment to delete
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if comment exists
+        comment = Comment.query.get(comment_id)
+        if not comment:
+            return {
+                'success': False,
+                'message': f'Comment with ID {comment_id} not found'
+            }
+        
+        # Soft delete comment (move to recycle bin)
+        result = AdminDAO.soft_delete_comment(comment_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Comment with ID {comment_id} has been moved to recycle bin'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to move comment with ID {comment_id} to recycle bin'
+            }
+
+    @staticmethod
+    def get_recycled_novels(page: int = 1, per_page: int = 20, title_filter: str = None) -> Dict:
+        """
+        Get novels in recycle bin
+        
+        Args:
+            page: Page number
+            per_page: Items per page
+            title_filter: Filter by title
+            
+        Returns:
+            Dict with novels and pagination info
+        """
+        novels, total = AdminDAO.get_deleted_novels(page, per_page, title_filter)
+        
+        return {
+            'novels': [novel.to_dict() for novel in novels],
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page
+        }
+
+    @staticmethod
+    def get_recycled_chapters(novel_id: Optional[int] = None, page: int = 1, per_page: int = 20) -> Dict:
+        """
+        Get chapters in recycle bin
+        
+        Args:
+            novel_id: Filter by novel ID
+            page: Page number
+            per_page: Items per page
+            
+        Returns:
+            Dict with chapters and pagination info
+        """
+        chapters, total = AdminDAO.get_deleted_chapters(novel_id, page, per_page)
+        
+        chapters_with_novel = []
+        for chapter in chapters:
+            chapter_dict = chapter.to_dict()
+            novel = Novel.query.get(chapter.novel_id)
+            if novel:
+                chapter_dict['novel_title'] = novel.title
+            chapters_with_novel.append(chapter_dict)
+        
+        return {
+            'chapters': chapters_with_novel,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page
+        }
+
+    @staticmethod
+    def get_recycled_comments(novel_id: Optional[int] = None, chapter_id: Optional[int] = None, 
+                        page: int = 1, per_page: int = 20) -> Dict:
+        """
+        Get comments in recycle bin
+        
+        Args:
+            novel_id: Filter by novel ID
+            chapter_id: Filter by chapter ID
+            page: Page number
+            per_page: Items per page
+            
+        Returns:
+            Dict with comments and pagination info
+        """
+        comments, total = AdminDAO.get_deleted_comments(novel_id, chapter_id, page, per_page)
+        
+        comments_with_details = []
+        for comment in comments:
+            comment_dict = comment.to_dict()
+            
+            # Add user information
+            user = User.query.get(comment.user_id)
+            if user:
+                comment_dict['user'] = {
+                    'id': user.id,
+                    'username': user.username,
+                    'avatar': user.avatar
+                }
+            
+            # Add novel title
+            if comment.novel_id:
+                novel = Novel.query.get(comment.novel_id)
+                if novel:
+                    comment_dict['novel_title'] = novel.title
+            
+            # Add chapter title
+            if comment.chapter_id:
+                chapter = Chapter.query.get(comment.chapter_id)
+                if chapter:
+                    comment_dict['chapter_title'] = chapter.title
+            
+            comments_with_details.append(comment_dict)
+        
+        return {
+            'comments': comments_with_details,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page
+        }
+
+    @staticmethod
+    def restore_novel(admin_id: int, novel_id: int) -> Dict:
+        """
+        Restore a novel from recycle bin
+        
+        Args:
+            admin_id: ID of admin performing the action
+            novel_id: ID of novel to restore
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if novel exists in recycle bin
+        novel = Novel.query.get(novel_id)
+        if not novel:
+            return {
+                'success': False,
+                'message': f'Novel with ID {novel_id} not found'
+            }
+        
+        if not novel.is_deleted:
+            return {
+                'success': False,
+                'message': f'Novel with ID {novel_id} is not in recycle bin'
+            }
+        
+        # Get novel title for response message
+        novel_title = novel.title
+        
+        # Restore novel
+        result = AdminDAO.restore_novel(novel_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Novel "{novel_title}" (ID: {novel_id}) has been restored from recycle bin'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to restore novel with ID {novel_id}'
+            }
+
+    @staticmethod
+    def restore_chapter(admin_id: int, chapter_id: int) -> Dict:
+        """
+        Restore a chapter from recycle bin
+        
+        Args:
+            admin_id: ID of admin performing the action
+            chapter_id: ID of chapter to restore
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if chapter exists in recycle bin
+        chapter = Chapter.query.get(chapter_id)
+        if not chapter:
+            return {
+                'success': False,
+                'message': f'Chapter with ID {chapter_id} not found'
+            }
+        
+        if not chapter.is_deleted:
+            return {
+                'success': False,
+                'message': f'Chapter with ID {chapter_id} is not in recycle bin'
+            }
+        
+        # Get chapter title for response message
+        chapter_title = chapter.title
+        
+        # Restore chapter
+        result = AdminDAO.restore_chapter(chapter_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Chapter "{chapter_title}" (ID: {chapter_id}) has been restored from recycle bin'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to restore chapter with ID {chapter_id}'
+            }
+
+    @staticmethod
+    def restore_comment(admin_id: int, comment_id: int) -> Dict:
+        """
+        Restore a comment from recycle bin
+        
+        Args:
+            admin_id: ID of admin performing the action
+            comment_id: ID of comment to restore
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if comment exists in recycle bin
+        comment = Comment.query.get(comment_id)
+        if not comment:
+            return {
+                'success': False,
+                'message': f'Comment with ID {comment_id} not found'
+            }
+        
+        if not comment.is_deleted:
+            return {
+                'success': False,
+                'message': f'Comment with ID {comment_id} is not in recycle bin'
+            }
+        
+        # Restore comment
+        result = AdminDAO.restore_comment(comment_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Comment with ID {comment_id} has been restored from recycle bin'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to restore comment with ID {comment_id}'
+            }
+
+    @staticmethod
+    def permanently_delete_novel(admin_id: int, novel_id: int) -> Dict:
+        """
+        Permanently delete a novel from recycle bin
+        
+        Args:
+            admin_id: ID of admin performing the action
+            novel_id: ID of novel to delete
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if novel exists in recycle bin
+        novel = Novel.query.get(novel_id)
+        if not novel:
+            return {
+                'success': False,
+                'message': f'Novel with ID {novel_id} not found'
+            }
+        
+        if not novel.is_deleted:
+            return {
+                'success': False,
+                'message': f'Novel with ID {novel_id} is not in recycle bin'
+            }
+        
+        # Get novel title for response message
+        novel_title = novel.title
+        novel_id_copy = novel_id  # Make a copy for the message after deletion
+        
+        # Permanently delete novel and its associated content
+        result = AdminDAO.permanently_delete_novel(novel_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Novel "{novel_title}" (ID: {novel_id_copy}) has been permanently deleted'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to permanently delete novel with ID {novel_id}'
+            }
+
+    @staticmethod
+    def permanently_delete_chapter(admin_id: int, chapter_id: int) -> Dict:
+        """
+        Permanently delete a chapter from recycle bin
+        
+        Args:
+            admin_id: ID of admin performing the action
+            chapter_id: ID of chapter to delete
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if chapter exists in recycle bin
+        chapter = Chapter.query.get(chapter_id)
+        if not chapter:
+            return {
+                'success': False,
+                'message': f'Chapter with ID {chapter_id} not found'
+            }
+        
+        if not chapter.is_deleted:
+            return {
+                'success': False,
+                'message': f'Chapter with ID {chapter_id} is not in recycle bin'
+            }
+        
+        # Get chapter title for response message
+        chapter_title = chapter.title
+        chapter_id_copy = chapter_id  # Make a copy for the message after deletion
+        
+        # Permanently delete chapter and its associated comments
+        result = AdminDAO.permanently_delete_chapter(chapter_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Chapter "{chapter_title}" (ID: {chapter_id_copy}) has been permanently deleted'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to permanently delete chapter with ID {chapter_id}'
+            }
+
+    @staticmethod
+    def permanently_delete_comment(admin_id: int, comment_id: int) -> Dict:
+        """
+        Permanently delete a comment from recycle bin
+        
+        Args:
+            admin_id: ID of admin performing the action
+            comment_id: ID of comment to delete
+            
+        Returns:
+            Dict with result
+        """
+        # Verify admin permissions
+        if not PermissionService.has_role(admin_id, 'admin'):
+            return {
+                'success': False,
+                'message': 'Admin privileges required'
+            }
+        
+        # Check if comment exists in recycle bin
+        comment = Comment.query.get(comment_id)
+        if not comment:
+            return {
+                'success': False,
+                'message': f'Comment with ID {comment_id} not found'
+            }
+        
+        if not comment.is_deleted:
+            return {
+                'success': False,
+                'message': f'Comment with ID {comment_id} is not in recycle bin'
+            }
+        
+        comment_id_copy = comment_id  # Make a copy for the message after deletion
+        
+        # Permanently delete comment
+        result = AdminDAO.permanently_delete_comment(comment_id)
+        
+        if result:
+            return {
+                'success': True,
+                'message': f'Comment with ID {comment_id_copy} has been permanently deleted'
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Failed to permanently delete comment with ID {comment_id}'
+            } 

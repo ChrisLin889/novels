@@ -51,19 +51,27 @@ class Comment(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     likes = db.Column(db.Integer, default=0)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     
     # Either novel_id or chapter_id should be provided
     
     def to_dict(self):
-        return {
+        result = {
             'id': self.id,
             'user_id': self.user_id,
             'novel_id': self.novel_id,
             'chapter_id': self.chapter_id,
             'content': self.content,
             'created_at': self.created_at.isoformat(),
-            'likes': self.likes
+            'likes': self.likes,
+            'is_deleted': self.is_deleted
         }
+        
+        if self.deleted_at:
+            result['deleted_at'] = self.deleted_at.isoformat()
+            
+        return result
 
 class UserFollowing(db.Model):
     __tablename__ = 'user_following'

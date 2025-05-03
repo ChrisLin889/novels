@@ -343,4 +343,354 @@ class AdminDAO:
             
         db.session.delete(word)
         db.session.commit()
-        return True 
+        return True
+    
+    # ====== Recycle Bin ======
+    
+    @staticmethod
+    def soft_delete_novel(novel_id: int) -> bool:
+        """
+        Soft delete a novel (move to recycle bin)
+        
+        Args:
+            novel_id: ID of novel to soft delete
+            
+        Returns:
+            Success status
+        """
+        novel = Novel.query.get(novel_id)
+        if not novel:
+            return False
+        
+        try:
+            # Soft delete novel
+            novel.is_deleted = True
+            novel.deleted_at = datetime.now()
+            
+            # Also soft delete related chapters
+            Chapter.query.filter_by(novel_id=novel_id).update({
+                'is_deleted': True,
+                'deleted_at': datetime.now()
+            })
+            
+            # Also soft delete related comments
+            Comment.query.filter_by(novel_id=novel_id).update({
+                'is_deleted': True,
+                'deleted_at': datetime.now()
+            })
+            
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error soft deleting novel: {str(e)}")
+            return False
+
+    @staticmethod
+    def soft_delete_chapter(chapter_id: int) -> bool:
+        """
+        Soft delete a chapter (move to recycle bin)
+        
+        Args:
+            chapter_id: ID of chapter to soft delete
+            
+        Returns:
+            Success status
+        """
+        chapter = Chapter.query.get(chapter_id)
+        if not chapter:
+            return False
+        
+        try:
+            # Soft delete chapter
+            chapter.is_deleted = True
+            chapter.deleted_at = datetime.now()
+            
+            # Also soft delete related comments
+            Comment.query.filter_by(chapter_id=chapter_id).update({
+                'is_deleted': True,
+                'deleted_at': datetime.now()
+            })
+            
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error soft deleting chapter: {str(e)}")
+            return False
+
+    @staticmethod
+    def soft_delete_comment(comment_id: int) -> bool:
+        """
+        Soft delete a comment (move to recycle bin)
+        
+        Args:
+            comment_id: ID of comment to soft delete
+            
+        Returns:
+            Success status
+        """
+        comment = Comment.query.get(comment_id)
+        if not comment:
+            return False
+        
+        try:
+            comment.is_deleted = True
+            comment.deleted_at = datetime.now()
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error soft deleting comment: {str(e)}")
+            return False
+
+    @staticmethod
+    def get_deleted_novels(page: int = 1, per_page: int = 20, title_filter: str = None) -> Tuple[List[Novel], int]:
+        """
+        Get all novels in recycle bin
+        
+        Args:
+            page: Page number
+            per_page: Items per page
+            title_filter: Optional title filter
+            
+        Returns:
+            Tuple of (novels, total_count)
+        """
+        query = Novel.query.filter_by(is_deleted=True)
+        
+        if title_filter:
+            query = query.filter(Novel.title.ilike(f'%{title_filter}%'))
+        
+        total = query.count()
+        novels = query.order_by(desc(Novel.deleted_at)).paginate(page=page, per_page=per_page).items
+        
+        return novels, total
+
+    @staticmethod
+    def get_deleted_chapters(novel_id: Optional[int] = None, page: int = 1, per_page: int = 20) -> Tuple[List[Chapter], int]:
+        """
+        Get all chapters in recycle bin
+        
+        Args:
+            novel_id: Optional novel ID filter
+            page: Page number
+            per_page: Items per page
+            
+        Returns:
+            Tuple of (chapters, total_count)
+        """
+        query = Chapter.query.filter_by(is_deleted=True)
+        
+        if novel_id:
+            query = query.filter_by(novel_id=novel_id)
+        
+        total = query.count()
+        chapters = query.order_by(desc(Chapter.deleted_at)).paginate(page=page, per_page=per_page).items
+        
+        return chapters, total
+
+    @staticmethod
+    def get_deleted_comments(novel_id: Optional[int] = None, chapter_id: Optional[int] = None, 
+                         page: int = 1, per_page: int = 20) -> Tuple[List[Comment], int]:
+        """
+        Get all comments in recycle bin
+        
+        Args:
+            novel_id: Optional novel ID filter
+            chapter_id: Optional chapter ID filter
+            page: Page number
+            per_page: Items per page
+            
+        Returns:
+            Tuple of (comments, total_count)
+        """
+        query = Comment.query.filter_by(is_deleted=True)
+        
+        if novel_id:
+            query = query.filter_by(novel_id=novel_id)
+        
+        if chapter_id:
+            query = query.filter_by(chapter_id=chapter_id)
+        
+        total = query.count()
+        comments = query.order_by(desc(Comment.deleted_at)).paginate(page=page, per_page=per_page).items
+        
+        return comments, total
+
+    @staticmethod
+    def restore_novel(novel_id: int) -> bool:
+        """
+        Restore a novel and its related content from recycle bin
+        
+        Args:
+            novel_id: ID of novel to restore
+            
+        Returns:
+            Success status
+        """
+        novel = Novel.query.get(novel_id)
+        if not novel or not novel.is_deleted:
+            return False
+        
+        try:
+            # Restore novel
+            novel.is_deleted = False
+            novel.deleted_at = None
+            
+            # Restore related chapters
+            Chapter.query.filter_by(novel_id=novel_id, is_deleted=True).update({
+                'is_deleted': False,
+                'deleted_at': None
+            })
+            
+            # Restore related comments
+            Comment.query.filter_by(novel_id=novel_id, is_deleted=True).update({
+                'is_deleted': False,
+                'deleted_at': None
+            })
+            
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error restoring novel: {str(e)}")
+            return False
+
+    @staticmethod
+    def restore_chapter(chapter_id: int) -> bool:
+        """
+        Restore a chapter and its related comments from recycle bin
+        
+        Args:
+            chapter_id: ID of chapter to restore
+            
+        Returns:
+            Success status
+        """
+        chapter = Chapter.query.get(chapter_id)
+        if not chapter or not chapter.is_deleted:
+            return False
+        
+        try:
+            # Restore chapter
+            chapter.is_deleted = False
+            chapter.deleted_at = None
+            
+            # Also restore related comments
+            Comment.query.filter_by(chapter_id=chapter_id, is_deleted=True).update({
+                'is_deleted': False,
+                'deleted_at': None
+            })
+            
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error restoring chapter: {str(e)}")
+            return False
+
+    @staticmethod
+    def restore_comment(comment_id: int) -> bool:
+        """
+        Restore a comment from recycle bin
+        
+        Args:
+            comment_id: ID of comment to restore
+            
+        Returns:
+            Success status
+        """
+        comment = Comment.query.get(comment_id)
+        if not comment or not comment.is_deleted:
+            return False
+        
+        try:
+            comment.is_deleted = False
+            comment.deleted_at = None
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error restoring comment: {str(e)}")
+            return False
+
+    @staticmethod
+    def permanently_delete_novel(novel_id: int) -> bool:
+        """
+        Permanently delete a novel and all its chapters and comments (cascade delete)
+        
+        Args:
+            novel_id: ID of novel to delete permanently
+            
+        Returns:
+            Success status
+        """
+        novel = Novel.query.get(novel_id)
+        if not novel:
+            return False
+        
+        try:
+            # Delete all comments related to this novel
+            Comment.query.filter_by(novel_id=novel_id).delete()
+            
+            # Delete novel (will cascade delete chapters via foreign key constraints)
+            db.session.delete(novel)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error permanently deleting novel: {str(e)}")
+            return False
+
+    @staticmethod
+    def permanently_delete_chapter(chapter_id: int) -> bool:
+        """
+        Permanently delete a chapter and its related comments
+        
+        Args:
+            chapter_id: ID of chapter to delete permanently
+            
+        Returns:
+            Success status
+        """
+        chapter = Chapter.query.get(chapter_id)
+        if not chapter:
+            return False
+        
+        try:
+            # Delete all comments related to this chapter
+            Comment.query.filter_by(chapter_id=chapter_id).delete()
+            
+            # Delete chapter
+            db.session.delete(chapter)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error permanently deleting chapter: {str(e)}")
+            return False
+
+    @staticmethod
+    def permanently_delete_comment(comment_id: int) -> bool:
+        """
+        Permanently delete a comment
+        
+        Args:
+            comment_id: ID of comment to delete permanently
+            
+        Returns:
+            Success status
+        """
+        comment = Comment.query.get(comment_id)
+        if not comment:
+            return False
+        
+        try:
+            db.session.delete(comment)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error permanently deleting comment: {str(e)}")
+            return False 

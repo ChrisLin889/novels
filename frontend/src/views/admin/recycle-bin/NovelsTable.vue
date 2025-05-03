@@ -98,8 +98,8 @@ export default {
         per_page: this.pageSize,
         title: this.searchTitle || undefined
       }).then(response => {
-        this.novels = response.data.novels;
-        this.total = response.data.total;
+        this.novels = response.novels;
+        this.total = response.total;
         this.loading = false;
       }).catch(error => {
         console.error('获取回收站小说失败:', error);
@@ -126,7 +126,7 @@ export default {
         type: 'warning'
       }).then(() => {
         restoreNovel(row.id).then(response => {
-          this.$message.success(response.data.message || '小说已成功还原');
+          this.$message.success(response.message || '小说已成功还原');
           this.fetchData();
         }).catch(error => {
           console.error('还原小说失败:', error);
@@ -137,13 +137,13 @@ export default {
       });
     },
     handlePermanentDelete(row) {
-      this.$confirm(`确定要永久删除小说"${row.title}"吗？此操作不可恢复。`, '警告', {
+      this.$confirm(`确定要永久删除小说"${row.title}"吗？此操作将同时删除该小说的所有章节和评论，且不可恢复。`, '警告', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'danger'
       }).then(() => {
         permanentlyDeleteNovel(row.id).then(response => {
-          this.$message.success(response.data.message || '小说已永久删除');
+          this.$message.success(response.message || '小说已永久删除');
           this.fetchData();
         }).catch(error => {
           console.error('永久删除小说失败:', error);
