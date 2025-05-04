@@ -20,7 +20,7 @@
           <div class="novel-title-overlay">{{ novel.title }}</div>
         </div>
         <div v-else class="novel-cover">
-          <img :src="novel.cover" :alt="novel.title" @error="handleImageError" />
+          <img :src="processedCoverUrl" :alt="novel.title" @error="handleImageError" />
         </div>
         
         <div class="novel-info">
@@ -99,6 +99,7 @@ import { getNovelDetail } from '@/api/novel';
 import { toggleCollection as apiToggleCollection, checkCollectionStatus as apiCheckCollectionStatus } from '@/api/interaction';
 import { ElMessage } from 'element-plus';
 import CommentSection from '@/components/interaction/CommentSection.vue';
+import { processCoverUrl } from '@/utils/image';
 
 export default {
   name: 'NovelDetail',
@@ -119,6 +120,11 @@ export default {
     const isOwner = ref(false);
     
     const novelId = computed(() => route.params.id);
+    
+    // 处理封面URL，确保中文字符正确编码
+    const processedCoverUrl = computed(() => {
+      return processCoverUrl(novel.value.cover);
+    });
     
     // 处理图片加载错误
     const handleImageError = (e) => {
@@ -252,7 +258,8 @@ export default {
       fetchChapters,
       fetchNovelDetail,
       handleImageError,
-      isOwner
+      isOwner,
+      processedCoverUrl
     };
   }
 };

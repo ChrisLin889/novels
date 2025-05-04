@@ -5,7 +5,7 @@
       <div class="novel-status" v-if="novel.status">{{ statusText }}</div>
     </div>
     <div v-else class="novel-cover">
-      <img :src="novel.cover || '/images/default_cover.jpg'" :alt="novel.title" class="novel-cover" @error="handleImageError">
+      <img :src="processedCoverUrl" :alt="novel.title" class="novel-cover" @error="handleImageError">
       <div class="novel-status" v-if="novel.status">{{ statusText }}</div>
     </div>
     <div class="novel-info">
@@ -35,6 +35,7 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { User, Reading, Document } from '@element-plus/icons-vue';
+import { processCoverUrl } from '@/utils/image';
 
 export default {
   name: 'NovelCard',
@@ -52,13 +53,18 @@ export default {
   setup(props) {
     const router = useRouter();
     
+    // 处理封面URL，确保中文字符正确编码
+    const processedCoverUrl = computed(() => {
+      return processCoverUrl(props.novel.cover);
+    });
+    
     // Compute cover image style with fallback
     const coverStyle = computed(() => {
       if (!props.novel.cover) {
         return {}; // 使用CSS定义的默认渐变
       }
       return {
-        backgroundImage: `url(${props.novel.cover})`
+        backgroundImage: `url(${processedCoverUrl.value})`
       };
     });
     
@@ -106,7 +112,8 @@ export default {
       formatCount,
       formatWordCount,
       navigateToDetail,
-      handleImageError
+      handleImageError,
+      processedCoverUrl
     };
   }
 };

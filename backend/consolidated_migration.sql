@@ -19,6 +19,7 @@ DROP TABLE IF EXISTS `tag`;
 DROP TABLE IF EXISTS `author_application`;
 DROP TABLE IF EXISTS `author`;
 DROP TABLE IF EXISTS `admin`;
+DROP TABLE IF EXISTS `user_action`;
 DROP TABLE IF EXISTS `user`;
 DROP TABLE IF EXISTS `category`;
 DROP TABLE IF EXISTS `sensitive_word`;
@@ -38,7 +39,8 @@ CREATE TABLE `user` (
   `avatar` varchar(255) DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
-  `status` tinyint(1) DEFAULT NULL,
+  `status` int DEFAULT NULL,
+  `banned_until` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `phone` (`phone`),
   UNIQUE KEY `email` (`email`)
@@ -126,9 +128,9 @@ CREATE TABLE `author_application` (
 -- Table structure for table `novel`
 CREATE TABLE `novel` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `author_id` int DEFAULT NULL,
   `title` varchar(100) NOT NULL,
   `author` varchar(50) NOT NULL,
+  `author_id` int DEFAULT NULL,
   `category` varchar(30) NOT NULL,
   `cover` varchar(255) DEFAULT NULL,
   `intro` text,
@@ -253,6 +255,22 @@ CREATE TABLE `private_messages` (
   KEY `idx_recipient_read` (`recipient_id`,`read_at`),
   CONSTRAINT `private_messages_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `user` (`id`),
   CONSTRAINT `private_messages_ibfk_2` FOREIGN KEY (`recipient_id`) REFERENCES `user` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table structure for table `user_action`
+CREATE TABLE `user_action` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `admin_id` int NOT NULL,
+  `target_user_id` int NOT NULL,
+  `action_type` varchar(20) NOT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `duration` int DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `admin_id` (`admin_id`),
+  KEY `target_user_id` (`target_user_id`),
+  CONSTRAINT `user_action_ibfk_1` FOREIGN KEY (`admin_id`) REFERENCES `admin` (`id`),
+  CONSTRAINT `user_action_ibfk_2` FOREIGN KEY (`target_user_id`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table structure for table `content_audit`

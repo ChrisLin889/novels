@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
@@ -38,6 +38,11 @@ def create_app(config_name=None):
     db.init_app(app)
     jwt.init_app(app)
     migrate.init_app(app, db)
+    
+    # 添加静态文件目录映射，用于访问小说封面图片
+    @app.route('/api/covers/<path:filename>')
+    def serve_novel_covers(filename):
+        return send_from_directory('/home/chris/novels', filename)
     
     # Register blueprints
     from app.api.user import user_bp
