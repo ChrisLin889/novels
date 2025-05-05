@@ -501,4 +501,45 @@ class InteractionDAO:
                 recipient_id=user_id, 
                 read_at=None
             ).count()
-        } 
+        }
+    
+    @staticmethod
+    def record_reading_history(user_id: int, novel_id: int, chapter_id: int) -> bool:
+        """Record user reading history
+        
+        Args:
+            user_id: User ID
+            novel_id: Novel ID
+            chapter_id: Chapter ID
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Check if history exists
+            history = UserHistory.query.filter_by(
+                user_id=user_id,
+                novel_id=novel_id
+            ).first()
+            
+            if history:
+                # Update existing history
+                history.chapter_id = chapter_id
+                history.last_read_time = datetime.datetime.utcnow()
+            else:
+                # Create new history
+                history = UserHistory(
+                    user_id=user_id,
+                    novel_id=novel_id,
+                    chapter_id=chapter_id,
+                    last_read_time=datetime.datetime.utcnow()
+                )
+                db.session.add(history)
+            
+            # Commit changes
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error recording reading history: {str(e)}")
+            return False 

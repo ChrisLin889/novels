@@ -1,4 +1,4 @@
-from app.models.novel import Novel, Chapter, novel_tag
+from app.models.novel import Novel, Chapter, AuditStatus
 from app.models.interaction import UserCollection, UserHistory, Comment
 from app.models.user import User
 from app.models.author import Author
@@ -6,8 +6,9 @@ from app.models.tag import Tag
 from app.models.category import Category
 from app import db
 from typing import Dict, Any, List, Optional, Tuple
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, asc, or_
 from datetime import datetime
+from app.config.settings import get_settings
 
 class NovelDAO:
     """
@@ -18,50 +19,60 @@ class NovelDAO:
     @staticmethod
     def get_novel_by_id(novel_id: int) -> Optional[Novel]:
         """Retrieve novel by ID"""
-        return Novel.query.get(novel_id)
+        return Novel.query.filter_by(id=novel_id, is_deleted=False).first()
     
     @staticmethod
-    def get_novel_list_query(category: Optional[str] = None, status: Optional[str] = None):
-        """Get base query for novels with optional filtering"""
-        query = Novel.query
+    def get_novel_list_query(category: Optional[str] = None, status: Optional[str] = None, 
+                           audit_status: str = AuditStatus.APPROVED):
+        """Get base query for novels with filters"""
+        query = Novel.query.filter_by(is_deleted=False)
         
-        # Apply filters if provided
+        # Enable content audit based on settings
+        settings = get_settings()
+        if settings.get('enable_content_audit', True):
+            query = query.filter_by(audit_status=audit_status)
+        
+        # Add filters if provided
         if category:
             query = query.filter_by(category=category)
-        
         if status:
             query = query.filter_by(status=status)
             
         return query
     
     @staticmethod
-    def apply_sorting(query, sort_by: str = 'updated_at', sort_order: str = 'desc'):
-        """Apply sorting to a novel query"""
-        if sort_by in ['view_count', 'collection_count', 'updated_at', 'created_at']:
-            # Get the sort column
-            sort_column = getattr(Novel, sort_by)
+    def apply_sorting(query, sort_by='updated_at', sort_order='desc'):
+        """Apply sorting to a query"""
+        # Validate sort fields
+        valid_sort_fields = ['created_at', 'updated_at', 'view_count', 'collection_count', 'title']
+        if sort_by not in valid_sort_fields:
+            sort_by = 'updated_at'
             
-            # Apply sort direction
-            if sort_order.lower() == 'asc':
-                return query.order_by(sort_column)
-            else:
-                return query.order_by(desc(sort_column))
+        # Apply sorting
+        if sort_order.lower() == 'asc':
+            return query.order_by(asc(getattr(Novel, sort_by)))
         else:
-            # Default sort
-            return query.order_by(desc(Novel.updated_at))
+            return query.order_by(desc(getattr(Novel, sort_by)))
     
     @staticmethod
     def search_novels_query(keyword: str, category: Optional[str] = None):
-        """Create query for searching novels"""
-        query = Novel.query.filter(
-            db.or_(
-                Novel.title.ilike(f'%{keyword}%'),
-                Novel.author.ilike(f'%{keyword}%'),
-                Novel.intro.ilike(f'%{keyword}%')
-            )
-        )
+        """Create query for novel search"""
+        # Base query - only return approved novels by default
+        settings = get_settings()
+        query = Novel.query.filter_by(is_deleted=False)
         
-        # Apply category filter if provided
+        if settings.get('enable_content_audit', True):
+            query = query.filter_by(audit_status=AuditStatus.APPROVED)
+        
+        # Add search conditions
+        search_conditions = or_(
+            Novel.title.contains(keyword),
+            Novel.intro.contains(keyword),
+            Novel.author.contains(keyword)
+        )
+        query = query.filter(search_conditions)
+        
+        # Add category filter if provided
         if category:
             query = query.filter_by(category=category)
             
@@ -94,13 +105,21 @@ class NovelDAO:
     
     @staticmethod
     def get_popular_novels_query(category: Optional[str] = None):
-        """Get query for popular novels with optional category filter"""
-        query = Novel.query.order_by(desc(Novel.view_count))
+        """Create query for popular novels"""
+        query = Novel.query.filter_by(is_deleted=False)
         
-        # Apply category filter if provided
+        # Enable content audit based on settings
+        settings = get_settings()
+        if settings.get('enable_content_audit', True):
+            query = query.filter_by(audit_status=AuditStatus.APPROVED)
+        
+        # Add category filter if provided
         if category:
             query = query.filter_by(category=category)
             
+        # Order by popularity (view count)
+        query = query.order_by(desc(Novel.view_count))
+        
         return query
     
     @staticmethod
@@ -111,18 +130,21 @@ class NovelDAO:
     @staticmethod
     def increment_view_count(novel_id: int) -> bool:
         """Increment the view count of a novel"""
-        novel = Novel.query.get(novel_id)
-        if not novel:
+        try:
+            novel = Novel.query.get(novel_id)
+            if novel:
+                novel.view_count = Novel.view_count + 1
+                db.session.commit()
+                return True
             return False
-        
-        novel.view_count += 1
-        db.session.commit()
-        return True
+        except Exception:
+            db.session.rollback()
+            return False
     
     @staticmethod
     def get_chapter_by_id(chapter_id: int) -> Optional[Chapter]:
         """Retrieve chapter by ID"""
-        return Chapter.query.get(chapter_id)
+        return Chapter.query.filter_by(id=chapter_id, is_deleted=False).first()
     
     @staticmethod
     def get_chapter_by_number(novel_id: int, chapter_number: int) -> Optional[Chapter]:
@@ -133,11 +155,16 @@ class NovelDAO:
         ).first()
     
     @staticmethod
-    def get_novel_chapters(novel_id: int) -> List[Chapter]:
-        """Get all chapters for a novel ordered by chapter number"""
-        return Chapter.query.filter_by(novel_id=novel_id).order_by(
-            Chapter.chapter_number
-        ).all()
+    def get_novel_chapters(novel_id: int, include_pending: bool = False):
+        """Get chapters for a novel"""
+        query = Chapter.query.filter_by(novel_id=novel_id, is_deleted=False)
+        
+        # Filter by audit status if needed
+        settings = get_settings()
+        if settings.get('enable_content_audit', True) and not include_pending:
+            query = query.filter_by(audit_status=AuditStatus.APPROVED)
+            
+        return query.order_by(Chapter.chapter_number).all()
     
     @staticmethod
     def get_adjacent_chapters(chapter: Chapter) -> Tuple[Optional[Chapter], Optional[Chapter]]:
@@ -289,4 +316,81 @@ class NovelDAO:
                 'description': category.description
             })
             
-        return result 
+        return result
+    
+    @staticmethod
+    def get_author_novels(author_id: int, include_pending: bool = True):
+        """Get novels by author ID"""
+        query = Novel.query.filter_by(author_id=author_id, is_deleted=False)
+        
+        # Include all novels regardless of audit status for the author
+        if not include_pending:
+            settings = get_settings()
+            if settings.get('enable_content_audit', True):
+                query = query.filter_by(audit_status=AuditStatus.APPROVED)
+                
+        return query.order_by(desc(Novel.updated_at))
+    
+    @staticmethod
+    def get_pending_novels_query():
+        """Get query for pending novels"""
+        return Novel.query.filter_by(
+            is_deleted=False, 
+            audit_status=AuditStatus.PENDING
+        ).order_by(desc(Novel.created_at))
+    
+    @staticmethod
+    def get_pending_chapters_query():
+        """Get query for pending chapters"""
+        return Chapter.query.filter_by(
+            is_deleted=False, 
+            audit_status=AuditStatus.PENDING
+        ).order_by(desc(Chapter.created_at))
+    
+    @staticmethod
+    def get_author_pending_content(author_id: int):
+        """Get pending content for an author"""
+        # Get pending novels
+        pending_novels = Novel.query.filter_by(
+            author_id=author_id,
+            is_deleted=False
+        ).filter(
+            Novel.audit_status.in_([AuditStatus.PENDING, AuditStatus.REJECTED])
+        ).all()
+        
+        # Get pending chapters
+        pending_chapters_query = db.session.query(Chapter).join(
+            Novel, Novel.id == Chapter.novel_id
+        ).filter(
+            Novel.author_id == author_id,
+            Chapter.is_deleted == False,
+            Chapter.audit_status.in_([AuditStatus.PENDING, AuditStatus.REJECTED])
+        )
+        
+        pending_chapters = pending_chapters_query.all()
+        
+        return {
+            'novels': [novel.to_dict() for novel in pending_novels],
+            'chapters': [chapter.to_dict() for chapter in pending_chapters]
+        }
+    
+    @staticmethod
+    def update_audit_status(content_type: str, content_id: int, status: str):
+        """Update audit status for novel or chapter"""
+        try:
+            if content_type == 'novel':
+                content = Novel.query.get(content_id)
+            elif content_type == 'chapter':
+                content = Chapter.query.get(content_id)
+            else:
+                return False
+                
+            if not content:
+                return False
+                
+            content.audit_status = status
+            db.session.commit()
+            return True
+        except Exception:
+            db.session.rollback()
+            return False 

@@ -13,6 +13,13 @@
         </template>
       </el-table-column>
       <el-table-column prop="word_count" label="字数" width="100"></el-table-column>
+      <el-table-column prop="audit_status" label="审核状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="getAuditStatusType(row.audit_status)">
+            {{ getAuditStatusText(row.audit_status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="created_at" label="创建时间" width="180">
         <template #default="{ row }">
           {{ formatDate(row.created_at) }}
@@ -201,6 +208,24 @@ export default {
       })
     }
 
+    const getAuditStatusType = (status) => {
+      switch(status) {
+        case 'approved': return 'success'
+        case 'pending': return 'warning'
+        case 'rejected': return 'danger'
+        default: return 'info'
+      }
+    }
+    
+    const getAuditStatusText = (status) => {
+      switch(status) {
+        case 'approved': return '已通过'
+        case 'pending': return '审核中'
+        case 'rejected': return '已拒绝'
+        default: return '未知'
+      }
+    }
+
     onMounted(() => {
       console.log('ChapterManagement组件已挂载');
       console.log('当前小说ID:', novelId.value);
@@ -236,6 +261,8 @@ export default {
       chapterFormRef,
       chapterForm,
       rules,
+      getAuditStatusType,
+      getAuditStatusText,
       showAddDialog,
       showEditDialog,
       handleSubmit,

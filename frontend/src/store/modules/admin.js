@@ -266,7 +266,7 @@ const mutations = {
   },
   
   SET_PENDING_CONTENT(state, { contentType, data }) {
-    state.pendingContent[contentType] = data.content || [];
+    state.pendingContent[contentType] = data.items || [];
     
     const paginationKey = `pending${contentType.charAt(0).toUpperCase() + contentType.slice(1)}`;
     state.pagination[paginationKey] = {

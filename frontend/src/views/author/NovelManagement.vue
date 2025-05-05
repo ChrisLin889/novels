@@ -19,10 +19,17 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column prop="audit_status" label="审核状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="getAuditStatusType(row.audit_status)">
+            {{ getAuditStatusText(row.audit_status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="chapter_count" label="章节数" width="100"></el-table-column>
       <el-table-column prop="word_count" label="字数" width="100"></el-table-column>
       <el-table-column prop="view_count" label="阅读数" width="100"></el-table-column>
-      <el-table-column prop="collection_count" label="收藏数" width="100"></el-table-column>
+      <el-table-column prop="collection_count" label="收藏数" width="80"></el-table-column>
       <el-table-column label="操作" width="200">
         <template #default="{ row }">
           <el-button-group>
@@ -113,6 +120,24 @@ export default {
       category: [{ required: true, message: '请选择分类', trigger: 'change' }],
       status: [{ required: true, message: '请选择状态', trigger: 'change' }],
       intro: [{ required: true, message: '请输入简介', trigger: 'blur' }]
+    }
+
+    const getAuditStatusType = (status) => {
+      switch(status) {
+        case 'approved': return 'success'
+        case 'pending': return 'warning'
+        case 'rejected': return 'danger'
+        default: return 'info'
+      }
+    }
+    
+    const getAuditStatusText = (status) => {
+      switch(status) {
+        case 'approved': return '已通过'
+        case 'pending': return '审核中'
+        case 'rejected': return '已拒绝'
+        default: return '未知'
+      }
     }
 
     const loadNovels = async () => {
@@ -219,6 +244,8 @@ export default {
       formRef,
       form,
       rules,
+      getAuditStatusType,
+      getAuditStatusText,
       showAddDialog,
       showEditDialog,
       handleSubmit,

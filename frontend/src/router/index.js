@@ -25,6 +25,7 @@ const Ranking = () => import('@/views/Ranking.vue');
 const AuthorCenter = () => import('@/views/author/AuthorCenter.vue');
 const NovelManagement = () => import('@/views/author/NovelManagement.vue');
 const ChapterManagement = () => import('@/views/author/ChapterManagement.vue');
+const PendingContent = () => import('@/views/author/PendingContent.vue');
 
 // 互动模块路由
 const Messages = () => import('@/views/interaction/Messages.vue');
@@ -216,6 +217,12 @@ const routes = [
         name: 'NovelManagement',
         component: NovelManagement,
         meta: { title: '小说管理' }
+      },
+      {
+        path: 'pending',
+        name: 'PendingContent',
+        component: PendingContent,
+        meta: { title: '待审核内容' }
       }
     ]
   },

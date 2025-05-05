@@ -19,9 +19,24 @@
           <el-table-column prop="category" label="分类" width="100"></el-table-column>
           <el-table-column prop="tags" label="标签" width="150">
             <template #default="scope">
-              <el-tag v-for="tag in scope.row.tags.split(',')" :key="tag" size="small" style="margin: 0 3px 3px 0">
-                {{ tag }}
-              </el-tag>
+              <template v-if="scope.row.tags">
+                <template v-if="typeof scope.row.tags === 'string'">
+                  <el-tag v-for="tag in scope.row.tags.split(',')" :key="tag" size="small" style="margin: 0 3px 3px 0">
+                    {{ tag }}
+                  </el-tag>
+                </template>
+                <template v-else-if="Array.isArray(scope.row.tags)">
+                  <el-tag v-for="tag in scope.row.tags" :key="tag" size="small" style="margin: 0 3px 3px 0">
+                    {{ tag }}
+                  </el-tag>
+                </template>
+                <template v-else>
+                  {{ scope.row.tags }}
+                </template>
+              </template>
+              <template v-else>
+                <span>无标签</span>
+              </template>
             </template>
           </el-table-column>
           <el-table-column prop="submitted_at" label="提交时间" width="180">
@@ -124,9 +139,24 @@
             <div class="detail-item">
               <span class="detail-label">标签：</span>
               <span class="detail-value">
-                <el-tag v-for="tag in selectedContent.tags?.split(',')" :key="tag" size="small" style="margin: 0 3px 3px 0">
-                  {{ tag }}
-                </el-tag>
+                <template v-if="selectedContent.tags">
+                  <template v-if="typeof selectedContent.tags === 'string'">
+                    <el-tag v-for="tag in selectedContent.tags.split(',')" :key="tag" size="small" style="margin: 0 3px 3px 0">
+                      {{ tag }}
+                    </el-tag>
+                  </template>
+                  <template v-else-if="Array.isArray(selectedContent.tags)">
+                    <el-tag v-for="tag in selectedContent.tags" :key="tag" size="small" style="margin: 0 3px 3px 0">
+                      {{ tag }}
+                    </el-tag>
+                  </template>
+                  <template v-else>
+                    {{ selectedContent.tags }}
+                  </template>
+                </template>
+                <template v-else>
+                  <span>无标签</span>
+                </template>
               </span>
             </div>
             <div class="detail-item">
@@ -189,7 +219,7 @@
           <el-input
             v-model="rejectForm.reason"
             type="textarea"
-            rows="4"
+            :rows="4"
             placeholder="请输入拒绝原因，将通知给内容提交者"
           ></el-input>
         </el-form-item>
@@ -301,6 +331,15 @@ export default {
             per_page: pageSize.value
           }
         });
+        
+        // 调试信息：检查返回的内容
+        console.log('加载的待审核内容:', store.getters['admin/pendingContent'](contentType.value));
+        const items = store.getters['admin/pendingContent'](contentType.value);
+        if (items && items.length > 0) {
+          console.log('第一个待审核内容的结构:', items[0]);
+          console.log('待审核内容是否包含audit_id:', Object.prototype.hasOwnProperty.call(items[0], 'audit_id'));
+        }
+        
       } catch (error) {
         console.error('获取待审核内容失败:', error);
         ElMessage.error('获取待审核内容失败');
@@ -331,6 +370,9 @@ export default {
     
     // 批准内容
     const handleApprove = (content) => {
+      console.log('处理审批的内容对象:', content);
+      console.log('content.audit_id =', content.audit_id);
+      
       ElMessageBox.confirm(
         '确定要通过这个内容吗？',
         '确认操作',
@@ -338,7 +380,7 @@ export default {
       ).then(async () => {
         try {
           await store.dispatch('admin/auditContent', {
-            auditId: content.id,
+            auditId: content.audit_id,
             data: { status: 'approved' },
             contentType: contentType.value
           });
@@ -370,7 +412,7 @@ export default {
         submitting.value = true;
         try {
           await store.dispatch('admin/auditContent', {
-            auditId: selectedContent.value.id,
+            auditId: selectedContent.value.audit_id,
             data: {
               status: 'rejected',
               reason: rejectForm.reason

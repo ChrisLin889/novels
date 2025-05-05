@@ -1,0 +1,5 @@
+{
+  "enable_content_audit": true,
+  "cache_ttl": 3600,
+  "max_search_results": 100
+}

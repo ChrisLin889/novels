@@ -1,16 +1,21 @@
 from flask import Blueprint, request, jsonify, g
 from app.services.admin_service import AdminService
 from app.services.author_service import AuthorService
-from app.utils.auth import admin_required
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.security import admin_required
+from app.config.settings import update_setting, get_settings
+from app.dao.admin_dao import AdminDAO
+from app.dao.novel_dao import NovelDAO
+from app.models.admin import Admin
 
 # Create blueprint
-admin_bp = Blueprint('admin', __name__)
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 # ====== User Management ======
 
 @admin_bp.route('/users', methods=['GET'])
-@admin_required
+@jwt_required()
+@admin_required()
 def get_users():
     """
     Get users with pagination
@@ -35,7 +40,8 @@ def get_users():
     return jsonify(result)
 
 @admin_bp.route('/users/<int:user_id>', methods=['POST'])
-@admin_required
+@jwt_required()
+@admin_required()
 def manage_user(user_id):
     """
     Manage a user (ban, unban)
@@ -89,7 +95,8 @@ def manage_user(user_id):
     return jsonify(result)
 
 @admin_bp.route('/user-actions', methods=['GET'])
-@admin_required
+@jwt_required()
+@admin_required()
 def get_user_actions():
     """
     Get user management actions
@@ -115,7 +122,8 @@ def get_user_actions():
     return jsonify(result)
 
 @admin_bp.route('/users/<int:user_id>/role', methods=['PUT'])
-@admin_required
+@jwt_required()
+@admin_required()
 def update_user_role(user_id):
     """
     Update a user's role
@@ -154,88 +162,154 @@ def update_user_role(user_id):
 
 # ====== Content Management ======
 
-@admin_bp.route('/content/<content_type>', methods=['GET'])
-@admin_required
+@admin_bp.route('/content/<string:content_type>', methods=['GET'])
+@jwt_required()
+@admin_required()
 def get_pending_content(content_type):
     """
-    Get pending content for moderation
+    Get content pending review
     
-    URL params:
-    - content_type: Type of content ("novel", "chapter", "comment")
-    
-    GET params:
-    - page: Page number (default: 1)
-    - per_page: Items per page (default: 20)
+    content_type: 'novel' or 'chapter'
     """
-    # Validate content type
-    if content_type not in ['novel', 'chapter', 'comment']:
-        return jsonify({
-            'error': f"Invalid content type: {content_type}"
-        }), 400
-    
     try:
-        page = int(request.args.get('page', 1))
-        per_page = min(int(request.args.get('per_page', 20)), 50)
-    except ValueError:
-        return jsonify({
-            'error': 'Invalid pagination parameters'
-        }), 400
-    
-    result = AdminService.get_pending_content(content_type=content_type, page=page, per_page=per_page)
-    
-    return jsonify(result)
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Get pending content by type
+        result = AdminService.get_pending_content(content_type, page, per_page)
+        
+        if not result['success']:
+            return jsonify({'error': result['error']}), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/content/audit/<int:audit_id>', methods=['POST'])
-@admin_required
-def audit_content(audit_id):
+@admin_bp.route('/content', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_pending_content_summary():
+    """Get summary of all pending content"""
+    try:
+        result = AdminService.get_pending_content()
+        
+        if not result['success']:
+            return jsonify({'error': result['error']}), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/content/audit/<string:content_type>/<int:content_id>', methods=['POST'])
+@jwt_required()
+@admin_required()
+def audit_content(content_type, content_id):
     """
-    Approve or reject content
+    Review and update content status
     
-    POST params:
-    - status: "approved" or "rejected"
-    - reason: Reason for rejection (required for "rejected" status)
+    content_type: 'novel' or 'chapter'
+    content_id: ID of the content
     """
-    # Get admin user ID from auth
-    admin_id = g.user.id
-    
-    # Get request data
-    data = request.json
-    if not data:
-        return jsonify({
-            'error': 'Missing request data'
-        }), 400
-    
-    status = data.get('status')
-    reason = data.get('reason')
-    
-    if not status or status not in ['approved', 'rejected']:
-        return jsonify({
-            'error': 'Invalid status'
-        }), 400
-    
-    if status == 'rejected' and not reason:
-        return jsonify({
-            'error': 'Reason is required for rejection'
-        }), 400
-    
-    result = AdminService.audit_content(
-        audit_id=audit_id,
-        admin_id=admin_id,
-        status=status,
-        reason=reason
-    )
-    
-    if not result['success']:
-        return jsonify({
-            'error': result['message']
-        }), 400
-    
-    return jsonify(result)
+    try:
+        # Validate content type
+        if content_type not in ['novel', 'chapter']:
+            return jsonify({'error': 'Invalid content type'}), 400
+        
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Missing request data'}), 400
+        
+        # Get status and comment from request
+        status = data.get('status')
+        comment = data.get('comment')
+        
+        if not status or status not in ['approved', 'rejected']:
+            return jsonify({'error': 'Invalid status'}), 400
+        
+        # Get admin ID
+        admin_id = get_jwt_identity()
+        
+        # Process audit action
+        result = AdminService.audit_content(content_type, content_id, status, admin_id, comment)
+        
+        if not result['success']:
+            return jsonify({'error': result['error']}), 400
+        
+        return jsonify({'message': f'{content_type.capitalize()} has been {status}'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/settings/content_audit', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_content_audit_setting():
+    """Get content audit setting"""
+    try:
+        settings = get_settings()
+        enable_content_audit = settings.get('enable_content_audit', True)
+        
+        return jsonify({'enable_content_audit': enable_content_audit})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/settings/content_audit', methods=['POST'])
+@jwt_required()
+@admin_required()
+def update_content_audit_setting():
+    """Update content audit setting"""
+    try:
+        # Get request data
+        data = request.get_json()
+        if data is None or 'enable' not in data:
+            return jsonify({'error': 'Missing enable parameter'}), 400
+        
+        # Get enable value
+        enable = data.get('enable')
+        if not isinstance(enable, bool):
+            return jsonify({'error': 'Enable parameter must be a boolean'}), 400
+        
+        # Update setting
+        success = update_setting('enable_content_audit', enable)
+        if not success:
+            return jsonify({'error': 'Failed to update setting'}), 500
+        
+        return jsonify({'enable_content_audit': enable})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/author/<int:author_id>/exempt', methods=['POST'])
+@jwt_required()
+@admin_required()
+def toggle_author_exempt_status(author_id):
+    """Toggle author exempt from audit status"""
+    try:
+        # Get request data
+        data = request.get_json()
+        if data is None or 'exempt' not in data:
+            return jsonify({'error': 'Missing exempt parameter'}), 400
+        
+        # Get exempt value
+        exempt = data.get('exempt')
+        if not isinstance(exempt, bool):
+            return jsonify({'error': 'Exempt parameter must be a boolean'}), 400
+        
+        # Update author exempt status
+        result = AdminService.toggle_exempt_from_audit(author_id, exempt)
+        
+        if not result['success']:
+            return jsonify({'error': result['error']}), 400
+        
+        return jsonify({'exempt_from_audit': exempt})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ====== Sensitive Words Management ======
 
 @admin_bp.route('/sensitive-words', methods=['GET'])
-@admin_required
+@jwt_required()
+@admin_required()
 def get_sensitive_words():
     """
     Get sensitive words
@@ -260,7 +334,8 @@ def get_sensitive_words():
     return jsonify(result)
 
 @admin_bp.route('/sensitive-words', methods=['POST'])
-@admin_required
+@jwt_required()
+@admin_required()
 def manage_sensitive_word():
     """
     Add or delete a sensitive word
@@ -348,7 +423,8 @@ def manage_sensitive_word():
 # ====== Dashboard ======
 
 @admin_bp.route('/dashboard', methods=['GET'])
-@admin_required
+@jwt_required()
+@admin_required()
 def get_dashboard_stats():
     """
     Get statistics for admin dashboard
@@ -361,7 +437,7 @@ def get_dashboard_stats():
 
 @admin_bp.route('/author-applications', methods=['GET'])
 @jwt_required()
-@admin_required
+@admin_required()
 def get_pending_applications():
     """获取待处理的作者申请列表"""
     try:
@@ -387,7 +463,7 @@ def get_pending_applications():
 
 @admin_bp.route('/author-applications/<int:application_id>', methods=['POST'])
 @jwt_required()
-@admin_required
+@admin_required()
 def process_application(application_id):
     """处理作者申请"""
     # Get admin user ID from auth
@@ -422,7 +498,8 @@ def process_application(application_id):
     }), 200
 
 @admin_bp.route('/content-scan', methods=['POST'])
-@admin_required
+@jwt_required()
+@admin_required()
 def scan_content():
     """
     手动触发内容敏感词扫描和替换
@@ -443,7 +520,7 @@ def scan_content():
 
 @admin_bp.route('/recycle-bin/novels', methods=['GET'])
 @jwt_required()
-@admin_required
+@admin_required()
 def get_recycled_novels():
     """
     Get all novels in recycle bin (paginated)
@@ -469,7 +546,7 @@ def get_recycled_novels():
 
 @admin_bp.route('/recycle-bin/chapters', methods=['GET'])
 @jwt_required()
-@admin_required
+@admin_required()
 def get_recycled_chapters():
     """
     Get all chapters in recycle bin (paginated)
@@ -496,7 +573,7 @@ def get_recycled_chapters():
 
 @admin_bp.route('/recycle-bin/comments', methods=['GET'])
 @jwt_required()
-@admin_required
+@admin_required()
 def get_recycled_comments():
     """
     Get all comments in recycle bin (paginated)
@@ -534,7 +611,7 @@ def get_recycled_comments():
 
 @admin_bp.route('/recycle-bin/novels/<int:novel_id>/restore', methods=['POST'])
 @jwt_required()
-@admin_required
+@admin_required()
 def restore_novel(novel_id):
     """
     Restore a novel and its associated content from recycle bin
@@ -553,7 +630,7 @@ def restore_novel(novel_id):
 
 @admin_bp.route('/recycle-bin/chapters/<int:chapter_id>/restore', methods=['POST'])
 @jwt_required()
-@admin_required
+@admin_required()
 def restore_chapter(chapter_id):
     """
     Restore a chapter and its associated comments from recycle bin
@@ -572,7 +649,7 @@ def restore_chapter(chapter_id):
 
 @admin_bp.route('/recycle-bin/comments/<int:comment_id>/restore', methods=['POST'])
 @jwt_required()
-@admin_required
+@admin_required()
 def restore_comment(comment_id):
     """
     Restore a comment from recycle bin
@@ -591,7 +668,7 @@ def restore_comment(comment_id):
 
 @admin_bp.route('/recycle-bin/novels/<int:novel_id>/permanent', methods=['DELETE'])
 @jwt_required()
-@admin_required
+@admin_required()
 def permanently_delete_novel(novel_id):
     """
     Permanently delete a novel from recycle bin
@@ -610,7 +687,7 @@ def permanently_delete_novel(novel_id):
 
 @admin_bp.route('/recycle-bin/chapters/<int:chapter_id>/permanent', methods=['DELETE'])
 @jwt_required()
-@admin_required
+@admin_required()
 def permanently_delete_chapter(chapter_id):
     """
     Permanently delete a chapter from recycle bin
@@ -629,7 +706,7 @@ def permanently_delete_chapter(chapter_id):
 
 @admin_bp.route('/recycle-bin/comments/<int:comment_id>/permanent', methods=['DELETE'])
 @jwt_required()
-@admin_required
+@admin_required()
 def permanently_delete_comment(comment_id):
     """
     Permanently delete a comment from recycle bin
@@ -650,7 +727,7 @@ def permanently_delete_comment(comment_id):
 
 @admin_bp.route('/novels/<int:novel_id>', methods=['DELETE'])
 @jwt_required()
-@admin_required
+@admin_required()
 def delete_novel(novel_id):
     """
     Soft delete a novel (move to recycle bin)
@@ -669,7 +746,7 @@ def delete_novel(novel_id):
 
 @admin_bp.route('/chapters/<int:chapter_id>', methods=['DELETE'])
 @jwt_required()
-@admin_required
+@admin_required()
 def delete_chapter(chapter_id):
     """
     Soft delete a chapter (move to recycle bin)
@@ -688,7 +765,7 @@ def delete_chapter(chapter_id):
 
 @admin_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
 @jwt_required()
-@admin_required
+@admin_required()
 def delete_comment(comment_id):
     """
     Soft delete a comment (move to recycle bin)
@@ -703,4 +780,49 @@ def delete_comment(comment_id):
             'error': result['message']
         }), 400
     
-    return jsonify(result) 
+    return jsonify(result)
+
+@admin_bp.route('/content/audit/<int:audit_id>', methods=['POST'])
+@jwt_required()
+@admin_required()
+def audit_content_by_id(audit_id):
+    """
+    Review and update content status by audit ID
+    
+    audit_id: ID of the ContentAudit record
+    """
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Missing request data'}), 400
+        
+        # Get status and reason from request
+        status = data.get('status')
+        reason = data.get('reason')
+        
+        if not status or status not in ['approved', 'rejected']:
+            return jsonify({'error': 'Invalid status'}), 400
+        
+        # Get admin ID - 修复：获取正确的管理员ID
+        user_id = get_jwt_identity()
+        admin = Admin.query.filter_by(user_id=user_id).first()
+        if not admin:
+            return jsonify({'error': 'Admin record not found for the current user'}), 400
+        admin_id = admin.id
+        
+        # Process audit action
+        audit = AdminDAO.audit_content(audit_id, admin_id, status, reason)
+        
+        # Get content type and ID 
+        content_type = audit.content_type
+        content_id = audit.content_id
+        
+        # Update the content status too
+        NovelDAO.update_audit_status(content_type, content_id, status)
+        
+        return jsonify({'success': True, 'message': f'Content has been {status}'})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500 

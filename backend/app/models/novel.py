@@ -1,5 +1,11 @@
 from app import db
 from datetime import datetime
+from enum import Enum
+
+class AuditStatus(str, Enum):
+    PENDING = 'pending'
+    APPROVED = 'approved'
+    REJECTED = 'rejected'
 
 # 定义小说和标签的多对多关系表
 novel_tag = db.Table('novel_tag',
@@ -25,6 +31,9 @@ class Novel(db.Model):
     # 添加回收站功能所需字段
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
+    # 添加审核状态字段
+    audit_status = db.Column(db.Enum('pending', 'approved', 'rejected', name='audit_status_enum'), 
+                           default='pending', nullable=False)
     
     # Relationships
     chapters = db.relationship('Chapter', backref='novel', lazy='dynamic', cascade='all, delete-orphan')
@@ -49,7 +58,8 @@ class Novel(db.Model):
             'updated_at': self.updated_at.isoformat(),
             'chapter_count': self.chapters.count(),
             'tags': [tag.to_dict() for tag in self.tags],
-            'is_deleted': self.is_deleted
+            'is_deleted': self.is_deleted,
+            'audit_status': self.audit_status
         }
         
         if self.deleted_at:
@@ -71,6 +81,9 @@ class Chapter(db.Model):
     # 添加回收站功能所需字段
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
+    # 添加审核状态字段
+    audit_status = db.Column(db.Enum('pending', 'approved', 'rejected', name='audit_status_enum'), 
+                           default='pending', nullable=False)
     
     def to_dict(self, include_content=False):
         result = {
@@ -80,7 +93,8 @@ class Chapter(db.Model):
             'title': self.title,
             'word_count': self.word_count,
             'created_at': self.created_at.isoformat(),
-            'is_deleted': self.is_deleted
+            'is_deleted': self.is_deleted,
+            'audit_status': self.audit_status
         }
         
         if include_content:

@@ -23,6 +23,17 @@ export function getMyNovels() {
 }
 
 /**
+ * 获取作者待审核内容
+ * @returns {Promise}
+ */
+export function getPendingContent() {
+  return request({
+    url: '/novel/author/pending',
+    method: 'get'
+  })
+}
+
+/**
  * 添加小说
  * @param {Object} data - 小说数据
  * @returns {Promise}

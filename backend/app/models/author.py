@@ -5,29 +5,33 @@ class Author(db.Model):
     __tablename__ = 'author'
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
-    pen_name = db.Column(db.String(50))
-    bio = db.Column(db.Text)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    pen_name = db.Column(db.String(50), nullable=True)
+    bio = db.Column(db.Text, nullable=True)
     verified = db.Column(db.Boolean, default=False)
-    income_account = db.Column(db.String(100))
+    income_account = db.Column(db.String(100), nullable=True)
     works_count = db.Column(db.Integer, default=0)
     fans_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    exempt_from_audit = db.Column(db.Boolean, default=False)  # 添加免审核标志
     
-    user = db.relationship('User', back_populates='author')
+    # Relationship
+    user = db.relationship('User', backref='author_profile')
     novels = db.relationship('Novel', backref='author_info', lazy='dynamic')
     
     def to_dict(self):
         return {
             'id': self.id,
             'user_id': self.user_id,
-            'pen_name': self.pen_name or self.user.username,
+            'pen_name': self.pen_name,
             'bio': self.bio,
             'verified': self.verified,
             'works_count': self.works_count,
             'fans_count': self.fans_count,
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'exempt_from_audit': self.exempt_from_audit
         }
 
 class AuthorApplication(db.Model):

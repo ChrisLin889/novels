@@ -205,11 +205,16 @@ export const getPendingContent = async (contentType, params = {}) => {
  */
 export const auditContent = async (auditId, data) => {
   try {
+    console.log('审核内容请求:', { auditId, data });
+    const url = `/admin/content/audit/${auditId}`;
+    console.log('审核内容请求URL:', url);
+    
     const response = await request({
-      url: `/admin/content/audit/${auditId}`,
+      url: url,
       method: 'post',
       data
     });
+    console.log('审核内容响应:', response);
     return response;
   } catch (error) {
     console.error('审核内容失败:', error);

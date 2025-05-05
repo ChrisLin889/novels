@@ -43,6 +43,27 @@
             </div>
           </div>
         </el-card>
+        
+        <el-card class="pending-content-card">
+          <template #header>
+            <div class="card-header">
+              <span>待审核内容</span>
+            </div>
+          </template>
+          <div class="pending-content-info" v-loading="pendingLoading">
+            <div class="pending-item">
+              <span class="label">待审核小说</span>
+              <span class="value">{{ pendingContent.pending_novels?.length || 0 }}</span>
+            </div>
+            <div class="pending-item">
+              <span class="label">待审核章节</span>
+              <span class="value">{{ pendingContent.pending_chapters?.length || 0 }}</span>
+            </div>
+            <div class="pending-item" v-if="pendingContent.pending_novels?.length > 0 || pendingContent.pending_chapters?.length > 0">
+              <el-button type="primary" @click="viewPendingContent" size="small" style="margin-top: 10px; width: 100%;">查看详情</el-button>
+            </div>
+          </div>
+        </el-card>
       </el-col>
 
       <el-col :span="18">
@@ -60,16 +81,23 @@
               </template>
             </el-table-column>
             <el-table-column prop="category" label="分类" width="120"></el-table-column>
-            <el-table-column prop="status" label="状态" width="100">
+            <el-table-column prop="status" label="状态" width="80">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'ongoing' ? 'success' : 'info'">
                   {{ row.status === 'ongoing' ? '连载中' : '已完结' }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="chapter_count" label="章节数" width="100"></el-table-column>
-            <el-table-column prop="word_count" label="字数" width="100"></el-table-column>
-            <el-table-column prop="view_count" label="阅读数" width="100"></el-table-column>
+            <el-table-column prop="audit_status" label="审核状态" width="80">
+              <template #default="{ row }">
+                <el-tag :type="getAuditStatusType(row.audit_status)">
+                  {{ getAuditStatusText(row.audit_status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="chapter_count" label="章节数" width="80"></el-table-column>
+            <el-table-column prop="word_count" label="字数" width="80"></el-table-column>
+            <el-table-column prop="view_count" label="阅读数" width="80"></el-table-column>
             <el-table-column label="操作" width="200">
               <template #default="{ row }">
                 <el-button-group>
@@ -140,7 +168,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getAuthorStats, getMyNovels, addNovel, updateNovel, deleteNovel, resignAuthor } from '@/api/author'
+import { getAuthorStats, getMyNovels, addNovel, updateNovel, deleteNovel, resignAuthor, getPendingContent } from '@/api/author'
 
 export default {
   name: 'AuthorCenter',
@@ -479,10 +507,60 @@ export default {
       }
     }
 
+    const pendingContent = ref({ pending_novels: [], pending_chapters: [] })
+    const pendingLoading = ref(false)
+    
+    const getAuditStatusType = (status) => {
+      switch(status) {
+        case 'approved': return 'success'
+        case 'pending': return 'warning'
+        case 'rejected': return 'danger'
+        default: return 'info'
+      }
+    }
+    
+    const getAuditStatusText = (status) => {
+      switch(status) {
+        case 'approved': return '已通过'
+        case 'pending': return '审核中'
+        case 'rejected': return '已拒绝'
+        default: return '未知'
+      }
+    }
+    
+    const loadPendingContent = async () => {
+      pendingLoading.value = true
+      try {
+        console.log('Loading pending content...')
+        const response = await getPendingContent()
+        console.log('Pending content response:', response)
+        if (response) {
+          pendingContent.value = {
+            pending_novels: response.pending_novels || [],
+            pending_chapters: response.pending_chapters || []
+          }
+        }
+      } catch (error) {
+        console.error('获取待审核内容失败:', error)
+        // 设置默认值而不是显示错误消息
+        pendingContent.value = {
+          pending_novels: [],
+          pending_chapters: []
+        }
+      } finally {
+        pendingLoading.value = false
+      }
+    }
+    
+    const viewPendingContent = () => {
+      router.push('/author/pending')
+    }
+
     onMounted(() => {
       console.log('AuthorCenter mounted, user:', user.value)
       loadStats()
       loadNovels()
+      loadPendingContent()
     })
 
     return {
@@ -506,7 +584,12 @@ export default {
       showChapterManagement,
       handleCoverSuccess,
       beforeCoverUpload,
-      handleResignAuthor
+      handleResignAuthor,
+      pendingContent,
+      pendingLoading,
+      getAuditStatusType,
+      getAuditStatusText,
+      viewPendingContent
     }
   }
 }
@@ -603,5 +686,29 @@ export default {
   white-space: pre-wrap;
   max-height: 200px;
   overflow-y: auto;
+}
+
+.pending-content-card {
+  margin-top: 20px;
+}
+
+.pending-content-info {
+  padding: 10px 0;
+}
+
+.pending-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.pending-item .label {
+  color: #666;
+}
+
+.pending-item .value {
+  font-weight: bold;
+  color: #E6A23C;
 }
 </style> 

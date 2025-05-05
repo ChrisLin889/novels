@@ -4,6 +4,7 @@ from app.services.novel_service import NovelService
 from app.utils.security import author_required, admin_required
 from app.models.author import Author
 from app.services.permission_service import PermissionService
+from app.dao.novel_dao import NovelDAO
 import sys
 import datetime
 
@@ -651,4 +652,27 @@ def update_chapter(chapter_id):
             'chapter': result.get('chapter')
         })
     except Exception as e:
-        return error_response(str(e)) 
+        return error_response(str(e))
+
+@novel_bp.route('/author/pending', methods=['GET'])
+@jwt_required()
+@author_required()
+def get_author_pending_content():
+    """Get author's pending/rejected content"""
+    try:
+        # Get author ID from user ID
+        user_id = get_jwt_identity()
+        author = Author.query.filter_by(user_id=user_id).first()
+        
+        if not author:
+            return error_response('Author not found', 404)
+        
+        # Get pending content for author
+        result = NovelDAO.get_author_pending_content(author.id)
+        
+        return success_response({
+            'pending_novels': result['novels'],
+            'pending_chapters': result['chapters']
+        })
+    except Exception as e:
+        return error_response(str(e), 500) 

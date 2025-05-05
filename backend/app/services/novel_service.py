@@ -11,6 +11,9 @@ from datetime import datetime
 from app.dao.novel_dao import NovelDAO
 from app.dao.interaction_dao import InteractionDAO
 from app.services.admin_service import AdminService
+from app.models.audit_status import AuditStatus
+from app.config.settings import get_settings
+from app.models.admin import Admin, ContentAudit
 
 class NovelService:
     """
@@ -58,8 +61,8 @@ class NovelService:
             Dictionary with novel list and pagination info
         """
         try:
-            # Create base query with filters
-            query = NovelDAO.get_novel_list_query(category, status)
+            # Create base query with filters - only show approved content
+            query = NovelDAO.get_novel_list_query(category, status, AuditStatus.APPROVED)
             
             # Apply sorting
             query = NovelDAO.apply_sorting(query, sort_by, sort_order)
@@ -118,11 +121,12 @@ class NovelService:
             return {'success': False, 'error': str(e)}
     
     @staticmethod
-    def get_novel_detail(novel_id: int) -> Dict[str, Any]:
+    def get_novel_detail(novel_id: int, user_id: Optional[int] = None) -> Dict[str, Any]:
         """Get detailed information about a novel including its chapters
         
         Args:
             novel_id: Novel ID
+            user_id: Optional user ID to check if user is the author
             
         Returns:
             Dictionary with novel details and chapters list
@@ -133,11 +137,37 @@ class NovelService:
             if not novel:
                 return {'success': False, 'error': 'Novel not found'}
             
+            # Check if novel is pending/rejected and user is not author
+            if novel.audit_status != AuditStatus.APPROVED:
+                # Check if user is author
+                is_author = False
+                if user_id:
+                    author = Author.query.filter_by(user_id=user_id).first()
+                    if author and author.id == novel.author_id:
+                        is_author = True
+                        
+                # Check if user is admin
+                is_admin = False
+                if user_id:
+                    admin = Admin.query.filter_by(user_id=user_id).first()
+                    if admin:
+                        is_admin = True
+                        
+                # Return error if user is not author or admin
+                if not is_author and not is_admin:
+                    return {'success': False, 'error': 'Novel not found or pending approval'}
+            
             # Increment view count
             NovelDAO.increment_view_count(novel_id)
             
-            # Get chapters for the novel
-            chapters = NovelDAO.get_novel_chapters(novel_id)
+            # Get chapters for the novel - include pending if user is author
+            include_pending = False
+            if user_id:
+                author = Author.query.filter_by(user_id=user_id).first()
+                if author and author.id == novel.author_id:
+                    include_pending = True
+                    
+            chapters = NovelDAO.get_novel_chapters(novel_id, include_pending)
             
             # Get novel data
             novel_data = novel.to_dict()
@@ -150,7 +180,8 @@ class NovelService:
                     'chapter_number': chapter.chapter_number,
                     'title': chapter.title,
                     'word_count': chapter.word_count,
-                    'created_at': chapter.created_at.isoformat() if chapter.created_at else None
+                    'created_at': chapter.created_at.isoformat() if chapter.created_at else None,
+                    'audit_status': chapter.audit_status
                 }
                 for chapter in chapters
             ]
@@ -261,64 +292,102 @@ class NovelService:
     def add_novel(title: str, category: str, intro: str, 
                  cover: str = 'default_cover.jpg', tags: list = None,
                  user_id: int = None) -> Dict[str, Any]:
-        """Add a new novel
+        """Add new novel
         
         Args:
             title: Novel title
             category: Novel category
             intro: Novel introduction
             cover: Cover image path
-            tags: List of tags
+            tags: List of tag names
             user_id: User ID of the author
             
         Returns:
-            Dictionary with created novel info
+            Dictionary with new novel ID and success status
         """
         try:
-            if not user_id:
-                return {'success': False, 'error': 'Authentication required'}
-            
-            # Find author by user_id
-            author = Author.query.filter_by(user_id=user_id).first()
-            if not author:
-                return {'success': False, 'error': 'Author privileges required'}
-            
-            # 获取作者名称 - 优先使用笔名，如果没有则使用用户名
-            user = User.query.get(user_id)
-            if not user:
-                return {'success': False, 'error': 'User not found'}
+            # Check if user is an author
+            if user_id:
+                author = Author.query.filter_by(user_id=user_id).first()
+                if not author:
+                    return {
+                        'success': False, 
+                        'error': 'User is not registered as an author'
+                    }
+                    
+                # Determine audit status based on settings and author status
+                settings = get_settings()
+                content_audit_enabled = settings.get('enable_content_audit', True)
                 
-            author_name = author.pen_name or user.username
-            
-            # 敏感词过滤和检查
-            has_sensitive, matches, filtered_intro = AdminService.filter_and_notify_sensitive_content(
-                content=intro,
-                user_id=user_id,
-                content_type='novel',
-                content_id=0  # 先设为0，小说创建后再更新
-            )
-            
-            # Create new novel using DAO with filtered intro
-            novel = NovelDAO.create_novel(
-                title=title,
-                author_id=author.id,
-                author=author_name,
-                category=category,
-                intro=filtered_intro,
-                cover=cover,
-                status='ongoing'
-            )
+                if content_audit_enabled and not author.exempt_from_audit:
+                    audit_status = AuditStatus.PENDING
+                else:
+                    audit_status = AuditStatus.APPROVED
+                    
+                # Create new novel
+                novel = Novel(
+                    title=title,
+                    author=author.pen_name,
+                    author_id=author.id,
+                    category=category,
+                    cover=cover,
+                    intro=intro,
+                    audit_status=audit_status
+                )
+            else:
+                # External author, no audit needed (legacy support)
+                novel = Novel(
+                    title=title,
+                    author=title,  # Use title as author name for external novels
+                    category=category,
+                    cover=cover,
+                    intro=intro,
+                    audit_status=AuditStatus.APPROVED
+                )
+                
+            # Add novel to database
+            db.session.add(novel)
+            db.session.flush()  # Get ID without committing
             
             # Add tags if provided
-            if tags and isinstance(tags, list):
-                NovelService.add_tags_to_novel(novel.id, tags)
+            if tags:
+                for tag_name in tags:
+                    # Get or create tag
+                    tag = Tag.query.filter_by(name=tag_name).first()
+                    if not tag:
+                        tag = Tag(name=tag_name)
+                        db.session.add(tag)
+                        
+                    # Add tag to novel
+                    novel.tags.append(tag)
             
-            return {
+            # Create ContentAudit record if novel needs review
+            if novel.audit_status == AuditStatus.PENDING:
+                audit_record = ContentAudit(
+                    content_type='novel',
+                    content_id=novel.id,
+                    status='pending',
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                )
+                db.session.add(audit_record)
+            
+            # Commit changes
+            db.session.commit()
+            
+            # Return success with novel ID and audit status
+            result = {
                 'success': True,
                 'novel_id': novel.id,
-                'novel': novel.to_dict(),
-                'has_sensitive': has_sensitive
+                'audit_status': novel.audit_status
             }
+            
+            # Add message if pending review
+            if novel.audit_status == AuditStatus.PENDING:
+                result['message'] = '小说已提交，等待审核'
+            
+            return result
+            
         except Exception as e:
             db.session.rollback()
             return {'success': False, 'error': str(e)}
@@ -367,6 +436,19 @@ class NovelService:
             # Remove None values
             update_data = {k: v for k, v in update_data.items() if v is not None}
             
+            # Determine if update requires approval
+            settings = get_settings()
+            content_audit_enabled = settings.get('enable_content_audit', True)
+            author = Author.query.filter_by(id=novel.author_id).first()
+            
+            # Only mark for review if substantial updates (not just status change)
+            substantial_updates = any(k in update_data for k in ['title', 'category', 'intro'])
+            needs_review = (content_audit_enabled and author and not author.exempt_from_audit 
+                          and substantial_updates)
+            
+            if needs_review:
+                update_data['audit_status'] = AuditStatus.PENDING
+            
             # Update novel using DAO
             NovelDAO.update_novel_fields(novel, update_data)
             
@@ -377,11 +459,32 @@ class NovelService:
                 db.session.commit()
                 NovelService.add_tags_to_novel(novel.id, tags)
             
-            return {
-                'success': True,
-                'message': 'Novel updated successfully',
-                'novel': novel.to_dict()
-            }
+            # Create ContentAudit record if update needs review
+            if needs_review:
+                audit_record = ContentAudit(
+                    content_type='novel',
+                    content_id=novel.id,
+                    status='pending',
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                )
+                db.session.add(audit_record)
+                db.session.commit()
+                
+                result = {
+                    'success': True,
+                    'message': '小说已更新，等待审核',
+                    'novel': novel.to_dict(),
+                    'audit_status': AuditStatus.PENDING
+                }
+            else:
+                result = {
+                    'success': True,
+                    'message': '小说已更新',
+                    'novel': novel.to_dict()
+                }
+            
+            return result
         except Exception as e:
             db.session.rollback()
             return {'success': False, 'error': str(e)}
@@ -389,50 +492,95 @@ class NovelService:
     @staticmethod
     def add_chapter(author_id: int, novel_id: int, title: str, 
                    content: str, chapter_number: Optional[int] = None) -> Dict[str, Any]:
-        """Add a new chapter to a novel (author only)
+        """Add new chapter to a novel
         
         Args:
             author_id: Author ID
             novel_id: Novel ID
             title: Chapter title
             content: Chapter content
-            chapter_number: Optional chapter number
+            chapter_number: Chapter number (optional)
             
         Returns:
-            Dictionary with created chapter info
+            Dictionary with new chapter info and success status
         """
-        # Check for missing required fields
-        if not all([title, content]):
-            return {'success': False, 'error': 'Missing required fields'}
-        
-        # Verify novel exists
-        novel = NovelDAO.get_novel_by_id(novel_id)
-        if not novel:
-            return {'success': False, 'error': 'Novel not found'}
-        
         try:
-            # 获取作者对应的用户ID
-            author = Author.query.get(author_id)
-            if not author or not author.user_id:
-                return {'success': False, 'error': 'Author not found or not associated with user'}
+            # Check if novel exists and belongs to author
+            novel = Novel.query.filter_by(id=novel_id, author_id=author_id).first()
+            if not novel:
+                return {
+                    'success': False,
+                    'error': 'Novel not found or you are not the author'
+                }
             
-            # 敏感词过滤和检查
-            has_sensitive, matches, filtered_content = AdminService.filter_and_notify_sensitive_content(
+            # Get author to check exempt status
+            author = Author.query.get(author_id)
+            
+            # Determine audit status based on settings and author status
+            settings = get_settings()
+            content_audit_enabled = settings.get('enable_content_audit', True)
+            
+            if content_audit_enabled and not author.exempt_from_audit:
+                audit_status = AuditStatus.PENDING
+            else:
+                audit_status = AuditStatus.APPROVED
+            
+            # Calculate chapter number if not provided
+            if chapter_number is None:
+                last_chapter = Chapter.query.filter_by(novel_id=novel_id).order_by(
+                    Chapter.chapter_number.desc()
+                ).first()
+                
+                if last_chapter:
+                    chapter_number = last_chapter.chapter_number + 1
+                else:
+                    chapter_number = 1
+                
+            # Calculate word count
+            word_count = len(content)
+            
+            # Create new chapter
+            chapter = Chapter(
+                novel_id=novel_id,
+                chapter_number=chapter_number,
+                title=title,
                 content=content,
-                user_id=author.user_id,
-                content_type='chapter',
-                content_id=0  # 先设为0，章节创建后再更新
+                word_count=word_count,
+                audit_status=audit_status
             )
             
-            # Create chapter using DAO with filtered content
-            chapter = NovelDAO.create_chapter(novel_id, title, filtered_content, chapter_number)
+            # Add chapter to database
+            db.session.add(chapter)
+            db.session.flush()  # Get ID without committing
             
-            return {
+            # Create ContentAudit record if chapter needs review
+            if chapter.audit_status == AuditStatus.PENDING:
+                audit_record = ContentAudit(
+                    content_type='chapter',
+                    content_id=chapter.id,
+                    status='pending',
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                )
+                db.session.add(audit_record)
+            
+            # Update novel updated_at timestamp
+            novel.updated_at = datetime.utcnow()
+            db.session.commit()
+            
+            # Return success with chapter info
+            result = {
                 'success': True,
-                'message': 'Chapter added successfully',
                 'chapter': chapter.to_dict(),
-                'has_sensitive': has_sensitive
+                'audit_status': chapter.audit_status
             }
+            
+            # Add message if pending review
+            if chapter.audit_status == AuditStatus.PENDING:
+                result['message'] = '章节已提交，等待审核'
+            
+            return result
+            
         except Exception as e:
             db.session.rollback()
             return {'success': False, 'error': str(e)}
@@ -458,19 +606,55 @@ class NovelService:
         is_admin = PermissionService.get_user_role(user_id) == 'admin'
         
         # If not admin, verify user is the author of the novel
+        author = None
         if not is_admin:
             author = Author.query.filter_by(user_id=user_id).first()
             if not author or novel.author_id != author.id:
                 return {'success': False, 'error': 'Permission denied - only the novel author or admin can update chapters'}
         
         try:
+            # Determine if update requires approval
+            settings = get_settings()
+            content_audit_enabled = settings.get('enable_content_audit', True)
+            
+            # Only set pending status if:
+            # 1. Content audit is enabled
+            # 2. User is not admin
+            # 3. Author is not exempt from audit
+            # 4. Content or title is being updated (substantial update)
+            substantial_update = 'content' in data or 'title' in data
+            needs_review = (content_audit_enabled and not is_admin and author and 
+                          not author.exempt_from_audit and substantial_update)
+            
+            if needs_review:
+                data['audit_status'] = AuditStatus.PENDING
+            
             updated_chapter = NovelDAO.update_chapter_fields(chapter, data)
             
-            return {
-                'success': True,
-                'message': 'Chapter updated successfully',
-                'chapter': updated_chapter.to_dict()
-            }
+            # Create ContentAudit record if update needs review
+            if needs_review:
+                audit_record = ContentAudit(
+                    content_type='chapter',
+                    content_id=chapter.id,
+                    status='pending',
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                )
+                db.session.add(audit_record)
+                db.session.commit()
+                
+                return {
+                    'success': True,
+                    'message': '章节已更新，等待审核',
+                    'chapter': updated_chapter.to_dict(),
+                    'audit_status': AuditStatus.PENDING
+                }
+            else:
+                return {
+                    'success': True,
+                    'message': '章节已更新',
+                    'chapter': updated_chapter.to_dict()
+                }
         except Exception as e:
             db.session.rollback()
             return {'success': False, 'error': str(e)}
@@ -565,46 +749,79 @@ class NovelService:
     
     @staticmethod
     def get_chapter(chapter_id: int, include_content: bool = True, user_id: Optional[int] = None) -> Dict[str, Any]:
-        """Get chapter details with optional content"""
-        # Get chapter from DAO
-        print(f"DEBUG - NovelService.get_chapter开始, chapter_id={chapter_id}, user_id={user_id}")
-        chapter = NovelDAO.get_chapter_by_id(chapter_id)
-        if not chapter:
-            print(f"DEBUG - 章节不存在: chapter_id={chapter_id}")
-            return {'success': False, 'error': 'Chapter not found'}
-            
-        # Get novel for this chapter
-        novel = NovelDAO.get_novel_by_id(chapter.novel_id)
-        if not novel:
-            print(f"DEBUG - 小说不存在: novel_id={chapter.novel_id}")
-            return {'success': False, 'error': 'Novel not found'}
-            
-        # Get adjacent chapters
-        prev_chapter, next_chapter = NovelDAO.get_adjacent_chapters(chapter)
+        """Get chapter details
         
-        # Update reading history if user is logged in
-        if user_id:
-            print(f"DEBUG - 准备更新阅读历史: user_id={user_id}, novel_id={novel.id}, chapter_id={chapter.id}")
-            try:
-                history = InteractionDAO.update_reading_history(user_id, novel.id, chapter.id)
-                print(f"DEBUG - 阅读历史更新成功: history_id={history.id if history else 'None'}")
-            except Exception as e:
-                print(f"DEBUG - 阅读历史更新失败: {str(e)}")
-        else:
-            print("DEBUG - 没有用户ID, 跳过阅读历史更新")
+        Args:
+            chapter_id: Chapter ID
+            include_content: Whether to include chapter content
+            user_id: Optional user ID to check permissions
             
-        # Update view count
-        NovelDAO.increment_view_count(novel.id)
-        
-        # Prepare response
-        chapter_data = chapter.to_dict(include_content=include_content)
-        
-        return {
-            'success': True,
-            'chapter': chapter_data,
-            'prev_chapter': prev_chapter.to_dict() if prev_chapter else None,
-            'next_chapter': next_chapter.to_dict() if next_chapter else None
-        }
+        Returns:
+            Dictionary with chapter details
+        """
+        try:
+            # Get chapter by ID
+            chapter = NovelDAO.get_chapter_by_id(chapter_id)
+            if not chapter:
+                return {'success': False, 'error': 'Chapter not found'}
+            
+            # Check audit status
+            if chapter.audit_status != AuditStatus.APPROVED:
+                # If chapter is pending or rejected, only author or admin can view
+                novel = NovelDAO.get_novel_by_id(chapter.novel_id)
+                
+                is_author = False
+                is_admin = False
+                
+                if user_id:
+                    # Check if user is the author
+                    author = Author.query.filter_by(user_id=user_id).first()
+                    if author and novel and author.id == novel.author_id:
+                        is_author = True
+                        
+                    # Check if user is admin
+                    admin = Admin.query.filter_by(user_id=user_id).first()
+                    if admin:
+                        is_admin = True
+                        
+                # Return error if user is not author or admin
+                if not is_author and not is_admin:
+                    return {'success': False, 'error': 'Chapter not found or pending approval'}
+            
+            # Get novel to check if it exists
+            novel = NovelDAO.get_novel_by_id(chapter.novel_id)
+            if not novel:
+                return {'success': False, 'error': 'Novel not found'}
+            
+            # Find previous and next chapter
+            prev_chapter = Chapter.query.filter(
+                Chapter.novel_id == chapter.novel_id,
+                Chapter.chapter_number < chapter.chapter_number,
+                Chapter.is_deleted == False
+            ).order_by(Chapter.chapter_number.desc()).first()
+            
+            next_chapter = Chapter.query.filter(
+                Chapter.novel_id == chapter.novel_id,
+                Chapter.chapter_number > chapter.chapter_number,
+                Chapter.is_deleted == False
+            ).order_by(Chapter.chapter_number.asc()).first()
+            
+            # Format response data
+            result = {
+                'success': True,
+                'chapter': chapter.to_dict(include_content),
+                'novel_title': novel.title,
+                'prev_chapter': prev_chapter.to_dict(False) if prev_chapter else None,
+                'next_chapter': next_chapter.to_dict(False) if next_chapter else None
+            }
+            
+            # Record reading history if user is logged in
+            if user_id:
+                InteractionDAO.record_reading_history(user_id, novel.id, chapter.id)
+            
+            return result
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     @staticmethod
     def get_author_stats(user_id: int) -> Dict[str, Any]:
@@ -662,7 +879,7 @@ class NovelService:
     
     @staticmethod
     def get_novel_chapters(novel_id: int) -> Dict[str, Any]:
-        """Get chapters for a specific novel
+        """Get all chapters for a novel
         
         Args:
             novel_id: Novel ID
@@ -676,12 +893,12 @@ class NovelService:
             if not novel:
                 return {'success': False, 'error': 'Novel not found'}
             
-            # Get all chapters for the novel
-            chapters = NovelDAO.get_novel_chapters(novel_id)
+            # Get chapters - only show approved chapters
+            chapters = NovelDAO.get_novel_chapters(novel_id, include_pending=False)
             
             return {
                 'success': True,
-                'chapters': [chapter.to_dict(include_content=False) for chapter in chapters]
+                'chapters': [chapter.to_dict() for chapter in chapters]
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}

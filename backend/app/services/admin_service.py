@@ -1,14 +1,17 @@
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 from app.dao.admin_dao import AdminDAO
 from app.models.admin import Admin, SensitiveWord, ContentAudit, UserAction
 from app.models.user import User
-from app.models.novel import Novel, Chapter
+from app.models.novel import Novel, Chapter, AuditStatus
 from app.models.interaction import Comment
 from app.services.permission_service import PermissionService
 from datetime import datetime
 import re
-from sqlalchemy import func
+from sqlalchemy import func, desc
 from app import db
+from app.models.author import Author
+from app.services.notification_service import NotificationService
+from app.dao.novel_dao import NovelDAO
 
 class AdminService:
     """
@@ -159,7 +162,6 @@ class AdminService:
                 # 检查是否已经是作者
                 if not PermissionService.has_role(user_id, 'author'):
                     # 创建作者记录
-                    from app.models.author import Author
                     author = Author(
                         user_id=user_id,
                         pen_name=user.username
@@ -172,7 +174,6 @@ class AdminService:
                 
                 # 如果是作者，删除作者记录
                 if PermissionService.has_role(user_id, 'author'):
-                    from app.models.author import Author
                     Author.query.filter_by(user_id=user_id).delete()
             
             # 创建操作记录
@@ -203,55 +204,235 @@ class AdminService:
     # ====== Content Management ======
     
     @staticmethod
-    def get_pending_content(content_type: str, page: int = 1, per_page: int = 20) -> Dict:
+    def get_pending_content(content_type: str = None, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
         """
-        Get pending content for moderation
+        Get pending content for review
         
         Args:
-            content_type: Type of content ("novel", "chapter", "comment")
+            content_type: Type of content ('novel' or 'chapter')
             page: Page number
             per_page: Items per page
             
         Returns:
-            Dict with content and pagination info
-        """
-        content, total = AdminDAO.get_pending_content(content_type, page, per_page)
-        
-        return {
-            'content': content,
-            'total': total,
-            'page': page,
-            'per_page': per_page,
-            'total_pages': (total + per_page - 1) // per_page,
-            'content_type': content_type
-        }
-    
-    @staticmethod
-    def audit_content(audit_id: int, admin_id: int, status: str, reason: Optional[str] = None) -> Dict:
-        """
-        Approve or reject content
-        
-        Args:
-            audit_id: ID of the audit record
-            admin_id: ID of admin performing the action
-            status: New status ("approved" or "rejected")
-            reason: Reason for rejection
-            
-        Returns:
-            Dict with result
+            Dictionary with pending content items
         """
         try:
-            audit = AdminDAO.audit_content(audit_id, admin_id, status, reason)
-            return {
-                'success': True,
-                'message': f"Content {audit.content_id} has been {status}",
-                'audit': audit.to_dict()
-            }
-        except ValueError as e:
-            return {
-                'success': False,
-                'message': str(e)
-            }
+            if content_type == 'novel':
+                # 先使用原始方式直接查询Novel表
+                query = Novel.query.filter_by(
+                    is_deleted=False, 
+                    audit_status=AuditStatus.PENDING
+                ).order_by(desc(Novel.created_at))
+                
+                # 分页
+                pagination = query.paginate(page=page, per_page=per_page)
+                
+                # 格式化响应，同时添加audit_id
+                items = []
+                for novel in pagination.items:
+                    novel_dict = novel.to_dict()
+                    # 查找此小说的审核记录
+                    audit = ContentAudit.query.filter_by(
+                        content_type='novel',
+                        content_id=novel.id,
+                        status='pending'
+                    ).first()
+                    
+                    # 如果找不到审核记录，创建一个
+                    if not audit:
+                        audit = ContentAudit(
+                            content_type='novel',
+                            content_id=novel.id,
+                            status='pending'
+                        )
+                        db.session.add(audit)
+                        db.session.commit()
+                    
+                    # 添加audit_id到返回数据
+                    novel_dict['audit_id'] = audit.id
+                    items.append(novel_dict)
+                
+                # 返回结果
+                return {
+                    'success': True,
+                    'items': items,
+                    'total': pagination.total,
+                    'pages': pagination.pages,
+                    'current_page': page,
+                    'content_type': content_type
+                }
+                
+            elif content_type == 'chapter':
+                # 先使用原始方式直接查询Chapter表
+                query = Chapter.query.filter_by(
+                    is_deleted=False, 
+                    audit_status=AuditStatus.PENDING
+                ).order_by(desc(Chapter.created_at))
+                
+                # 分页
+                pagination = query.paginate(page=page, per_page=per_page)
+                
+                # 格式化响应
+                items = []
+                for chapter in pagination.items:
+                    chapter_data = chapter.to_dict(include_content=True)
+                    # 添加小说标题作为参考
+                    novel = Novel.query.get(chapter.novel_id)
+                    if novel:
+                        chapter_data['novel_title'] = novel.title
+                    
+                    # 查找此章节的审核记录
+                    audit = ContentAudit.query.filter_by(
+                        content_type='chapter',
+                        content_id=chapter.id,
+                        status='pending'
+                    ).first()
+                    
+                    # 如果找不到审核记录，创建一个
+                    if not audit:
+                        audit = ContentAudit(
+                            content_type='chapter',
+                            content_id=chapter.id,
+                            status='pending'
+                        )
+                        db.session.add(audit)
+                        db.session.commit()
+                    
+                    # 添加audit_id到返回数据
+                    chapter_data['audit_id'] = audit.id
+                    items.append(chapter_data)
+                
+                return {
+                    'success': True,
+                    'items': items,
+                    'total': pagination.total,
+                    'pages': pagination.pages,
+                    'current_page': page,
+                    'content_type': content_type
+                }
+                
+            elif content_type == 'comment':
+                # 对于评论使用AdminDAO的方法，因为评论审核较少
+                items, total = AdminDAO.get_pending_content(content_type, page, per_page)
+                
+                # Format response
+                return {
+                    'success': True,
+                    'items': items,
+                    'total': total,
+                    'pages': (total + per_page - 1) // per_page,  # 计算总页数
+                    'current_page': page,
+                    'content_type': content_type
+                }
+                
+            else:
+                # Get both novels and chapters (default)
+                novel_count = Novel.query.filter_by(
+                    is_deleted=False, 
+                    audit_status=AuditStatus.PENDING
+                ).count()
+                
+                chapter_count = Chapter.query.filter_by(
+                    is_deleted=False, 
+                    audit_status=AuditStatus.PENDING
+                ).count()
+                
+                comment_count = 0  # 暂无评论审核
+                
+                return {
+                    'success': True,
+                    'summary': {
+                        'novel': novel_count,
+                        'chapter': chapter_count,
+                        'comment': comment_count,
+                        'total': novel_count + chapter_count + comment_count
+                    }
+                }
+                
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    @staticmethod
+    def audit_content(content_type: str, content_id: int, status: str, 
+                    admin_id: int, comment: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Review and update status of content
+        
+        Args:
+            content_type: Type of content ('novel' or 'chapter')
+            content_id: ID of the content
+            status: New status ('approved' or 'rejected')
+            admin_id: ID of the admin performing the action
+            comment: Optional comment for rejection
+            
+        Returns:
+            Dictionary with audit result
+        """
+        try:
+            # Validate status
+            if status not in [AuditStatus.APPROVED, AuditStatus.REJECTED]:
+                return {'success': False, 'error': 'Invalid status'}
+                
+            # Update audit status with DAO
+            success = NovelDAO.update_audit_status(content_type, content_id, status)
+            if not success:
+                return {'success': False, 'error': f'{content_type.capitalize()} not found'}
+            
+            # Get author information for notification
+            author_id = None
+            if content_type == 'novel':
+                novel = Novel.query.get(content_id)
+                if novel:
+                    author_id = novel.author_id
+            elif content_type == 'chapter':
+                chapter = Chapter.query.get(content_id)
+                if chapter:
+                    novel = Novel.query.get(chapter.novel_id)
+                    if novel:
+                        author_id = novel.author_id
+            
+            # Record audit action (simplified for now)
+            # In a real implementation, this would be stored in a dedicated audit_log table
+            
+            # Send notification to author (simplified)
+            # In a real implementation, use a proper notification service
+            if author_id:
+                print(f"Notification to author {author_id}: {content_type} {content_id} status changed to {status}")
+                if comment:
+                    print(f"Admin comment: {comment}")
+            
+            return {'success': True, 'status': status}
+            
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': str(e)}
+            
+    @staticmethod
+    def toggle_exempt_from_audit(author_id: int, exempt: bool) -> Dict[str, Any]:
+        """
+        Toggle exempt_from_audit flag for an author
+        
+        Args:
+            author_id: ID of the author
+            exempt: Boolean flag to set
+            
+        Returns:
+            Dictionary with result
+        """
+        try:
+            author = Author.query.get(author_id)
+            if not author:
+                return {'success': False, 'error': 'Author not found'}
+                
+            # Update exempt status
+            author.exempt_from_audit = exempt
+            db.session.commit()
+            
+            return {'success': True, 'exempt_from_audit': exempt}
+            
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': str(e)}
     
     # ====== Sensitive Words Management ======
     
@@ -313,7 +494,6 @@ class AdminService:
         
         # 如果检测到敏感词，发送通知
         if has_sensitive and matches:
-            from app.services.notification_service import NotificationService
             NotificationService.create_sensitive_word_notification(
                 user_id=user_id,
                 content_type=content_type,
