@@ -2,10 +2,25 @@
   <div class="content-audit-container">
     <div class="page-header">
       <h1 class="page-title">内容审核 - {{ contentTypeText }}</h1>
-      <el-button type="warning" @click="goToRecycleBin">
-        <el-icon><Delete /></el-icon>
-        回收站
-      </el-button>
+      <div class="action-buttons">
+        <!-- 添加内容类型切换按钮 -->
+        <el-button-group style="margin-right: 15px;">
+          <el-button 
+            :type="contentType === 'novel' ? 'primary' : 'default'" 
+            @click="switchContentType('novel')">
+            小说审核
+          </el-button>
+          <el-button 
+            :type="contentType === 'chapter' ? 'primary' : 'default'" 
+            @click="switchContentType('chapter')">
+            章节审核
+          </el-button>
+        </el-button-group>
+        <el-button type="warning" @click="goToRecycleBin">
+          <el-icon><Delete /></el-icon>
+          回收站
+        </el-button>
+      </div>
     </div>
     
     <!-- 内容列表 -->
@@ -103,8 +118,11 @@
         </el-table>
       </div>
       
+      <!-- 没有待审核内容时显示 -->
+      <el-empty v-if="contentList.length === 0" description="暂无待审核内容"></el-empty>
+      
       <!-- 分页 -->
-      <div class="pagination-container">
+      <div class="pagination-container" v-if="contentList.length > 0">
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
@@ -235,7 +253,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -253,7 +271,7 @@ export default {
     const rejectFormRef = ref(null);
     
     // 内容类型
-    const contentType = computed(() => route.params.type || 'novel');
+    const contentType = ref('novel'); // 默认显示小说审核
     const contentTypeText = computed(() => {
       const types = {
         'novel': '小说审核',
@@ -296,13 +314,13 @@ export default {
       ]
     };
     
-    // 监听路由参数变化
-    watch(() => route.params.type, (newType) => {
-      if (newType !== contentType.value) {
-        currentPage.value = 1;
-        loadContent();
-      }
-    });
+    // 切换内容类型
+    const switchContentType = (type) => {
+      if (contentType.value === type) return;
+      contentType.value = type;
+      currentPage.value = 1;
+      loadContent();
+    };
     
     // 格式化日期
     const formatDate = (dateStr) => {
@@ -324,6 +342,7 @@ export default {
     // 加载内容列表
     const loadContent = async () => {
       try {
+        console.log('加载待审核内容，类型:', contentType.value);
         await store.dispatch('admin/fetchPendingContent', {
           contentType: contentType.value,
           params: {
@@ -338,6 +357,8 @@ export default {
         if (items && items.length > 0) {
           console.log('第一个待审核内容的结构:', items[0]);
           console.log('待审核内容是否包含audit_id:', Object.prototype.hasOwnProperty.call(items[0], 'audit_id'));
+        } else {
+          console.log('当前没有待审核的' + contentTypeText.value);
         }
         
       } catch (error) {
@@ -348,6 +369,12 @@ export default {
     
     // 初始化
     onMounted(() => {
+      // 设置默认内容类型
+      const urlType = route.query.type;
+      if (urlType && ['novel', 'chapter', 'comment'].includes(urlType)) {
+        contentType.value = urlType;
+      }
+      
       loadContent();
     });
     
@@ -465,7 +492,8 @@ export default {
       handleApprove,
       handleReject,
       confirmReject,
-      goToRecycleBin
+      goToRecycleBin,
+      switchContentType  // 添加内容类型切换方法
     };
   }
 };
@@ -483,8 +511,13 @@ export default {
   margin-bottom: 20px;
 }
 
+.action-buttons {
+  display: flex;
+  align-items: center;
+}
+
 .page-title {
-  margin-bottom: 20px;
+  margin-bottom: 0;
   font-size: 24px;
   font-weight: bold;
   color: #303133;
@@ -494,37 +527,36 @@ export default {
   margin-bottom: 20px;
 }
 
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-}
-
 .content-details {
-  padding: 10px;
+  padding: 20px;
 }
 
 .detail-item {
   margin-bottom: 15px;
-  display: flex;
 }
 
 .detail-label {
   font-weight: bold;
-  width: 100px;
-  flex-shrink: 0;
+  margin-right: 10px;
 }
 
 .detail-value {
-  flex-grow: 1;
+  word-break: break-word;
 }
 
 .description, .content-preview {
-  white-space: pre-line;
-  background-color: #f5f7fa;
-  padding: 10px;
-  border-radius: 4px;
-  max-height: 300px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  max-height: 400px;
   overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  text-align: right;
 }
 </style> 

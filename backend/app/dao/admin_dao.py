@@ -693,4 +693,85 @@ class AdminDAO:
         except Exception as e:
             db.session.rollback()
             print(f"Error permanently deleting comment: {str(e)}")
-            return False 
+            return False
+
+    @staticmethod
+    def get_novels(page: int = 1, per_page: int = 20, title_filter: str = None, category: str = None) -> Tuple[List[Novel], int]:
+        """
+        获取所有活跃小说（非删除状态）
+        
+        Args:
+            page: 页码
+            per_page: 每页条数
+            title_filter: 标题筛选
+            category: 分类筛选
+            
+        Returns:
+            Tuple of (novels, total_count)
+        """
+        query = Novel.query.filter_by(is_deleted=False)
+        
+        if title_filter:
+            query = query.filter(Novel.title.ilike(f'%{title_filter}%'))
+        
+        if category:
+            query = query.filter_by(category=category)
+        
+        total = query.count()
+        novels = query.order_by(desc(Novel.created_at)).paginate(page=page, per_page=per_page).items
+        
+        return novels, total
+
+    @staticmethod
+    def get_chapters(page: int = 1, per_page: int = 20, novel_id: Optional[int] = None, title_filter: str = None) -> Tuple[List[Chapter], int]:
+        """
+        获取所有活跃章节（非删除状态）
+        
+        Args:
+            page: 页码
+            per_page: 每页条数
+            novel_id: 小说ID筛选
+            title_filter: 标题筛选
+            
+        Returns:
+            Tuple of (chapters, total_count)
+        """
+        query = Chapter.query.filter_by(is_deleted=False)
+        
+        if novel_id:
+            query = query.filter_by(novel_id=novel_id)
+        
+        if title_filter:
+            query = query.filter(Chapter.title.ilike(f'%{title_filter}%'))
+        
+        total = query.count()
+        chapters = query.order_by(desc(Chapter.created_at)).paginate(page=page, per_page=per_page).items
+        
+        return chapters, total
+
+    @staticmethod
+    def get_comments(page: int = 1, per_page: int = 20, novel_id: Optional[int] = None, chapter_id: Optional[int] = None) -> Tuple[List[Comment], int]:
+        """
+        获取所有活跃评论（非删除状态）
+        
+        Args:
+            page: 页码
+            per_page: 每页条数
+            novel_id: 小说ID筛选
+            chapter_id: 章节ID筛选
+            
+        Returns:
+            Tuple of (comments, total_count)
+        """
+        query = Comment.query.filter_by(is_deleted=False)
+        
+        if novel_id:
+            query = query.filter_by(novel_id=novel_id)
+        
+        if chapter_id:
+            query = query.filter_by(chapter_id=chapter_id)
+        
+        total = query.count()
+        comments = query.order_by(desc(Comment.created_at)).paginate(page=page, per_page=per_page).items
+        
+        return comments, total 

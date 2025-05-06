@@ -184,6 +184,12 @@ const routes = [
         meta: { title: '内容审核' }
       },
       {
+        path: 'content-management',
+        name: 'ContentManagement',
+        component: () => import('@/views/admin/ContentManagement.vue'),
+        meta: { title: '内容管理' }
+      },
+      {
         path: 'recycle-bin',
         name: 'RecycleBin',
         component: () => import('@/views/admin/RecycleBin.vue'),

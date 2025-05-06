@@ -1146,4 +1146,111 @@ class AdminService:
             return {
                 'success': False,
                 'message': f'Failed to permanently delete comment with ID {comment_id}'
-            } 
+            }
+
+    @staticmethod
+    def get_novels(page: int = 1, per_page: int = 20, title_filter: str = None, category: str = None) -> Dict:
+        """
+        获取所有小说（非删除状态）
+        
+        Args:
+            page: 页码
+            per_page: 每页条数
+            title_filter: 标题筛选
+            category: 分类筛选
+            
+        Returns:
+            Dict with novels and pagination info
+        """
+        novels, total = AdminDAO.get_novels(page, per_page, title_filter, category)
+        
+        return {
+            'novels': [novel.to_dict() for novel in novels],
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page
+        }
+
+    @staticmethod
+    def get_chapters(page: int = 1, per_page: int = 20, novel_id: Optional[int] = None, title_filter: str = None) -> Dict:
+        """
+        获取所有章节（非删除状态）
+        
+        Args:
+            page: 页码
+            per_page: 每页条数
+            novel_id: 小说ID筛选
+            title_filter: 标题筛选
+            
+        Returns:
+            Dict with chapters and pagination info
+        """
+        chapters, total = AdminDAO.get_chapters(page, per_page, novel_id, title_filter)
+        
+        chapters_with_novel = []
+        for chapter in chapters:
+            chapter_dict = chapter.to_dict()
+            novel = Novel.query.get(chapter.novel_id)
+            if novel:
+                chapter_dict['novel_title'] = novel.title
+            chapters_with_novel.append(chapter_dict)
+        
+        return {
+            'chapters': chapters_with_novel,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page
+        }
+
+    @staticmethod
+    def get_comments(page: int = 1, per_page: int = 20, novel_id: Optional[int] = None, chapter_id: Optional[int] = None) -> Dict:
+        """
+        获取所有评论（非删除状态）
+        
+        Args:
+            page: 页码
+            per_page: 每页条数
+            novel_id: 小说ID筛选
+            chapter_id: 章节ID筛选
+            
+        Returns:
+            Dict with comments and pagination info
+        """
+        comments, total = AdminDAO.get_comments(page, per_page, novel_id, chapter_id)
+        
+        comments_with_details = []
+        for comment in comments:
+            comment_dict = comment.to_dict()
+            
+            # Add user information
+            user = User.query.get(comment.user_id)
+            if user:
+                comment_dict['user'] = {
+                    'id': user.id,
+                    'username': user.username,
+                    'avatar': user.avatar
+                }
+            
+            # Add novel title
+            if comment.novel_id:
+                novel = Novel.query.get(comment.novel_id)
+                if novel:
+                    comment_dict['novel_title'] = novel.title
+            
+            # Add chapter title
+            if comment.chapter_id:
+                chapter = Chapter.query.get(comment.chapter_id)
+                if chapter:
+                    comment_dict['chapter_title'] = chapter.title
+            
+            comments_with_details.append(comment_dict)
+        
+        return {
+            'comments': comments_with_details,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page
+        } 

@@ -376,4 +376,41 @@ export function permanentlyDeleteComment(commentId) {
     url: `/admin/recycle-bin/comments/${commentId}/permanent`,
     method: 'delete'
   });
+}
+
+// ======= 内容管理功能 =======
+
+// 获取所有小说（管理员视角，带分页和筛选）
+export function getAdminNovels(params) {
+  return request({
+    url: '/admin/novels',
+    method: 'get',
+    params
+  });
+}
+
+// 获取所有章节（管理员视角，带分页和筛选）
+export function getAdminChapters(params) {
+  return request({
+    url: '/admin/chapters',
+    method: 'get',
+    params
+  });
+}
+
+// 获取所有评论（管理员视角，带分页和筛选）
+export function getAdminComments(params) {
+  return request({
+    url: '/admin/comments',
+    method: 'get',
+    params
+  });
+}
+
+// 将内容移至回收站
+export function moveToTrash(contentType, contentId) {
+  return request({
+    url: `/admin/trash/${contentType}/${contentId}`,
+    method: 'post'
+  });
 } 

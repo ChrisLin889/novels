@@ -51,6 +51,10 @@
             <el-icon><Reading /></el-icon>
             <span>内容审核</span>
           </el-menu-item>
+          <el-menu-item index="/admin/content-management">
+            <el-icon><Collection /></el-icon>
+            <span>内容管理</span>
+          </el-menu-item>
           <el-menu-item index="/admin/recycle-bin">
             <el-icon><Delete /></el-icon>
             <span>内容回收站</span>
@@ -152,7 +156,8 @@ import {
   List,
   ArrowDown,
   Delete,
-  EditPen
+  EditPen,
+  Collection
 } from '@element-plus/icons-vue';
 import { ElMessageBox } from 'element-plus';
 
@@ -171,7 +176,8 @@ export default {
     List,
     ArrowDown,
     Delete,
-    EditPen
+    EditPen,
+    Collection
   },
   setup() {
     const store = useStore();
@@ -195,6 +201,7 @@ export default {
       if (routePath.includes('/admin/user-actions')) return '用户行为';
       if (routePath.includes('/admin/sensitive-words')) return '敏感词管理';
       if (routePath.includes('/admin/content')) return '内容审核';
+      if (routePath.includes('/admin/content-management')) return '内容管理';
       if (routePath.includes('/admin/recycle-bin')) return '内容回收站';
       if (routePath.includes('/admin/author-applications')) return '作者申请审核';
       

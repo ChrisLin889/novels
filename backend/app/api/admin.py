@@ -825,4 +825,141 @@ def audit_content_by_id(audit_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
+
+# ====== 内容管理 ======
+
+@admin_bp.route('/novels', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_admin_novels():
+    """
+    获取所有小说（带分页和筛选）
+    
+    GET params:
+    - page: 页码 (默认: 1)
+    - per_page: 每页条数 (默认: 20)
+    - title: 标题筛选 (可选)
+    - category: 分类筛选 (可选)
+    """
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 20)), 100)
+    except ValueError:
+        return jsonify({
+            'error': 'Invalid pagination parameters'
+        }), 400
+    
+    title_filter = request.args.get('title')
+    category = request.args.get('category')
+    
+    result = AdminService.get_novels(
+        page=page, 
+        per_page=per_page, 
+        title_filter=title_filter, 
+        category=category
+    )
+    
+    return jsonify(result)
+
+@admin_bp.route('/chapters', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_admin_chapters():
+    """
+    获取所有章节（带分页和筛选）
+    
+    GET params:
+    - novel_id: 小说ID筛选 (可选)
+    - title: 标题筛选 (可选)
+    - page: 页码 (默认: 1)
+    - per_page: 每页条数 (默认: 20)
+    """
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 20)), 100)
+        
+        novel_id = request.args.get('novel_id')
+        if novel_id:
+            novel_id = int(novel_id)
+    except ValueError:
+        return jsonify({
+            'error': 'Invalid parameters'
+        }), 400
+    
+    title_filter = request.args.get('title')
+    
+    result = AdminService.get_chapters(
+        page=page, 
+        per_page=per_page, 
+        novel_id=novel_id,
+        title_filter=title_filter
+    )
+    
+    return jsonify(result)
+
+@admin_bp.route('/comments', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_admin_comments():
+    """
+    获取所有评论（带分页和筛选）
+    
+    GET params:
+    - novel_id: 小说ID筛选 (可选)
+    - chapter_id: 章节ID筛选 (可选)
+    - page: 页码 (默认: 1)
+    - per_page: 每页条数 (默认: 20)
+    """
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 20)), 100)
+        
+        novel_id = request.args.get('novel_id')
+        if novel_id:
+            novel_id = int(novel_id)
+            
+        chapter_id = request.args.get('chapter_id')
+        if chapter_id:
+            chapter_id = int(chapter_id)
+    except ValueError:
+        return jsonify({
+            'error': 'Invalid parameters'
+        }), 400
+    
+    result = AdminService.get_comments(
+        page=page, 
+        per_page=per_page, 
+        novel_id=novel_id,
+        chapter_id=chapter_id
+    )
+    
+    return jsonify(result)
+
+@admin_bp.route('/trash/<string:content_type>/<int:content_id>', methods=['POST'])
+@jwt_required()
+@admin_required()
+def move_to_trash(content_type, content_id):
+    """
+    将内容移至回收站
+    
+    content_type: 'novel'(小说), 'chapter'(章节), 'comment'(评论)
+    content_id: 内容ID
+    """
+    if content_type not in ['novel', 'chapter', 'comment']:
+        return jsonify({'error': 'Invalid content type'}), 400
+        
+    # 获取管理员ID
+    admin_id = get_jwt_identity()
+    
+    if content_type == 'novel':
+        result = AdminService.delete_novel(admin_id, content_id)
+    elif content_type == 'chapter':
+        result = AdminService.delete_chapter(admin_id, content_id)
+    elif content_type == 'comment':
+        result = AdminService.delete_comment(admin_id, content_id)
+    
+    if not result['success']:
+        return jsonify({'error': result['message']}), 400
+        
+    return jsonify({'success': True, 'message': f'{content_type.capitalize()} has been moved to trash'}) 
